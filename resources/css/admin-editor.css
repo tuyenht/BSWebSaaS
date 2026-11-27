@@ -705,6 +705,7 @@
 
 /* «Thêm video YouTube» under the picture strip, and a video's tile (its thumbnail is 16:9 inside the square cell) */
 .ped-yt {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -735,9 +736,10 @@
     min-width: 0;
 }
 
-@container (min-width: 40rem) {
+/* the row follows the width of the gallery card it sits in (the board's 520px), not the editor's */
+@container (min-width: 32.5rem) {
     .ped-yt-row {
-        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
     }
 }
 

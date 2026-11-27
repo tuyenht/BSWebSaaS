@@ -513,8 +513,16 @@ final class Editor extends Component
                 return;
             }
             $videos = array_values(array_filter($this->videos, static fn (array $v): bool => $v['yt'] !== $video['yt']));
-            array_splice($videos, max(0, min($video['at'], count($videos))), 0, [['yt' => $video['yt'], 'title' => $video['title']]]);
+            if (count($videos) >= ProductVideos::MAX) {
+                // another video took its place since: putting it back would push the newest one off the end
+                $this->videoError = Cast::string(__('catalog.ed.video_max', ['max' => ProductVideos::MAX]));
+
+                return;
+            }
+            $at = max(0, min($video['at'], count($videos)));
+            array_splice($videos, $at, 0, [['yt' => $video['yt'], 'title' => $video['title']]]);
             $this->videos = ProductVideos::clean($videos);
+            $this->dispatch('ped-vfocus', i: $at);
         }
     }
 
@@ -1277,6 +1285,7 @@ final class Editor extends Component
         $title = ProductVideos::title($title);
         $this->videos[] = ['yt' => (string) $id, 'title' => $title];
         $this->say(Cast::string(__($title !== '' ? 'catalog.ed.toast_video_added_t' : 'catalog.ed.toast_video_added', ['title' => $title])), null);
+        $this->dispatch('ped-vfocus', i: count($this->videos) - 1);
 
         return true;
     }
@@ -1297,6 +1306,19 @@ final class Editor extends Component
         $this->videoError = '';
         $name = $video['title'] !== '' ? $video['title'] : Cast::string(__('catalog.ed.video_unnamed'));
         $this->say(Cast::string(__('catalog.ed.toast_video_removed', ['name' => $name])), 'video', null, $video + ['at' => $index]);
+        // focus goes to the item now at that place; with no video left, to the main picture (-1)
+        $this->dispatch('ped-vfocus', i: $this->videos === [] ? -1 : min($index, count($this->videos) - 1));
+    }
+
+    /**
+     * The link field after the user leaves it (board 09): a link that is not one video of YouTube says so
+     * at once, a good or empty one clears the message. Changes nothing but the message.
+     */
+    public function checkVideoLink(string $url): void
+    {
+        $this->authorizeEdit();
+        $url = trim($url);
+        $this->videoError = $url !== '' && ProductVideos::id($url) === null ? Cast::string(__('catalog.ed.video_bad_link')) : '';
     }
 
     /**
@@ -1485,7 +1507,13 @@ final class Editor extends Component
             'bestseller' => ['boolean'],
             'sku' => ['nullable', 'string', 'max:'.SkuCode::MAX, $this->skuIsFree(...)],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
-            'imageMediaIds' => ['array'],
+            // the strip always starts with a picture: a save never empties the pictures under a video
+            // (a product that already had none, its last picture deleted from the Library, may still save)
+            'imageMediaIds' => ['array', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === [] && $this->videos !== [] && ($this->saved['imageMediaIds'] ?? '[]') !== '[]') {
+                    $fail(Cast::string(__('catalog.ed.video_keep_image')));
+                }
+            }],
             // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an
             // already attached image whose media went to Trash must not block saving (it renders
             // as "missing"; restoring the media heals it) — the ADD path (pickImage) already

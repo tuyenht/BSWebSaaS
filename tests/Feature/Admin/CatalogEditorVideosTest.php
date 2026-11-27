@@ -6,7 +6,9 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Livewire\Livewire;
 
 /*
@@ -169,7 +171,7 @@ it('takes a video off with «Hoàn tác» that puts it back where it stood', fun
     });
 });
 
-it('refuses a member who may only see products, and another language than the default, on the server', function (): void {
+it('refuses a member who may only see products on the server', function (): void {
     $viewer = pvdMember(['catalog.view', 'media.view']);
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
         $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
@@ -189,4 +191,102 @@ it('drops a stored or sent entry that is not an id, keeping the rest', function 
         Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
             ->assertSet('videos', [['yt' => 'aaaaaaaaaaa', 'title' => 'ok']]);
     });
+});
+
+it('refuses to add or remove a video in another language than the default, and keeps the stored list', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        SiteLocale::query()->updateOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $videos = [['yt' => 'aaaaaaaaaaa', 'title' => 'Một'], ['yt' => 'bbbbbbbbbbb', 'title' => 'Hai']];
+        $product = pvdProduct(2, ['videos' => $videos]);
+        $product->translations()->create(['locale' => 'en', 'name' => 'Drill bit', 'slug' => 'drill-bit']);
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid, 'locale' => 'en'])
+            ->assertSet('videos', $videos)
+            ->call('addVideo', 'https://youtu.be/'.PVD_ID, 'Mới')->assertReturned(false)->assertDispatched('bs-toast')
+            ->assertSet('videos', $videos)
+            ->call('removeVideo', 0)->assertDispatched('bs-toast')->assertSet('videos', $videos)->assertSet('undo', null)
+            ->set('name', 'Drill bit 2')->call('save')->assertHasNoErrors();
+
+        expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['videos' => $videos]);
+    });
+});
+
+it('never empties the pictures under a video: a save without any picture is refused and keeps them', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => '']]]);
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('imageMediaIds', [])->call('save')->assertHasErrors(['imageMediaIds']);
+        expect($product->images()->count())->toBe(2);
+    });
+});
+
+it('keeps the videos visible and removable after their last picture is deleted from the Library', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(1, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => 'Một']], 'note' => 'keep me']);
+        Media::query()->whereKey($product->images()->value('media_id'))->forceDelete();
+        expect($product->images()->count())->toBe(0);
+
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->assertSet('imageMediaIds', [])
+            ->assertSeeHtml('data-vid-i="0"')
+            ->assertDontSeeHtml('ped-imempty')
+            ->set('name', 'Mũi khoan 2')->call('save')->assertHasNoErrors()
+            ->call('removeVideo', 0)->assertSet('videos', [])->assertSeeHtml('ped-imempty')
+            ->call('save')->assertHasNoErrors();
+
+        expect((array) Product::query()->whereKey($product->id)->value('meta'))->toBe(['note' => 'keep me']);
+    });
+});
+
+it('says where focus goes after a video is added, taken off or put back', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct();
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->call('addVideo', 'https://youtu.be/aaaaaaaaaaa', '')->assertDispatched('ped-vfocus', i: 0)
+            ->call('addVideo', 'https://youtu.be/bbbbbbbbbbb', '')->assertDispatched('ped-vfocus', i: 1)
+            ->call('removeVideo', 1)->assertDispatched('ped-vfocus', i: 0)
+            ->call('undoLast')->assertDispatched('ped-vfocus', i: 1)
+            ->call('removeVideo', 1)->call('removeVideo', 0)->assertDispatched('ped-vfocus', i: -1);
+    });
+});
+
+it('checks the link when the user leaves the field, and clears the message for a good or empty one', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct();
+        Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->call('checkVideoLink', 'hello')->assertSet('videoError', __('catalog.ed.video_bad_link'))
+            ->call('checkVideoLink', 'https://youtu.be/'.PVD_ID)->assertSet('videoError', '')
+            ->call('checkVideoLink', 'hello')->call('checkVideoLink', '  ')->assertSet('videoError', '');
+        $viewer = pvdMember(['catalog.view', 'media.view']);
+        Livewire::actingAs($viewer)->test(Editor::class, ['ulid' => $product->ulid])->call('checkVideoLink', 'x')->assertForbidden();
+    });
+});
+
+it('draws the strip as the board does: its words, the add group, the YouTube mark and the disabled moves', function (): void {
+    $user = pvdMember();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $product = pvdProduct(2, ['videos' => [['yt' => 'aaaaaaaaaaa', 'title' => 'Một']]]);
+        $c = Livewire::actingAs($user)->test(Editor::class, ['ulid' => $product->ulid])
+            ->assertSee(__('catalog.ed.img_strip'))->assertSee('role="group" aria-labelledby="ped-yt-h"', false)
+            ->assertSee('aria-describedby="ped-yt-o"', false)->assertSee(__('catalog.ed.img_add_media_why'), false)
+            ->assertSee('x-on:blur="$wire.checkVideoLink(url)"', false);
+        // the cover never swaps across the videos, and the last picture stays under a video
+        $c->assertSee('(sel === 0 || (sel === 1 && vN > 0))', false)
+            ->assertSee('(sel === n - 1 || (sel === 0 && vN > 0))', false)
+            ->assertSee('(n === 1 && vN > 0)', false);
+        expect(__('catalog.ed.img_strip'))->toContain('video')
+            ->and(file_get_contents(base_path('app/Modules/Admin/resources/views/components/icon.blade.php')))->toContain("'ri-youtube'");
+    });
+});
+
+it('sizes the add-video row by the gallery card it sits in, as the board does', function (): void {
+    $css = (string) file_get_contents(base_path('resources/css/admin-editor.css'));
+    expect($css)->toMatch('~\.ped-yt \{[^}]*container-type: inline-size~')
+        ->and($css)->toContain('@container (min-width: 32.5rem)')->not->toContain('@container (min-width: 40rem)');
 });
