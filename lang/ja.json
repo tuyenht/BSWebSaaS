@@ -6616,6 +6616,7 @@
     "catalog.ed.sv_full_day": ":day :time に保存しました",
     "catalog.ed.sv_tip": ":text — サイトのタイムゾーン",
     "catalog.ed.sv_dirty": "未保存の変更 :n 件",
+    "catalog.ed.sv_dirty_short": "未保存",
     "catalog.ed.sv_dirty_draft": "未保存の変更 :n 件 — 3 秒後に自動保存",
     "catalog.ed.sv_dirty_live": "未保存の変更 :n 件 — 「更新」を押すと訪問者に表示されます",
     "catalog.ed.sv_saving": "保存中…",

@@ -79,6 +79,37 @@ export function stateText(state, words, n, status, auto = false) {
 }
 
 /**
+ * The short line of a state, for the phone's one bar of an editor (design 07: «Đang lưu…» · «Chưa lưu»),
+ * where the long line would not fit on one line; the long one stays its title and what is read out.
+ * Without `dirtyShort` among the words it is the long line.
+ */
+export function shortStateText(state, words, long) {
+    if (state === 'saving') {
+        return words.saving;
+    }
+
+    return words.dirtyShort ?? long;
+}
+
+/**
+ * The phone's one bar (design 01: ← · name over state · Thử lại · (?) · ⋮ on one line): «Thử lại» keeps
+ * its word while the bar holds everything, otherwise it shows its icon alone (data-retry-tight; the word
+ * stays its name and title). Measured with the word shown; elsewhere the bar wraps and always has room.
+ */
+export function fitRetry(bar) {
+    const retry = bar.querySelector('.ped-retry');
+    const acts = bar.querySelector('.ped-acts');
+    bar.removeAttribute('data-retry-tight');
+    if (!retry || !acts || !retry.getClientRects().length) {
+        return;
+    }
+    const edge = bar.getBoundingClientRect().right - (parseFloat(window.getComputedStyle(bar).paddingRight) || 0);
+    if (acts.getBoundingClientRect().right > edge + 0.5) {
+        bar.setAttribute('data-retry-tight', '');
+    }
+}
+
+/**
  * @param {{ fields: string[], words: Record<string, string>, delay?: number, autosave?: boolean, autosaveNew?: boolean, extra?: string, keep?: { key: string } }} cfg
  *   the counted fields, the words of each state, the wait before a draft saves itself (ms);
  *   `autosave: false` for an editor whose drafts do not save themselves; `autosaveNew` for one whose new
@@ -99,6 +130,8 @@ export function editorSave(cfg) {
     let keepTimer = null;
     let onSaved = null;
     let onHide = null;
+    let ro = null;
+    let fitFrame = 0;
 
     return {
         busy: false,
@@ -112,6 +145,19 @@ export function editorSave(cfg) {
 
         init() {
             this.get = (field) => this.$wire.$get(field);
+            // the bar's own size, its «Thử lại» showing or the text size changing: fit the bar again, on the
+            // next frame (fitting resizes what is observed; inside the callback that is a ResizeObserver loop)
+            if (window.ResizeObserver) {
+                ro = new window.ResizeObserver(() => {
+                    if (!fitFrame) {
+                        fitFrame = requestAnimationFrame(() => {
+                            fitFrame = 0;
+                            fitRetry(this.$root);
+                        });
+                    }
+                });
+                [this.$root, this.$root.querySelector('.ped-retry'), this.$root.querySelector('.ped-tl')].forEach((el) => el && ro.observe(el));
+            }
             page = this.$root.closest('[wire\\:id]') || document.body;
             onInput = () => {
                 this.typed = true;
@@ -189,6 +235,12 @@ export function editorSave(cfg) {
         destroy() {
             clearTimeout(timer);
             clearTimeout(keepTimer);
+            if (fitFrame) {
+                cancelAnimationFrame(fitFrame);
+            }
+            if (ro) {
+                ro.disconnect();
+            }
             if (onSaved) {
                 window.removeEventListener('admin-editor-saved', onSaved);
             }
@@ -250,6 +302,10 @@ export function editorSave(cfg) {
             const itself = this.own > 0 && savesItself(cfg, status, this.get);
 
             return stateText(this.state(), cfg.words, this.n, itself ? 'draft' : (status === 'draft' || savesItself(cfg, status, this.get) ? 'none' : status), this.auto);
+        },
+
+        short() {
+            return shortStateText(this.state(), cfg.words, this.text());
         },
 
         /** "Thử lại": the save that did not reach the server ("Đăng" again, otherwise a plain save). */

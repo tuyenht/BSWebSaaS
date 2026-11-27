@@ -6616,6 +6616,7 @@
     "catalog.ed.sv_full_day": ":day :time 已保存",
     "catalog.ed.sv_tip": ":text — 按网站时区",
     "catalog.ed.sv_dirty": ":n 处更改未保存",
+    "catalog.ed.sv_dirty_short": "未保存",
     "catalog.ed.sv_dirty_draft": ":n 处更改未保存 — 3 秒后自动保存",
     "catalog.ed.sv_dirty_live": ":n 处更改未保存 — 点“更新”后访客才能看到",
     "catalog.ed.sv_saving": "正在保存…",

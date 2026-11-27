@@ -32,7 +32,7 @@ window.Livewire = {
         };
     },
 };
-const { valueText, countChanges, overState, stateText, savesItself } = await import('../../resources/js/admin-editor.js');
+const { valueText, countChanges, overState, stateText, shortStateText, savesItself, fitRetry } = await import('../../resources/js/admin-editor.js');
 
 const words = { offlineToast: 'Chưa lưu được vì mất kết nối.', offlineToastIcon: '<svg></svg>', dirty: ':n thay đổi chưa lưu', dirtyDraft: ':n thay đổi chưa lưu — tự lưu sau 3 giây', dirtyLive: ':n thay đổi chưa lưu — bấm Cập nhật để khách thấy', saving: 'Đang lưu…', offline: 'Chưa lưu được — mất kết nối' };
 const rerun = () => effects.slice().forEach((fn) => fn());
@@ -104,6 +104,39 @@ test('the changes line says what happens next for each status', () => {
     assert.equal(stateText('dirty', words, 1, 'published'), '1 thay đổi chưa lưu — bấm Cập nhật để khách thấy');
     assert.equal(stateText('dirty', words, 3, 'archived'), '3 thay đổi chưa lưu');
     assert.equal(stateText('saving', words, 3, 'draft'), 'Đang lưu…');
+});
+
+test("the phone's one bar has a short line for every state, the long one when no short word is given", () => {
+    const short = { ...words, dirtyShort: 'Chưa lưu' };
+    assert.equal(shortStateText('dirty', short, '1 thay đổi chưa lưu — bấm Cập nhật để khách thấy'), 'Chưa lưu');
+    assert.equal(shortStateText('offline', short, 'Chưa lưu được — mất kết nối'), 'Chưa lưu');
+    assert.equal(shortStateText('saving', short, 'Đang tự lưu…'), 'Đang lưu…');
+    assert.equal(shortStateText('dirty', words, '2 thay đổi chưa lưu'), '2 thay đổi chưa lưu');
+});
+
+test("«Thử lại» on the phone's one bar shows its icon alone only while the bar cannot hold its word", () => {
+    const bar = document.createElement('div');
+    bar.innerHTML = '<button class="ped-retry"></button><div class="ped-acts"></div>';
+    bar.style.paddingRight = '16px';
+    const retry = bar.querySelector('.ped-retry');
+    const acts = bar.querySelector('.ped-acts');
+    let right = 0;
+    let shown = true;
+    bar.getBoundingClientRect = () => ({ right: 320 });
+    retry.getClientRects = () => (shown ? [{}] : []);
+    acts.getBoundingClientRect = () => ({ right });
+    document.body.append(bar);
+
+    right = 304; // the ⋮ ends at the bar's inner edge: the word fits
+    fitRetry(bar);
+    assert.equal(bar.hasAttribute('data-retry-tight'), false);
+    right = 317; // pushed into the bar's side room: the icon alone
+    fitRetry(bar);
+    assert.equal(bar.hasAttribute('data-retry-tight'), true);
+    shown = false; // back online: «Thử lại» is gone, so is the mark
+    fitRetry(bar);
+    assert.equal(bar.hasAttribute('data-retry-tight'), false);
+    bar.remove();
 });
 
 test('a draft saves itself 3 seconds after the last change, not before', (t) => {

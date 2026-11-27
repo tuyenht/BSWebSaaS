@@ -6616,6 +6616,7 @@
     "catalog.ed.sv_full_day": "Đã lưu lúc :time ngày :day",
     "catalog.ed.sv_tip": ":text — giờ theo múi giờ website",
     "catalog.ed.sv_dirty": ":n thay đổi chưa lưu",
+    "catalog.ed.sv_dirty_short": "Chưa lưu",
     "catalog.ed.sv_dirty_draft": ":n thay đổi chưa lưu — tự lưu sau 3 giây",
     "catalog.ed.sv_dirty_live": ":n thay đổi chưa lưu — bấm Cập nhật để khách thấy",
     "catalog.ed.sv_saving": "Đang lưu…",

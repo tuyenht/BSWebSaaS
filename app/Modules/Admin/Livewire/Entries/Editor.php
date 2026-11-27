@@ -3353,32 +3353,34 @@ final class Editor extends Component
 
     /**
      * The save state beside the title while nothing is being typed: a new entry not saved yet,
-     * saved at a time, or a field to fix. The browser shows the typing states over it.
+     * saved at a time, or a field to fix. The browser shows the typing states over it. `short` is
+     * the phone's one bar line (board 07: «Đã lưu 09:40» · «Chưa lưu»).
      *
-     * @return array{key: string, icon: string, text: string, full: string, tip: string}
+     * @return array{key: string, icon: string, text: string, short: string, full: string, tip: string}
      */
     private function saveNote(): array
     {
         if ($this->saveFailed) {
             $text = (string) __('catalog.ed.sv_error');
 
-            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $at = $this->savedAt !== null ? app(SiteTime::class)->forDisplay(CarbonImmutable::parse($this->savedAt)) : null;
         if (! $at instanceof CarbonImmutable) {
             $text = (string) __('entries.ed.sv_new', ['unit' => Str::ucfirst($this->unit())]);
 
-            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $today = $at->isSameDay(app(SiteTime::class)->now());
         $time = $at->format('H:i');
         $full = (string) ($today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]));
         // the draft's own save reads «Đã lưu nháp …» (board 07); a button's save «Đã lưu …»
-        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $today ? $time : $at->format('d/m')]);
+        $when = $today ? $time : $at->format('d/m');
+        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $when]);
 
-        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
+        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'short' => (string) __('catalog.ed.sv_short', ['when' => $when]), 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
     }
 
     /**

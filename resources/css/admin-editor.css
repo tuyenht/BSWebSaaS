@@ -72,6 +72,11 @@
     display: none;
 }
 
+/* The short line of the browser's state is for the phone's one bar only (below). */
+.bs-save-state-s {
+    display: none;
+}
+
 /* Parts of the bar drawn for the phone's one bar only: the name, the (?) and, in the ⋮, Xem trước and
    Cỡ chữ (the admin's top bar, with its way to the member's settings, is gone there). */
 .ped-h1,
@@ -138,20 +143,45 @@
         padding-top: 0;
     }
 
+    /* Gaps as design 01 draws the one bar: none between ← and the name (the ← icon has room of its own),
+       2px from the name to what follows, 8px between two targets (the ⋮ group's own gap). */
     [data-child-screen] .ped-bar {
         top: var(--support-bar-h, 0px);
         flex-wrap: nowrap;
-        gap: 0 0.5rem;
+        gap: 0;
         box-sizing: border-box;
         height: 3.5rem;
         padding-block: 0;
     }
 
+    /* never narrower than its save state (the state is never cut; only the name takes «…») */
     [data-child-screen] .ped-tl {
         order: 0;
         flex: 1 1 0;
+        min-width: auto;
         gap: 0;
         justify-content: center;
+        margin-right: 0.125rem;
+    }
+
+    /* «Thử lại» (no connection) beside the state: with its word while the bar has room, otherwise the
+       icon alone (its touch area still 44px), the word still its name and its title (data-retry-tight, admin-editor.js). */
+    [data-child-screen] .ped-retry {
+        margin-right: 0.5rem;
+    }
+
+    [data-child-screen] .ped-bar[data-retry-tight] .ped-retry {
+        width: var(--spacing-control);
+        padding-inline: 0;
+    }
+
+    [data-child-screen] .ped-bar[data-retry-tight] .ped-retry-t {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 
     [data-child-screen] .ped-h1 {
@@ -173,6 +203,21 @@
         border: 0;
         background: transparent;
         font-size: min(0.875rem, calc(0.75rem + var(--user-text-boost) * 0.5));
+        white-space: nowrap;
+    }
+
+    /* One line beside ← and ⋮: both pills show their short line («Đã lưu 09:40» · «Đang lưu…» · «Chưa lưu»);
+       the long one stays the pill's title and what is read out (a long line here pushed the page sideways). */
+    [data-child-screen] .ped-bar .bs-save-state-s {
+        display: inline;
+    }
+
+    [data-child-screen] .ped-bar .bs-save-state-l {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
         white-space: nowrap;
     }
 
