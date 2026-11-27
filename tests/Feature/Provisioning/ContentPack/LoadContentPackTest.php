@@ -887,6 +887,48 @@ it('warns about an intro picture whose file is not uploaded and keeps the live p
         ->and(cpCategoryIntro($this->siteId)['cover'])->toBe($about->storage_key);
 });
 
+/** The focus keyword of the about page and of the launch post, as stored. */
+function cpFocusKeywords(int $siteId): array
+{
+    return ContentPacks::in($siteId, fn (): array => [
+        'page' => EntryTranslation::query()->where('slug', 'gioi-thieu')->where('locale', 'vi')->value('focus_keyword'),
+        'post' => EntryTranslation::query()->where('slug', 'ra-mat-website')->where('locale', 'vi')->value('focus_keyword'),
+    ]);
+}
+
+it('writes a page\'s and a post\'s focus keyword, sees a second load as unchanged, and clears them when the pack drops them', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => null, 'post' => null]);
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'gia công CNC theo yêu cầu']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'ra mắt website']]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'page:/gioi-thieu'))->toBe('update')
+        ->and(ContentPacks::verdict($plan, 'post:ra-mat-website'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => 'gia công CNC theo yêu cầu', 'post' => 'ra mắt website']);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'page:/gioi-thieu'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($again, 'post:ra-mat-website'))->toBe('unchanged');
+
+    // The keyword is part of the item's text, like the excerpt: an item without one has none.
+    foreach ([['pages.json', 'page:/gioi-thieu'], ['posts.json', 'post:ra-mat-website']] as [$file, $key]) {
+        ContentPacks::item($this->folder, $file, $key, function (array $item): array {
+            unset($item['focus_keyword']);
+
+            return $item;
+        });
+    }
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => null, 'post' => null]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'page:/gioi-thieu'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($settled, 'post:ra-mat-website'))->toBe('unchanged');
+});
+
 /** The news category's card label and the byline of the launch post, as stored. */
 function cpLabelAndByline(int $siteId): array
 {

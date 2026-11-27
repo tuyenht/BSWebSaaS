@@ -140,6 +140,10 @@ trait EditsPendingChange
             $this->seoTitle = Cast::string($text['seo_title'] ?? '');
             $this->seoDescription = Cast::string($text['seo_description'] ?? '');
             $this->coverAlt = Cast::string($text['cover_alt'] ?? '');
+            // a change saved before the focus keyword existed leaves the live one (applying it keeps it)
+            if (array_key_exists('focus_keyword', $text)) {
+                $this->focusKeyword = Cast::string($text['focus_keyword']);
+            }
         }
         $shared = $change->content['shared'] ?? [];
         // the cover: the file its cover_media_id names (read only when it names one; none when it
@@ -219,6 +223,7 @@ trait EditsPendingChange
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
+            'focus_keyword' => $this->focusKeyword !== '' ? $this->focusKeyword : null,
         ];
         // the cover over the one the change holds (else the website's), as the direct save writes it: by its row
         $held = $change !== null ? ($change->content['shared'] ?? []) : [];
@@ -278,7 +283,7 @@ trait EditsPendingChange
             return false;
         }
         $before = ['blocks' => $this->liveBodyAsSaved($live)];
-        foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'cover_alt'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'cover_alt', 'focus_keyword'] as $field) {
             if (Cast::string($live->getAttribute($field)) !== Cast::string($text[$field] ?? null)) {
                 return false;
             }

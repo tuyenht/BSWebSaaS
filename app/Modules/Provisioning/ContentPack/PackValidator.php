@@ -954,6 +954,13 @@ final readonly class PackValidator
         foreach (['excerpt', 'seo_title', 'seo_description'] as $field) {
             $this->localeMap($pack, $item->key, $item->data, $field, false, self::TEXT_MAX, $errors);
         }
+        // The words the page should be found by («Từ khóa muốn lên top»): one line of plain text, never shown on the website.
+        $this->localeMap($pack, $item->key, $item->data, 'focus_keyword', false, EntryContentRules::FOCUS_KEYWORD_MAX, $errors);
+        foreach (Cast::arr($item->data['focus_keyword'] ?? null) as $locale => $keyword) {
+            if (is_string($keyword) && mb_strlen($keyword) <= EntryContentRules::FOCUS_KEYWORD_MAX && (PlainText::label($keyword) !== $keyword || PlainText::hasMarkup($keyword))) {
+                $errors[] = "{$item->key}: focus_keyword ({$locale}) must be one line of plain text, without tags or extra spaces.";
+            }
+        }
         if ($item->kind === 'post') {
             $this->slugMap($pack, $item, $errors);
         }

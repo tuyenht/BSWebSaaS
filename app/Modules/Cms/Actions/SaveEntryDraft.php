@@ -260,6 +260,7 @@ final readonly class SaveEntryDraft
             return [
                 'title' => '', 'slug' => '', 'body' => ['blocks' => []], 'excerpt' => null,
                 'seo_title' => null, 'seo_description' => null, 'og_image_id' => null, 'author_name' => null,
+                'focus_keyword' => null,
             ];
         }
 
