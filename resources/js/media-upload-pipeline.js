@@ -139,6 +139,7 @@ export function usePipeline(uppy, cfg, AwsS3, XHRUpload) {
                 filename: file.name,
                 width: file.meta.width ?? null,
                 height: file.meta.height ?? null,
+                folder: file.meta.folder || null,
             }),
         });
         if (!res.ok) {

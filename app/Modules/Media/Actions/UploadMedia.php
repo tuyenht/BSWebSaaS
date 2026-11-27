@@ -38,8 +38,10 @@ final readonly class UploadMedia
      * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
      *                            media.delete.any right, resolved by the caller). The action holds no user
      *                            of its own, so the caller decides; false refuses with `in_trash`.
+     * @param  int|null  $folderId  the folder a new file goes in (resolved by the caller inside this site);
+     *                              a file already here keeps the folder it has
      */
-    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media
+    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false, ?int $folderId = null): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -112,6 +114,7 @@ final readonly class UploadMedia
                 'width' => $width,
                 'height' => $height,
                 'created_by' => $createdBy,
+                'folder_id' => $folderId,
             ],
         );
     }

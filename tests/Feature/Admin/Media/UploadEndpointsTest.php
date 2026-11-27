@@ -2,7 +2,9 @@
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Actions\PresignMediaUpload;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -238,4 +240,83 @@ it('restores a trashed file on a local-fallback upload for an uploader holding m
         ->assertExactJson(['ulid' => $master->ulid]);
 
     expect(isTrashedInSiteOne($master))->toBeFalse();
+});
+
+// ── the folder the library shows: a new file goes in it (filing it there is the media.upload right) ──
+function endpointFolder(int $site, string $slug, ?int $parentId = null): MediaFolder
+{
+    return app(Tenancy::class)->enter($site, fn () => MediaFolder::query()->create(['name' => 'Thư mục '.$slug, 'slug' => $slug, 'parent_id' => $parentId, 'position' => 1]));
+}
+
+function stagedEndpointUpload(string $tempKey, string $bytes): void
+{
+    Storage::disk('r2')->put($tempKey, $bytes);
+    Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+}
+
+it('files a registered upload in the folder the library shows, a sub-folder too', function (): void {
+    $editor = mediaMember(['media.view', 'media.upload']);
+    $top = endpointFolder(1, 'cong-trinh');
+    $sub = endpointFolder(1, 'nha-xuong', $top->id);
+
+    stagedEndpointUpload('_incoming/a/01top.png', endpointPng());
+    $this->actingAs($editor)
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/01top.png', 'filename' => 'a.png', 'folder' => 'nha-xuong'])
+        ->assertOk();
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->sole()->folder_id))->toBe($sub->id);
+});
+
+it('files a local-fallback upload in the folder the library shows', function (): void {
+    $editor = mediaMember(['media.view', 'media.upload']);
+    $folder = endpointFolder(1, 'cong-trinh');
+
+    $this->actingAs($editor)
+        ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('a.png', endpointPng()), 'folder' => 'cong-trinh'])
+        ->assertOk();
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->sole()->folder_id))->toBe($folder->id);
+});
+
+it('leaves a new file unsorted for a folder of another site, one gone, one being deleted, or none', function (?string $slug): void {
+    $editor = mediaMember(['media.view', 'media.upload']);
+    endpointFolder(2, 'cua-site-b');
+    $leaving = endpointFolder(1, 'dang-xoa');
+    DeleteLargeMediaFolder::markPending(1, $leaving->id);
+
+    stagedEndpointUpload('_incoming/a/01x.png', endpointPng());
+    $this->actingAs($editor)
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/01x.png', 'filename' => 'a.png'] + ($slug === null ? [] : ['folder' => $slug]))
+        ->assertOk();
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->sole()->folder_id))->toBeNull()
+        ->and(app(Tenancy::class)->enter(2, fn () => MediaFolder::query()->withCount('media')->sole()->media_count))->toBe(0);
+})->with([['cua-site-b'], ['khong-co'], ['dang-xoa'], [null], ['']]);
+
+it('keeps the folder of a file already in the library when the same bytes are uploaded into another', function (): void {
+    $editor = mediaMember(['media.view', 'media.upload']);
+    $home = endpointFolder(1, 'nha');
+    endpointFolder(1, 'khac');
+    $master = app(Tenancy::class)->enter(1, fn () => Media::query()->create([
+        'collection' => 'library', 'slug' => 'co-roi', 'hash' => hash('sha256', endpointPng()), 'storage_key' => 'a/library/co-roi.png',
+        'disk' => 'r2', 'original_filename' => 'co-roi.png', 'mime' => 'image/png', 'size' => strlen(endpointPng()), 'folder_id' => $home->id,
+    ]));
+    Storage::disk('r2')->put($master->storage_key, endpointPng());
+
+    stagedEndpointUpload('_incoming/a/01dup.png', endpointPng());
+    $this->actingAs($editor)
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/01dup.png', 'filename' => 'a.png', 'folder' => 'khac'])
+        ->assertOk()->assertJson(['ulid' => $master->ulid]);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->sole()->folder_id))->toBe($home->id);
+});
+
+it('validates the folder field on register and upload (a string, at most 255 characters)', function (): void {
+    $editor = mediaMember(['media.view', 'media.upload']);
+    $this->actingAs($editor)
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/01v.png', 'filename' => 'a.png', 'folder' => str_repeat('a', 256)])
+        ->assertStatus(422)->assertJsonValidationErrors(['folder']);
+    $this->actingAs($editor)
+        ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('a.png', endpointPng()), 'folder' => ['x']], ['Accept' => 'application/json'])
+        ->assertStatus(422)->assertJsonValidationErrors(['folder']);
 });
