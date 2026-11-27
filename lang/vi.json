@@ -885,6 +885,7 @@
     "admin.em_rm_state_failed": "Không gửi được",
     "admin.em_rm_yesterday": "Hôm qua",
     "admin.em_rm_to_more": ":first và :n người khác",
+    "admin.em_rm_to_unknown": "Không ghi lại người nhận",
     "admin.em_rm_empty": "Không có thư nào ở trạng thái này trong :days ngày qua.",
     "admin.em_rm_empty_all": "Website chưa gửi thư nào trong :days ngày qua.",
     "admin.em_rm_foot": "Thư không gửi được đều hiện ở đây kèm lý do — bạn tự kiểm tra được, không cần hỏi hỗ trợ.",

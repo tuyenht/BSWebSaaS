@@ -885,6 +885,7 @@
     "admin.em_rm_state_failed": "送信できませんでした",
     "admin.em_rm_yesterday": "昨日",
     "admin.em_rm_to_more": ":first ほか :n 名",
+    "admin.em_rm_to_unknown": "宛先は記録されていません",
     "admin.em_rm_empty": "過去 :days 日間にこの状態のメールはありません。",
     "admin.em_rm_empty_all": "過去 :days 日間、このウェブサイトはメールを送信していません。",
     "admin.em_rm_foot": "送信できなかったメールは理由とともにここに表示されます。サポートに問い合わせなくてもご自身で確認できます。",

@@ -885,6 +885,7 @@
     "admin.em_rm_state_failed": "未能发送",
     "admin.em_rm_yesterday": "昨天",
     "admin.em_rm_to_more": ":first 等另外 :n 人",
+    "admin.em_rm_to_unknown": "未记录收件人",
     "admin.em_rm_empty": "过去 :days 天内没有此状态的邮件。",
     "admin.em_rm_empty_all": "过去 :days 天内网站未发送任何邮件。",
     "admin.em_rm_foot": "未能发送的邮件都会连同原因显示在这里，您可以自行检查，无需联系客服。",

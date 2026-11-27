@@ -104,21 +104,37 @@ it('narrows the list to the sent or the failed mails, counted from the day count
     });
 });
 
-it('shows only the days the log keeps, at most its row count, and says when a filter has nothing', function (): void {
+it('shows at most its row count, newest first', function (): void {
     $now = CarbonImmutable::now('UTC');
-    ermLog(1, $now->subDays(100), ['to_first' => 'cu@vidu.vn']);
     foreach (range(1, EmailRecentMail::ROWS + 2) as $i) {
         ermLog(1, $now->subMinutes($i), ['to_first' => "moi{$i}@vidu.vn"]);
     }
 
     $user = ermAdmin();
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        $card = Livewire::actingAs($user)->test(EmailRecentMail::class)
-            ->assertSee('moi'.EmailRecentMail::ROWS.'@vidu.vn')
-            ->assertDontSee('moi'.(EmailRecentMail::ROWS + 1).'@vidu.vn')
-            ->assertDontSee('cu@vidu.vn');
+        Livewire::actingAs($user)->test(EmailRecentMail::class)
+            ->assertSee(['moi1@vidu.vn', 'moi'.EmailRecentMail::ROWS.'@vidu.vn'])
+            ->assertDontSee('moi'.(EmailRecentMail::ROWS + 1).'@vidu.vn');
+    });
+});
 
-        $card->call('setFilter', 'failed')
+it('lists and counts the same days: the website\'s last 90, today included', function (): void {
+    $user = ermAdmin();
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $today = app(SiteTime::class)->now()->startOfDay();
+        $first = $today->subDays(EmailRecentMail::KEEP_DAYS - 1);
+        ermLog(1, $first->setTime(8, 0), ['status' => 'failed', 'reason_code' => 'connection', 'to_first' => null]);
+        ermLog(1, $first->subDay()->setTime(23, 0), ['status' => 'failed', 'reason_code' => 'auth', 'to_first' => 'cu@vidu.vn']);
+        DB::connection('pgsql_admin')->table('mail_daily')->insert([
+            ['site_id' => 1, 'day' => $first->toDateString(), 'via' => 'platform', 'sent' => 0, 'failed' => 1, 'held' => 0],
+            ['site_id' => 1, 'day' => $first->subDay()->toDateString(), 'via' => 'platform', 'sent' => 0, 'failed' => 5, 'held' => 0],
+        ]);
+
+        Livewire::actingAs($user)->test(EmailRecentMail::class)
+            ->call('setFilter', 'failed')
+            ->assertSee(['Lỗi 1', 'Không kết nối được tới máy chủ gửi thư', 'Không ghi lại người nhận'])
+            ->assertDontSee(['Lỗi 6', 'cu@vidu.vn', 'Máy chủ gửi thư từ chối đăng nhập'])
+            ->call('setFilter', 'sent')
             ->assertSee('Không có thư nào ở trạng thái này trong 90 ngày qua.');
     });
 });

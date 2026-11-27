@@ -885,6 +885,7 @@
     "admin.em_rm_state_failed": "Not sent",
     "admin.em_rm_yesterday": "Yesterday",
     "admin.em_rm_to_more": ":first and :n others",
+    "admin.em_rm_to_unknown": "Recipient not recorded",
     "admin.em_rm_empty": "No mail with this status in the last :days days.",
     "admin.em_rm_empty_all": "The website has sent no mail in the last :days days.",
     "admin.em_rm_foot": "Every mail that could not be sent shows here with the reason, so you can check it yourself without asking support.",

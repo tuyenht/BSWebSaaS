@@ -144,7 +144,7 @@
                                     {{ $k === 'other' ? __($done ? 'admin.em_set' : 'admin.em_not_set') : __($done ? 'admin.em_connected' : 'admin.em_not_connected') }}
                                 </span>
                             @elseif ($quota !== null)
-                                {{-- Today's mails left on the shared outbox, the bar filled by the share already used; hidden in a narrow card (the (i) says it) --}}
+                                {{-- Today's mails left on the shared outbox, the bar filled by the share already used; hidden in a narrow card, as on the board --}}
                                 <span class="inline-flex shrink-0 items-center gap-[7px] text-caption whitespace-nowrap text-text @max-[35rem]:hidden">
                                     {{ __('admin.em_quota_left', ['n' => \Illuminate\Support\Number::format($quota['left'], locale: app()->getLocale())]) }}
                                     <span class="inline-block h-[5px] w-11 overflow-hidden rounded-full bg-border-strong" aria-hidden="true"><span class="block h-full bg-success-base" style="width: {{ $quota['used_pct'] }}%"></span></span>

@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\SiteTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -35,6 +36,7 @@ final class EmailRecentMail extends Component
 
     public const array FILTERS = ['all', 'sent', 'failed'];
 
+    #[Locked]
     public string $filter = 'all';
 
     public function boot(): void
@@ -54,9 +56,11 @@ final class EmailRecentMail extends Component
         $now = app(SiteTime::class)->now();
         $zone = $now->getTimezone();
         $filter = in_array($this->filter, self::FILTERS, true) ? $this->filter : 'all';
+        // One window for the list and its counts: the website's last KEEP_DAYS days, today included.
+        $from = $now->startOfDay()->subDays(self::KEEP_DAYS - 1);
 
         $rows = MailLog::query()
-            ->where('created_at', '>=', $now->subDays(self::KEEP_DAYS)->utc())
+            ->where('created_at', '>=', $from->utc())
             ->when($filter !== 'all', fn ($q) => $q->where('status', $filter))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -71,9 +75,12 @@ final class EmailRecentMail extends Component
                     'iso' => $at->toIso8601String(),
                     'full' => $at->format('d/m/Y · H:i'),
                     'kind' => __('admin.em_rm_kind_'.$log->kind),
-                    'to' => $log->recipient_count > 1
-                        ? __('admin.em_rm_to_more', ['first' => (string) $log->to_first, 'n' => $log->recipient_count - 1])
-                        : (string) $log->to_first,
+                    // a queued mail that failed for good is logged without its recipients
+                    'to' => match (true) {
+                        $log->to_first === null || $log->to_first === '' => null,
+                        $log->recipient_count > 1 => __('admin.em_rm_to_more', ['first' => $log->to_first, 'n' => $log->recipient_count - 1]),
+                        default => $log->to_first,
+                    },
                     'sent' => $log->status === 'sent',
                     'reason' => $log->status === 'failed' ? __('admin.em_rm_why_'.($log->reason_code ?? 'other')) : null,
                 ];
@@ -81,7 +88,7 @@ final class EmailRecentMail extends Component
             ->all();
 
         $totals = MailDaily::query()
-            ->where('day', '>', $now->subDays(self::KEEP_DAYS)->toDateString())
+            ->where('day', '>=', $from->toDateString())
             ->selectRaw('coalesce(sum(sent), 0) as sent, coalesce(sum(failed), 0) as failed')
             ->toBase()
             ->first();
