@@ -162,9 +162,9 @@
                             {{-- Sign in to the mailbox. The website's own app at the provider, until the platform has one approved. --}}
                             <div role="group" aria-label="{{ __('admin.em_connect_with', ['name' => $obName($k)]) }}" class="space-y-4 rounded-b-md border-[1.5px] border-t-0 border-primary-text px-4 py-3.5">
                                 <div class="grid gap-4 sm:grid-cols-2">
-                                    <x-bs-admin::input :label="__('admin.client_id')" wire:model.live.blur="oauthClientId" />
+                                    <x-bs-admin::input id="em-oauth-client-id" :label="__('admin.client_id')" wire:model.live.blur="oauthClientId" />
                                     <div>
-                                        <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model.live.blur="oauthClientSecret" autocomplete="new-password"
+                                        <x-bs-admin::input id="em-oauth-client-secret" :label="__('admin.client_secret')" type="password" wire:model.live.blur="oauthClientSecret" autocomplete="new-password"
                                                         :placeholder="$oauthSecretSet ? __('admin.secret_stored') : ''" />
                                         @if ($oauthSecretSet)
                                             <p class="mt-1 text-caption text-text-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -257,8 +257,8 @@
         <div class="space-y-5 p-5">
             @if ($scope === 'platform')
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-bs-admin::input :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
-                    <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
+                    <x-bs-admin::input id="em-smtp-host" :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
+                    <x-bs-admin::input id="em-smtp-port" :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
                         <select wire:model.live="smtpEncryption" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
@@ -267,9 +267,9 @@
                             <option value="null">{{ __('admin.encryption_none') }}</option>
                         </select>
                     </div>
-                    <x-bs-admin::input :label="__('admin.smtp_username')" wire:model.live.blur="smtpUsername" placeholder="info@example.com" />
+                    <x-bs-admin::input id="em-smtp-username" :label="__('admin.smtp_username')" wire:model.live.blur="smtpUsername" placeholder="info@example.com" />
                     <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.smtp_password')" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password"
+                        <x-bs-admin::input id="em-smtp-password" :label="__('admin.smtp_password')" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password"
                                         :placeholder="$smtpPasswordSet ? __('admin.secret_stored') : ''" />
                         @if ($smtpPasswordSet)
                             <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -280,8 +280,8 @@
 
             {{-- Sender identity --}}
             <div class="grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
-                <x-bs-admin::input :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
-                <x-bs-admin::input :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
+                <x-bs-admin::input id="em-from-address" :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
+                <x-bs-admin::input id="em-from-name-platform" :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
             </div>
 
             {{-- Actions --}}
@@ -384,7 +384,7 @@
                                               'bg-surface-muted text-primary-text' => $ok, 'bg-danger-base/12 text-danger-text' => ! $ok])>
                                     <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts($email) }}</span>
                                     <button type="button" wire:click="removeNotify({{ \Illuminate\Support\Js::from($email) }})" aria-label="{{ __('admin.em_notify_remove', ['email' => $email]) }}" title="{{ __('admin.em_notify_remove', ['email' => $email]) }}"
-                                            class="hit-area-row inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full [--hit-gap:0.625rem] hover:bg-surface-hover">
+                                            class="hit-area-row inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full [--hit-gap:1.25rem] hover:bg-surface-hover">
                                         <x-bs-admin::icon name="ri-close" class="size-3.5" />
                                     </button>
                                 </span>
@@ -394,7 +394,7 @@
                                    x-on:blur="add()"
                                    aria-label="{{ __('admin.em_notify_input') }}" placeholder="{{ $notifyTo === [] ? __('admin.em_notify_ph', ['domain' => $sender['placeholderDomain']]) : '' }}"
                                    @if ($notifyErr !== '') aria-invalid="true" aria-describedby="em-notify-err" @endif
-                                   class="min-h-control min-w-[7.5rem] flex-[1_1_7.5rem] border-0 bg-transparent px-0.5 text-[calc(0.875rem+var(--user-text-boost))] text-text placeholder:text-placeholder focus-visible:outline-none any-pointer-coarse:min-h-hit">
+                                   {{-- focus-ring-ok: the chips box draws the ring (has-[input:focus-visible]) --}} class="min-h-control min-w-[7.5rem] flex-[1_1_7.5rem] border-0 bg-transparent px-0.5 text-[calc(0.875rem+var(--user-text-boost))] text-text placeholder:text-placeholder focus-visible:outline-none any-pointer-coarse:min-h-hit">
                         </div>
                         @if ($sender['suggestions'] !== [])
                             <div class="mt-[3px] flex flex-wrap gap-2">
@@ -413,6 +413,8 @@
                     {{-- The board says the notices follow the member's profile language; a new-lead notice is sent
                          in the website's main language, so the line says that instead. --}}
                     @php($siteLang = app(\App\Modules\Tenancy\Context\SiteLocale::class)->default())
+                    {{-- a language with no admin texts sends the notice in the fallback one --}}
+                    @php($siteLang = is_file(lang_path($siteLang.'.json')) ? $siteLang : (string) config('app.fallback_locale'))
                     <div class="mt-2.5 flex items-start gap-[9px] text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text-muted">
                         <x-bs-admin::icon name="ri-translate-2" class="mt-0.5 size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
                         <p class="min-w-0">{!! str_replace('%lang%', '<b class="font-semibold text-text">'.e(config('locales.labels.'.$siteLang) ?? strtoupper($siteLang)).'</b>', e(__('admin.em_notify_lang', ['lang' => '%lang%']))) !!}</p>

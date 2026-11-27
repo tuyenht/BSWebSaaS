@@ -363,6 +363,33 @@ it('takes the address out of a pasted «Name <address>» and splits a list at co
     });
 });
 
+it('never drops a bare address pasted before a «Name <address>» on the same line', function (): void {
+    $admin = esnAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $notify = Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->call('addNotify', 'x@anvinh.vn Nguyen <c@anvinh.vn>, e@anvinh.vn')
+            ->get('notifyTo');
+        expect($notify)->toContain('x@anvinh.vn', 'c@anvinh.vn', 'e@anvinh.vn');
+    });
+});
+
+it('names the fallback language when the website\'s main one has no texts of its own', function (): void {
+    $admin = esnAdmin();
+    DB::connection('pgsql_admin')->table('site_locales')->where('site_id', 1)->update(['is_default' => false]);
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'fr', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    app(SiteLocale::class)->forget();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        expect(app(SiteLocale::class)->default())->toBe('fr');
+        Livewire::actingAs($admin)->test(EmailSettings::class)
+            ->assertSee(config('locales.labels.'.config('app.fallback_locale')))
+            ->assertDontSee('Français');
+    });
+});
+
 it('takes off the address the × names, once, however often it is sent', function (): void {
     $admin = esnAdmin();
 
@@ -371,7 +398,7 @@ it('takes off the address the × names, once, however often it is sent', functio
             ->call('removeNotify', 'B@anvinh.vn')->call('removeNotify', 'B@anvinh.vn')
             ->assertSet('notifyTo', ['a@anvinh.vn', 'c@anvinh.vn']);
         // the × names its address, and its touch area stops halfway to the next chip
-        expect($page->html())->toMatch('/wire:click="removeNotify\((?:&#039;|\')c@anvinh\.vn(?:&#039;|\')\)"[^>]*class="hit-area-row [^"]*\[--hit-gap:0\.625rem\]/');
+        expect($page->html())->toMatch('/wire:click="removeNotify\((?:&#039;|\')c@anvinh\.vn(?:&#039;|\')\)"[^>]*class="hit-area-row [^"]*\[--hit-gap:1\.25rem\]/');
     });
 });
 

@@ -1001,7 +1001,8 @@ final class EmailSettings extends Component
             return $rules;
         }
         unset($rules['fromAddress']);
-        if ($this->provider === 'other' && $this->loginMailbox() === '') {
+        // an address kept as saved is not checked again: the old rule let `sales+web@…` through
+        if ($this->provider === 'other' && $this->loginMailbox() === '' && $this->fromLocalEdited()) {
             $rules['fromLocal'] = ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/',
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if (! is_string($value) || $value === '' || ! $this->fromLocalEdited()) {
@@ -1123,7 +1124,7 @@ final class EmailSettings extends Component
         if ($this->scope !== 'site') {
             return;
         }
-        $text = (string) preg_replace('/(?:"[^"]*"\s*)?[^<>,;\r\n]*<([^<>]*)>/u', ',$1,', mb_substr($typed, 0, 2000));
+        $text = (string) preg_replace('/(^|[,;\r\n])\s*(?:"[^"]*"\s*)?[^<>@,;\r\n]*<([^<>]*)>/u', '$1,$2,', mb_substr($typed, 0, 2000));
         $parts = preg_split('/[\s,;]+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $have = array_map(mb_strtolower(...), $this->notifyTo);
         foreach ($parts as $part) {

@@ -456,8 +456,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
     $this->flushSession();
-    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
-    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $auditHtml = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $auditHtml));
 
     // «Đăng nhập nhanh»: the platform's face with Google connected and Facebook not yet (its policy
     // addresses configured), then a website's face on the same shared apps.
@@ -511,7 +511,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($dialog->get('exact'))->not->toBeNull();
     $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
     foreach ($steps as $name => $open) {
-        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $auditHtml));
     }
 
     // "Gói & tính năng": three plans (one with a customer on it) as the platform super-admin, who
