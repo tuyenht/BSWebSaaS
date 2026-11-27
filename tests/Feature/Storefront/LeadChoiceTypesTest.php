@@ -158,17 +158,19 @@ it('keeps what was picked after a failed send and points the first bad group at 
     $bad = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
 
     expect($bad)
-        ->toMatch('/<input id="lf-dat_hen__slot--o1" type="radio" name="slot" value="sang"\s+required\s+aria-invalid="true"\s+aria-describedby="lf-dat_hen__slot--error"\s+autofocus\s*>/')
-        ->toMatch('/<input id="lf-dat_hen__slot--o2" type="radio" name="slot" value="chieu"\s+required\s+aria-invalid="true"\s+aria-describedby="lf-dat_hen__slot--error"\s*>/')
+        ->toMatch('/<input id="lf-dat_hen__slot--o1" type="radio" name="slot" value="sang"\s+required\s+aria-invalid="true"\s+autofocus\s*>/')
+        ->toMatch('/<input id="lf-dat_hen__slot--o2" type="radio" name="slot" value="chieu"\s+required\s+aria-invalid="true"\s*>/')
         ->toContain('<p class="lead-form__field-error" id="lf-dat_hen__slot--error">Vui lòng chọn Khung giờ.</p>')
-        ->toContain('href="#lf-dat_hen__slot"');
+        ->toContain('href="#lf-dat_hen__slot"')
+        // the group's message is tied to the fieldset only: a box carrying it too is announced twice
+        ->not->toMatch('/<input[^>]*aria-describedby/');
 
     // a pick the form does not offer fails on that pick (need.0): the group still shows the message
     $this->from('http://a.test/dat-hen')->post('http://a.test/forms/dat-hen', ctGoodBooking(['need' => ['dem']]));
     $pick = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
 
     expect($pick)
-        ->toMatch('/<input id="lf-dat_hen__need--o1" type="checkbox" name="need\[\]" value="sang"\s+aria-invalid="true"\s+aria-describedby="lf-dat_hen__need--error"\s+autofocus\s*>/')
+        ->toMatch('/<input id="lf-dat_hen__need--o1" type="checkbox" name="need\[\]" value="sang"\s+aria-invalid="true"\s+autofocus\s*>/')
         ->toContain('<p class="lead-form__field-error" id="lf-dat_hen__need--error">Lựa chọn không hợp lệ, vui lòng chọn lại.</p>');
 });
 
@@ -228,3 +230,50 @@ it('tells a screen reader that a group of tick boxes is required, and ties the g
     $bad = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
     expect($bad)->toContain('<fieldset class="lead-form__field lead-form__field--choices" id="lf-dat_hen__need" aria-describedby="lf-dat_hen__need--error">');
 });
+
+it('reads a number typed with a decimal comma, keeps it with a point, and refuses a mix of the two marks', function (string $typed, ?string $stored): void {
+    ctBookingPage();
+
+    $response = $this->post('http://a.test/forms/dat-hen', ctGoodBooking(['qty' => $typed]));
+
+    if ($stored === null) {
+        $response->assertSessionHasErrors('qty');
+        expect(ctLead())->toBeNull();
+    } else {
+        $response->assertSessionHasNoErrors();
+        expect(ctLead()?->data['qty'])->toBe($stored);
+    }
+})->with([
+    // one lone comma with digits both sides and no point is the decimal mark; nothing else is guessed at
+    'a decimal comma' => ['1,5', '1.5'],
+    'a decimal point' => ['1.5', '1.5'],
+    'a negative' => ['-2', '-2'],
+    'a negative decimal comma' => ['-2,25', '-2.25'],
+    'a thousands comma with a point' => ['1,234.5', null],
+    'two commas' => ['1,234,5', null],
+    'an unfinished exponent' => ['1e', null],
+    'a comma with no digits after it' => ['1,', null],
+]);
+
+it('shows a number back as it was typed when it is refused', function (): void {
+    ctBookingPage();
+    $this->from('http://a.test/dat-hen')->post('http://a.test/forms/dat-hen', ctGoodBooking(['qty' => '1,234.5']));
+
+    $html = ctSection($this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->getContent());
+
+    expect($html)->toMatch('/name="qty"\s+value="1,234\.5"/');
+});
+
+it('draws the page again, whatever list a crafted post put under a field', function (array $change): void {
+    ctBookingPage(change: ['need' => ['is_required' => true]]);
+
+    $this->from('http://a.test/dat-hen')->post('http://a.test/forms/dat-hen', ctGoodBooking($change))->assertRedirect('http://a.test/dat-hen');
+
+    $this->withCookie((string) config('session.cookie'), 'visitor')->get('http://a.test/dat-hen')->assertOk();
+})->with([
+    'a list inside a pick' => [['need' => [['x']]]],
+    'a list for a number' => [['qty' => ['1']]],
+    'a list for a day' => [['day' => ['x']]],
+    'a nested list for a round group' => [['slot' => [['x']]]],
+    'a list for a text' => [['name' => ['x']]],
+]);

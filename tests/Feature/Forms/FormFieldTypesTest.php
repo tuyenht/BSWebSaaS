@@ -71,6 +71,7 @@ it('caps a number answer at 15 digits and 6 decimals', function (mixed $value, b
     'exponent' => ['1e3', false],
     '7 decimals' => ['1.1234567', false],
     'words' => ['twelve', false],
+    'a trailing line break' => ["5\n", false],
 ]);
 
 it('keeps a number answer inside the bounds the site set', function (): void {

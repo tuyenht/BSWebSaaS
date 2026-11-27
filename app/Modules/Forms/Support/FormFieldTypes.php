@@ -82,7 +82,7 @@ final class FormFieldTypes
     private const int UPLOADS_CAP = 20;
 
     /** A number answer: at most 15 digits before the point and 6 after — never an exponent. */
-    private const string NUMBER_PATTERN = '/^-?\d{1,15}(\.\d{1,6})?$/';
+    private const string NUMBER_PATTERN = '/^-?\d{1,15}(\.\d{1,6})?$/D';
 
     public static function isUsableKey(string $key): bool
     {

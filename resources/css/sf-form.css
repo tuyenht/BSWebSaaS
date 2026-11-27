@@ -261,6 +261,9 @@
 
 /* «Chọn một» / «Chọn nhiều»: a group without the browser's frame; its legend reads like a field label. */
 .lead-form__field--choices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem; /* rows keep their own space, whatever a long choice wraps to */
     margin: 0;
     padding: 0;
     border: 0;

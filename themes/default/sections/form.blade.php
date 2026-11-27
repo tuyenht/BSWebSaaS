@@ -51,7 +51,14 @@
     $sfPreview = ! empty($preview);
     $sfMine = ! $sfPreview && $sfNth === 0 && $sfFormKey !== '' && old('lead_form') === $sfFormKey;
     $sfErr = $sfMine ? $errors : new \Illuminate\Support\MessageBag();
-    $sfOld = fn (string $name) => $sfMine ? old($name) : null;
+    // What was typed, back into a one-value box: text only. A crafted post can flash a list under any key; a list
+    // is never a value to print (e() and strval() would fail on it), so it comes back as nothing.
+    $sfOldAny = fn (string $name): mixed => $sfMine ? old($name) : null;
+    $sfOld = function (string $name) use ($sfOldAny): ?string {
+        $kept = $sfOldAny($name);
+
+        return is_scalar($kept) ? (string) $kept : null;
+    };
     // A field's message: its own, else one of its picks' («Chọn nhiều» checks each pick as key.n).
     $sfFieldErr = fn (string $key): string => $sfErr->first($key) ?: $sfErr->first($key.'.*');
     // A visitor who brings no session cookie has no session at all (StorefrontSession): nothing to read.
@@ -175,8 +182,8 @@
                          (one pick answers them all); tick boxes never do, one by one (the server asks for a
                          pick), so the legend says «required» in words for a screen reader. --}}
                     @php
-                        $sfPicked = $sfOld($field['key']);
-                        $sfPicked = array_map('strval', is_array($sfPicked) ? $sfPicked : ($sfPicked === null ? [] : [$sfPicked]));
+                        $sfPicked = $sfOldAny($field['key']);
+                        $sfPicked = array_map('strval', array_filter(is_array($sfPicked) ? $sfPicked : [$sfPicked], 'is_scalar'));
                         $sfMany = $field['type'] === 'checkboxes';
                         $sfN = 0;
                     @endphp
@@ -189,7 +196,7 @@
                             <label class="lead-form__check" for="{{ $sfId }}--o{{ $sfN }}">
                                 <input id="{{ $sfId }}--o{{ $sfN }}" type="{{ $sfMany ? 'checkbox' : 'radio' }}" name="{{ $field['key'] }}{{ $sfMany ? '[]' : '' }}" value="{{ $sfValue }}"
                                        @checked(in_array((string) $sfValue, $sfPicked, true)) @if (! $sfMany && $field['is_required']) required @endif
-                                       @if ($sfBad) aria-invalid="true" aria-describedby="{{ $sfDescribed }}" @endif
+                                       @if ($sfBad) aria-invalid="true" @endif
                                        @if ($sfFirstBad === $field['key'] && $sfN === 1) autofocus @endif>
                                 <span>{{ $sfText }}</span>
                             </label>
