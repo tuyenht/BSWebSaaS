@@ -7972,6 +7972,7 @@
     "form_builder.toast_cannot": "You cannot change this form.",
     "form_builder.toast_failed": "Not saved — something is not valid. Check it, then press Save.",
     "form_builder.toast_saved": "Form saved — it applies on the website now",
+    "form_builder.toast_saved_dropped": "{1} Form saved — 1 choice line was left out because that choice was removed or changed in the :lang version. Check the choices box before saving again.|[2,*] Form saved — :n choice lines were left out because those choices were removed or changed in the :lang version. Check the choices box before saving again.",
     "form_builder.toast_field_removed": "Field \":label\" removed — press Save to apply",
     "form_builder.view_page": "View the page with this form",
     "form_builder.place_on_page": "Put on a page",

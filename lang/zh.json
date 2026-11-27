@@ -7972,6 +7972,7 @@
     "form_builder.toast_cannot": "您不能修改此表单。",
     "form_builder.toast_failed": "未能保存 — 有无效内容。请检查后点击保存。",
     "form_builder.toast_saved": "表单已保存 — 立即在网站上生效",
+    "form_builder.toast_saved_dropped": "表单已保存 — 有 :n 行选项未保存，因为 :lang 版本中的这些选项已被删除或更改。再次保存前请检查选项框。",
     "form_builder.toast_field_removed": "已删除字段“:label”— 点击保存以生效",
     "form_builder.view_page": "查看含此表单的页面",
     "form_builder.place_on_page": "放到页面上",

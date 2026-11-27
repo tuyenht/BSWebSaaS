@@ -7972,6 +7972,7 @@
     "form_builder.toast_cannot": "Bạn không thay đổi được biểu mẫu này.",
     "form_builder.toast_failed": "Chưa lưu được — có ô không hợp lệ. Kiểm tra lại rồi bấm Lưu.",
     "form_builder.toast_saved": "Đã lưu biểu mẫu — áp dụng ngay trên website",
+    "form_builder.toast_saved_dropped": "Đã lưu biểu mẫu — bỏ :n dòng lựa chọn vì lựa chọn đó đã bị xóa hoặc đổi trong bản :lang. Xem lại ô lựa chọn trước khi lưu tiếp.",
     "form_builder.toast_field_removed": "Đã xóa ô \":label\" — bấm Lưu để áp dụng",
     "form_builder.view_page": "Xem trang có biểu mẫu",
     "form_builder.place_on_page": "Đặt vào trang",

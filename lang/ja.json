@@ -7972,6 +7972,7 @@
     "form_builder.toast_cannot": "このフォームは変更できません。",
     "form_builder.toast_failed": "保存できませんでした — 無効な項目があります。確認して保存を押してください。",
     "form_builder.toast_saved": "フォームを保存しました — サイトにすぐ反映されます",
+    "form_builder.toast_saved_dropped": "フォームを保存しました — :lang 版で削除または変更された選択肢の :n 行は保存していません。もう一度保存する前に選択肢の欄を確認してください。",
     "form_builder.toast_field_removed": "項目「:label」を削除しました — 保存を押すと反映されます",
     "form_builder.view_page": "フォームのあるページを見る",
     "form_builder.place_on_page": "ページに配置",

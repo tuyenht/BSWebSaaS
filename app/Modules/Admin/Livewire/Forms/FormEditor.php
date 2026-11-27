@@ -90,6 +90,15 @@ final class FormEditor extends Component
     public array $choiceValues = [];
 
     /**
+     * Beside each of those values, the main language's label it had then: a value the main language
+     * retired and a later choice took again is not the choice these lines were written for.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $choiceSources = [];
+
+    /**
      * The language bar of a saved form on a site with more than one language (LangBar::items()).
      *
      * @var list<array{code: string, label: string, kind: string, done: int, total: int, href: string, current: bool, source: bool, public: bool, live: bool}>
@@ -377,10 +386,13 @@ final class FormEditor extends Component
             return;
         }
         $draft = $this->draft();
+        $dropped = 0;
         try {
-            $form = $form !== null && $this->translating()
-                ? app(SaveForm::class)->translate($form, $draft, $this->locale, $this->choiceValues)
-                : app(SaveForm::class)->handle($form, $draft, $this->locale);
+            if ($form !== null && $this->translating()) {
+                ['form' => $form, 'dropped' => $dropped] = app(SaveForm::class)->translate($form, $draft, $this->locale, $this->source, $this->choiceValues, $this->choiceSources);
+            } else {
+                $form = app(SaveForm::class)->handle($form, $draft, $this->locale);
+            }
         } catch (InvalidArgumentException) {
             $this->toast(__('form_builder.toast_failed'), 'error');
 
@@ -407,6 +419,12 @@ final class FormEditor extends Component
         $this->readSourceTexts($form);
         $this->readLangBar($form);
         $this->savedAt = app(SiteTime::class)->forDisplay(now())?->format('H:i');
+        // a line typed for a choice the main language has removed meanwhile is not kept: say so
+        if ($dropped > 0) {
+            $this->toast(trans_choice('form_builder.toast_saved_dropped', $dropped, ['n' => $dropped, 'lang' => LangBar::name($this->source)]), 'info');
+
+            return;
+        }
         $this->toast(__('form_builder.toast_saved'));
     }
 
@@ -677,7 +695,7 @@ final class FormEditor extends Component
         return $out;
     }
 
-    /** The main language's texts of $form (its fields loaded), as they are stored, and its choice values. */
+    /** The main language's texts of $form (its fields loaded), as they are stored, and its choice values with their main-language labels. */
     private function readSourceTexts(Form $form): void
     {
         $source = FormDraft::fromForm($form, $this->source);
@@ -688,9 +706,12 @@ final class FormEditor extends Component
             'choices' => array_column($source['fields'], 'choices', 'key'),
         ];
         $this->choiceValues = [];
+        $this->choiceSources = [];
         foreach ($form->fields as $field) {
             if ($field->key !== Form::CONSENT_KEY && FormFieldTypes::isChoice($field->type)) {
-                $this->choiceValues[$field->key] = FormFieldTypes::choiceValues($field);
+                $choices = FormFieldTypes::choices($field);
+                $this->choiceValues[$field->key] = array_column($choices, 'value');
+                $this->choiceSources[$field->key] = array_map(fn (array $c): string => FormDraft::own($c['label'], $this->source), $choices);
             }
         }
     }
