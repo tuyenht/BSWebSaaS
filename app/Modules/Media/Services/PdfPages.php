@@ -184,7 +184,7 @@ final readonly class PdfPages
         } catch (ProcessTimedOutException) {
             return self::UNREADABLE; // the file kept qpdf busy past its time
         } catch (ProcessSignaledException) {
-            return self::UNREADABLE; // the CPU cap stopped qpdf with a signal: the file is the cause
+            return self::UNREADABLE; // stopped by a signal (the hard CPU cap sends SIGKILL): the file is the cause
         } catch (Throwable) {
             return self::NO_ANSWER; // the process could not start
         }
@@ -276,8 +276,9 @@ final readonly class PdfPages
         $body = $disk->getClient()->getObject([
             'Bucket' => Cast::string($disk->getConfig()['bucket'] ?? null),
             'Key' => $disk->path($key),
-            // the streaming handler honours only `timeout` for connecting and the headers
-            '@http' => ['stream' => true, 'timeout' => self::READ_IDLE_SECONDS + self::READ_SECONDS, 'connect_timeout' => self::READ_IDLE_SECONDS, 'read_timeout' => self::READ_IDLE_SECONDS],
+            // one attempt; the streaming handler applies only `timeout` (a wait for bytes) to connecting and each header read
+            '@retries' => 0,
+            '@http' => ['stream' => true, 'timeout' => self::READ_IDLE_SECONDS, 'connect_timeout' => self::READ_IDLE_SECONDS, 'read_timeout' => self::READ_IDLE_SECONDS],
         ])->get('Body');
 
         return $body instanceof StreamInterface ? StreamWrapper::getResource($body) : null;

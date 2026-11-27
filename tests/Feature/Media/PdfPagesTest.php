@@ -215,14 +215,14 @@ it('leaves the count empty for output or exits it cannot trust, and marks the fi
     'a fraction' => fn () => Process::result('2.5'),
     'empty' => fn () => Process::result(''),
     'qpdf error (broken or password-protected)' => fn () => Process::result('', 'invalid password', 2),
-    'killed by the CPU cap' => fn () => Process::result('', '', 137),
+    'exit 137 (killed outside the runner)' => fn () => Process::result('', '', 137),
     'timed out' => fn () => function (): never {
         $process = new SymfonyProcess(['true']);
 
         throw new ProcessTimedOutException(new SymfonyTimedOut($process, SymfonyTimedOut::TYPE_GENERAL), new FakeProcessResult);
     },
-    'stopped by a signal (CPU cap)' => fn () => function (): never {
-        $process = new SymfonyProcess(['sh', '-c', 'kill -XCPU $$']);
+    'stopped by a signal (the hard CPU cap sends SIGKILL)' => fn () => function (): never {
+        $process = new SymfonyProcess(['sh', '-c', 'kill -KILL $$']);
         try {
             $process->run();
         } catch (ProcessSignaledException $signaled) {

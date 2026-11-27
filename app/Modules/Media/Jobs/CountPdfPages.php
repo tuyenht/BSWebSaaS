@@ -16,8 +16,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * One try: a file qpdf cannot count stays uncounted (the library shows «PDF» alone) and is marked,
  * so neither a retry nor the one-off media:pdf-pages command reads it again while it is the same
  * file. When qpdf is not installed nothing is marked, and media:pdf-pages fills it later.
- * The job's timeout stays above the storage read's and qpdf's together (5 + 15 + 5 + 20 seconds,
- * PdfPages) and below the queue worker's.
+ * The job's timeout stays above the storage read's and qpdf's together (connect 5 + headers 5 + copy
+ * 15 + last read 5 + qpdf 20 = 50 seconds, PdfPages) and below the queue worker's 60.
  */
 final class CountPdfPages implements ShouldQueue
 {
@@ -25,7 +25,7 @@ final class CountPdfPages implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 50;
+    public int $timeout = 55;
 
     public function __construct(public int $siteId, public int $mediaId)
     {
