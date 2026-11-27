@@ -84,6 +84,7 @@ final class DuplicateEntry
                     'og_image_id' => in_array(MediaRefs::id($translation->og_image_id), $kept, true) ? MediaRefs::id($translation->og_image_id) : null,
                     'author_name' => $translation->author_name,
                     'cover_alt' => $translation->cover_alt,
+                    'focus_keyword' => $translation->focus_keyword,
                 ]);
             }
 

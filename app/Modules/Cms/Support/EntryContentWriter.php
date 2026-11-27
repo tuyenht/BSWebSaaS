@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\Validator;
  * decision, made from what write() returns. write() runs in the caller's transaction and takes no
  * lock of its own.
  *
- * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, cover_alt?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+ * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, cover_alt?: string|null, focus_keyword?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
  */
 final readonly class EntryContentWriter
 {
@@ -130,6 +130,18 @@ final readonly class EntryContentWriter
             $alt['cover_alt'] = $value;
         }
 
+        // The focus keyword, the same way: a snapshot written before it existed leaves this
+        // language's keyword as it is (EntryContentRules::focusKeyword).
+        $keyword = [];
+        if (array_key_exists('focus_keyword', $snapshot)) {
+            $value = $snapshot['focus_keyword'];
+            $value = is_string($value) ? EntryContentRules::focusKeyword($value) : ($value === null ? null : false);
+            if ($value === false) {
+                return null;
+            }
+            $keyword['focus_keyword'] = $value;
+        }
+
         if (($snapshot['v'] ?? null) !== RecordEntryRevision::FORMAT
             || ! is_string($title) || ! is_string($slug) || ! is_array($blocks) || ! is_array($meta)
             || $this->rules->metaErrors($meta) !== []
@@ -159,7 +171,7 @@ final readonly class EntryContentWriter
             'template_override' => $strings['template_override'],
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
-        ] + $author + $alt;
+        ] + $author + $alt + $keyword;
     }
 
     /**
@@ -341,7 +353,9 @@ final readonly class EntryContentWriter
         ] + (array_key_exists('author_name', $content) ? ['author_name' => $content['author_name']] : [])
             // words for the picture: the content's own; a version saved before they existed keeps this
             // language's while the picture stays, and drops them with a picture it changes
-            + (array_key_exists('cover_alt', $content) ? ['cover_alt' => $content['cover_alt']] : ($coverChanged ? ['cover_alt' => null] : [])));
+            + (array_key_exists('cover_alt', $content) ? ['cover_alt' => $content['cover_alt']] : ($coverChanged ? ['cover_alt' => null] : []))
+            // the focus keyword: the content's own; a version saved before it existed keeps this language's
+            + (array_key_exists('focus_keyword', $content) ? ['focus_keyword' => $content['focus_keyword']] : []));
         if (! $translation->exists) {
             // A language the entry lost since: it comes back in the entry's status, as an editor save
             // creates it — within the states a translation can hold (no scheduled/private there).

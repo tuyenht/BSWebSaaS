@@ -24,9 +24,14 @@
     'part' => 'all',
     // the member may only read the form (a product editor's «Chỉ được xem»): the fields are locked
     'readonly' => false,
+    // «Từ khóa muốn lên top» (design 07, posts and pages): the field's Livewire property, and the note
+    // beside its label. Null = this form has no keyword field (products, categories, the settings).
+    'keywordModel' => null,
+    'keywordNote' => null,
 ])
 @php
     use App\Modules\Admin\Support\SeoFields;
+    use App\Modules\Cms\Validation\EntryContentRules;
     use Illuminate\Support\Js;
 
     // "Hiện thế nào trên Google" (design 07 #pe-seo, the post editor's view-model in 05, the product
@@ -101,6 +106,22 @@
         </h2>
 
         <div id="{{ $id }}-body" x-show="open" x-cloak role="region" aria-labelledby="{{ $id }}-head" class="flex flex-col gap-4 px-5 pt-1 pb-5">
+            @if ($keywordModel !== null)
+                {{-- The editor's own note for writing the page: the website never shows it (design 07: no length meter, no language chip). --}}
+                <div>
+                    <div class="{{ $labelRow }}">
+                        <label for="{{ $id }}-keyword" class="{{ $label }} text-text">{{ __('entries.ed.keyword_label') }}</label>
+                        @if ($keywordNote !== null)
+                            <span id="{{ $id }}-keyword-h" class="text-caption text-text-muted">{{ $keywordNote }}</span>
+                        @endif
+                    </div>
+                    <input type="text" id="{{ $id }}-keyword" wire:model="{{ $keywordModel }}" @readonly($readonly) maxlength="{{ EntryContentRules::FOCUS_KEYWORD_MAX }}" lang="{{ $locale }}"
+                           placeholder="{{ __('entries.ed.keyword_ph') }}" aria-describedby="{{ $keywordNote !== null ? $id.'-keyword-h' : '' }} @error($keywordModel) {{ $id }}-keyword-e @enderror" @error($keywordModel) aria-invalid="true" @enderror
+                           class="field {{ $field }}">
+                    @error($keywordModel) <p id="{{ $id }}-keyword-e" class="{{ $error }}" x-init="open = true">{{ $message }}</p> @enderror
+                </div>
+            @endif
+
             <div>
                 <div class="{{ $labelRow }}">
                     <label for="{{ $id }}-title" class="{{ $label }} text-text">{{ __('admin.seo.title_label') }}@if ($multiLocale && $labelChip !== null) <x-bs-admin::lang-chip :code="$locale" :x="$labelChip" />@endif</label>
