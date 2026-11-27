@@ -139,8 +139,16 @@ export function createPickerUploader(el) {
         }
     });
 
+    // the folder the media library shows as a file is added (its slug, on the upload panel around this
+    // pane, which Livewire keeps current): the file goes there, a second try included. Elsewhere
+    // (an editor's picker) there is none and the file stays unsorted.
+    const folderNow = () => el.closest('[data-upload-folder]')?.dataset.uploadFolder;
     uppy.on('file-added', (file) => {
-        kept.set(file.id, { name: file.name, type: file.type, data: file.data });
+        if (file.meta.folder === undefined && folderNow() !== undefined) {
+            uppy.setFileMeta(file.id, { folder: folderNow() });
+        }
+        const folder = uppy.getFile(file.id)?.meta.folder;
+        kept.set(file.id, { name: file.name, type: file.type, data: file.data, ...(folder === undefined ? {} : { meta: { folder } }) });
         if (retrying !== null) {
             list.rekey(retrying, file.id);
         } else {

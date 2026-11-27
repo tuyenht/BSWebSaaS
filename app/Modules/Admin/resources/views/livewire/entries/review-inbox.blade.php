@@ -37,9 +37,9 @@
                 if (rows.length === 0 || (at === 0 && e.key === 'ArrowUp') || (at === rows.length - 1 && e.key === 'ArrowDown' && ! $root.querySelector('[data-inbox-more]'))) { return }
                 e.preventDefault();
                 this.inboxSteps++;
-                $wire.step(e.key === 'ArrowDown' ? 1 : -1, true).then(() => {
+                Promise.resolve().then(() => $wire.step(e.key === 'ArrowDown' ? 1 : -1, true)).then(() => {
                     if (! $wire.detail || window.matchMedia('(min-width: 64rem)').matches) { $root.querySelector('[data-inbox-open][data-current]')?.scrollIntoView({ block: 'nearest' }) }
-                }).finally(() => { this.inboxSteps-- });
+                }).catch(() => {}).finally(() => { this.inboxSteps-- });
                 return;
             }
             if (e.repeat) { return }
