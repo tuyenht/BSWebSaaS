@@ -90,6 +90,28 @@ it('keeps a choice and its value when the editor saves it untouched on a site wh
     });
 });
 
+it('keeps both choices on an untouched save when two choices now show the same words', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        defaultLanguage('ja');
+        $existing = [
+            ['value' => 'a', 'label' => ['ja' => 'Steel']],
+            ['value' => 'b', 'label' => ['en' => 'Steel']],
+        ];
+        $field = new FormField(['key' => 'k', 'type' => 'select', 'options' => ['choices' => $existing]]);
+
+        // the editor shows the same words twice
+        $shown = implode("\n", FormFieldTypes::choiceLabels($field, 'vi'));
+        expect($shown)->toBe("Steel\nSteel");
+
+        expect(FormDraft::choicesFrom($shown, 'vi', $existing))->toBe([
+            ['value' => 'a', 'label' => ['ja' => 'Steel', 'vi' => 'Steel']],
+            ['value' => 'b', 'label' => ['en' => 'Steel', 'vi' => 'Steel']],
+        ]);
+        // a line typed once more than there are choices is still merged
+        expect(array_column(FormDraft::choicesFrom("Steel\nSteel\nSteel", 'vi', $existing), 'value'))->toBe(['a', 'b']);
+    });
+});
+
 it('gives a new line a value of its own, never the value of a choice shown under the same words', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         defaultLanguage('ja');

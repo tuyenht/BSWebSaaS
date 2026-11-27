@@ -525,7 +525,9 @@ it('writes the form name and the answers of the CSV in the site default language
         app(SiteLanguages::class)->forget();
         $form = Form::query()->create(['key' => 'quote', 'name' => ['de' => 'Anfrage', 'en' => 'Inquiry'], 'status' => 'active']);
         $form->fields()->create(['key' => 'company', 'type' => 'text', 'label' => ['de' => 'Firma', 'en' => 'Company'], 'sort_order' => 1]);
-        FormSubmission::query()->create(['form_id' => $form->id, 'name' => 'Khách', 'status' => 'new', 'data' => ['name' => 'Khách', 'company' => 'ACME']]);
+        $form->fields()->create(['key' => 'material', 'type' => 'select', 'label' => ['en' => 'Material'], 'sort_order' => 2,
+            'options' => ['choices' => [['value' => 'inox', 'label' => ['de' => 'Edelstahl', 'en' => 'Stainless']]]]]);
+        FormSubmission::query()->create(['form_id' => $form->id, 'name' => 'Khách', 'status' => 'new', 'data' => ['name' => 'Khách', 'company' => 'ACME', 'material' => 'inox']]);
     });
 
     $out = fopen('php://memory', 'r+');
@@ -534,5 +536,6 @@ it('writes the form name and the answers of the CSV in the site default language
     $rows = exportRows((string) stream_get_contents($out));
 
     expect($rows[1][4])->toBe('Inquiry')
-        ->and($rows[1][8])->toContain('Company')->not->toContain('Firma');
+        ->and($rows[1][8])->toContain('Company')->not->toContain('Firma')
+        ->and($rows[1][8])->toContain('Stainless')->not->toContain('Edelstahl');
 });

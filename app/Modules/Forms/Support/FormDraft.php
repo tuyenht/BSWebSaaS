@@ -157,17 +157,29 @@ final class FormDraft
      */
     public static function choicesFrom(string $lines, string $locale, array $existing): array
     {
+        // Two choices can show the same words (each reads another language); give the lines of those
+        // words the choices in order, so an untouched save keeps them all.
         $byText = [];
         foreach ($existing as $choice) {
-            $text = self::text($choice['label'], $locale) ?: $choice['value'];
-            $byText[$text] ??= $choice;
+            $byText[self::text($choice['label'], $locale) ?: $choice['value']][] = $choice;
         }
 
         $out = [];
         $taken = [];
-        foreach (self::lines($lines) as $line) {
-            $choice = $byText[$line] ?? null;
-            if ($choice === null || isset($taken[$choice['value']])) {
+        $seen = [];
+        foreach (self::lines($lines, unique: false) as $line) {
+            $choice = null;
+            foreach ($byText[$line] ?? [] as $candidate) {
+                if (! isset($taken[$candidate['value']])) {
+                    $choice = $candidate;
+                    break;
+                }
+            }
+            if ($choice === null && isset($seen[$line])) {
+                continue; // typed twice, with no other choice to take it
+            }
+            $seen[$line] = true;
+            if ($choice === null) {
                 $base = Str::slug($line) ?: 'lua-chon';
                 $value = $base;
                 for ($n = 2; isset($taken[$value]) || self::valueOfOther($value, $existing, $line, $locale); $n++) {
@@ -184,16 +196,16 @@ final class FormDraft
     }
 
     /**
-     * The non-empty lines of a choices box, trimmed, each once.
+     * The non-empty lines of a choices box, trimmed, each once unless $unique is false.
      *
      * @return list<string>
      */
-    public static function lines(string $text): array
+    public static function lines(string $text, bool $unique = true): array
     {
         $lines = [];
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
             $line = trim($line);
-            if ($line !== '' && ! in_array($line, $lines, true)) {
+            if ($line !== '' && (! $unique || ! in_array($line, $lines, true))) {
                 $lines[] = $line;
             }
         }
