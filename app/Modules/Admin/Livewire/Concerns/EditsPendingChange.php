@@ -101,13 +101,13 @@ trait EditsPendingChange
      * Focus once «Chưa làm được» or «Tải bản mới nhất?» leaves (Alpine, merged into each one's x-data): back to
      * the button that opened it, unless the focus already sits on something shown (the next dialog). That
      * button may be gone or hidden (it sat in the question before «Duyệt đăng» / «Bỏ thay đổi», or in the
-     * dialog before this one): then the band's first move, else the bar's main button.
+     * dialog before this one): then the band's first move, else the bar's main button, else its «⋯» button.
      */
     public const string REFUSAL_REFOCUS = 'opener: null, init() { this.opener = document.activeElement; }, '
         .'destroy() { const opener = this.opener; setTimeout(() => { '
         .'const shown = (el) => el instanceof HTMLElement && el !== document.body && el.isConnected && el.getClientRects().length > 0; '
         .'if (shown(document.activeElement)) { return; } '
-        .'[opener, ...document.querySelectorAll("[data-change-band] [data-change-act]:not([aria-disabled]), [data-guide=main], [data-guide=main-b]")].find(shown)?.focus(); }); }';
+        .'[opener, ...["[data-change-band] [data-change-act]:not([aria-disabled])", "[data-guide=main]", "[data-guide=main-b]", "[data-guide=more]"].flatMap((q) => [...document.querySelectorAll(q)])].find(shown)?.focus(); }); }';
 
     /** The move this request makes on the change, naming the dialog: save, submit, apply, approve, discard; null for a move the board draws no dialog for (return, a middle step). */
     private ?string $changeAct = 'save';
@@ -589,6 +589,10 @@ trait EditsPendingChange
             $this->addError('slug', $text);
         }
         if ($this->changeAct === null || ! in_array($reason, self::REFUSAL_DIALOG, true)) {
+            if ($reason === 'change_stale') {
+                // no dialog, so no «Tải lại» button: the line says to reload the page
+                $text = Cast::string(__('entries.change_err_change_stale_page'));
+            }
             if ($reason !== 'slug_taken') {
                 $this->addError('workflow', $text);
             }
@@ -650,7 +654,8 @@ trait EditsPendingChange
         $this->changeReloadAsk = false;
         $this->reloadReplaces = null;
         $this->reopenForm();
-        $this->dispatch('bs-toast', text: Cast::string(__('entries.refuse.reloaded')));
+        // the change may be gone (applied or discarded elsewhere): the form then shows the website's version
+        $this->dispatch('bs-toast', text: Cast::string(__($this->changeSeen === null ? 'entries.refuse.reloaded_gone' : 'entries.refuse.reloaded')));
     }
 
     /** The saved entry, re-read and authorized for every call (livewire/update skips the route middleware). */

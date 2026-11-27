@@ -2785,26 +2785,29 @@ final class Editor extends Component
      */
     private function unsavedNames(): array
     {
-        $props = $this->type === 'page' ? 'entries.ed.card_page_props' : 'entries.ed.card_publish';
         $labels = [
             'title' => $this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post',
             'slug' => 'entries.ed.slug', 'excerpt' => 'admin.seo.excerpt_label', 'bodyHtml' => 'entries.ed.body_label',
             'seoTitle' => 'admin.seo.title_label', 'seoDescription' => 'admin.seo.description_label',
-            'categoryIds' => 'entries.ed.card_category', 'coverUlid' => 'entries.ed.card_cover', 'coverAlt' => 'entries.ed.cover_alt_label',
-            'parentUlid' => $props, 'pageOrder' => $props, 'scheduleAt' => 'entries.ed.card_publish', 'statusTo' => 'entries.ed.card_publish',
-            'templateKey' => 'entries.rev.f_tpl', 'displayDate' => 'entries.ed.pd_label', 'tags' => 'entries.ed.card_tags',
-            'expiresAt' => 'entries.ed.exp_label', 'jobFacts' => 'entries.ed.job_card', 'jobDeadline' => 'entries.ed.job_card',
-            'jobDeadlineAccent' => 'entries.ed.job_card', 'jobBadge' => 'entries.ed.job_card',
         ];
         $blocks = $this->blocksHash() !== ($this->saved['blocks'] ?? '');
         $names = [];
+        $choices = false;
         foreach ($this->tracked() as $field => $value) {
             if ($field === 'blocks' || ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value)) {
                 continue;
             }
-            if (($this->saved[$field] ?? '') !== $value || ($field === 'bodyHtml' && $blocks)) {
-                $names[] = Cast::string(__($labels[$field] ?? 'entries.ed.body_label', ['doc' => $this->docNoun()]));
+            if (($this->saved[$field] ?? '') === $value && ! ($field === 'bodyHtml' && $blocks)) {
+                continue;
             }
+            if (isset($labels[$field])) {
+                $names[] = Cast::string(__($labels[$field], ['doc' => $this->docNoun()]));
+            } else {
+                $choices = true;
+            }
+        }
+        if ($choices) {
+            $names[] = Cast::string(__('entries.refuse.reload_choices'));
         }
 
         return array_values(array_unique($names));

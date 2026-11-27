@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
+use App\Modules\Cms\Actions\DiscardEntryDraft;
 use App\Modules\Cms\Actions\MovePage;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
@@ -69,12 +70,12 @@ function pcCollection(): Taxonomy
 }
 
 /** A post by $author, put live by $publisher (tier-1: no workflow yet). */
-function pcLivePost(Taxonomy $category, User $author, User $publisher, string $slug = 'bai-1'): Entry
+function pcLivePost(Taxonomy $category, User $author, User $publisher, string $slug = 'bai-1', ?array $body = null): Entry
 {
     $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
     $entry->translations()->create([
         'locale' => 'vi', 'title' => 'Bản đang đăng', 'slug' => $slug, 'status' => 'draft',
-        'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Mở đầu cũ']]]],
+        'body' => $body ?? ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Mở đầu cũ']]]],
     ]);
     $entry->assignCategories([$category->id]);
     app(PublishEntry::class)->handle($entry->fresh(), 'vi', $publisher->fresh());
@@ -1380,6 +1381,72 @@ it('keeps the typed text on «Ở lại», and loads nothing unless a refusal of
         // every field with typed edits is named, once each, in the form's order
         $old->set('excerpt', 'Mô tả gõ thêm')->call('save')->call('reloadChange')
             ->assertSet('reloadReplaces', __('entries.ed.title_post').', '.__('admin.seo.excerpt_label'));
+
+        // a picture, category, tag or status is not typed text: one plain group name, never a field's own name
+        $old->call('keepTypedText')->set('coverAlt', 'Mô tả ảnh')->call('save')->call('reloadChange')
+            ->assertSet('reloadReplaces', __('entries.ed.title_post').', '.__('admin.seo.excerpt_label').', '.__('entries.refuse.reload_choices'))
+            ->assertDontSee(__('entries.ed.card_publish').' sẽ');
+    });
+});
+
+it('does nothing on «Tải lại» while a refusal that offers no reload is showing', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Bản đã gửi')->call('submitChange')->assertHasNoErrors();
+        $before = pcStored($post);
+
+        $form = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('title', 'Gõ thêm sau khi gửi')->call('save')
+            ->assertSet('refusal', pcRefusal('locked', 'change_locked'));
+        $seen = $form->get('changeSeen');
+        $form->call('reloadChange')
+            ->assertSet('refusal', pcRefusal('locked', 'change_locked'))
+            ->assertSet('changeReloadAsk', false)->assertSet('reloadReplaces', null)
+            ->assertSet('changeSeen', $seen)->assertSet('title', 'Gõ thêm sau khi gửi')
+            ->assertSeeHtml('data-entry-refusal')->assertDontSeeHtml('data-entry-reload-ask')
+            ->assertNotDispatched('bs-toast')->assertNotDispatched('admin-editor-saved');
+        expect(pcStored($post))->toBe($before);
+    });
+});
+
+it('hands the reloaded text to the rich text editor and names «Nội dung» in the question on a prose post', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $prose = static fn (string $html): array => ['blocks' => [['type' => 'richtext_html', 'props' => ['html' => $html]]]];
+        $post = pcLivePost(pcCollection(), $author, $editor, 'bai-van-ban', $prose('<p>Bản đang đăng</p>'));
+        $old = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid])->assertSet('prose', true);
+        app(SaveEntryDraft::class)->handle($post->fresh(), $editor, 'vi', ['body' => $prose('<p>Nội dung của tab khác</p>')]);
+
+        $old->set('bodyHtml', '<p>Tôi gõ ở tab cũ</p>')->call('save')
+            ->assertSet('refusal', pcRefusal('save', 'change_stale'))
+            ->call('reloadChange')
+            ->assertSet('reloadReplaces', __('entries.ed.body_label'))
+            ->assertSee(__('entries.refuse.reload_line', ['fields' => __('entries.ed.body_label')]))
+            ->assertNotDispatched('admin-editor-set-html')
+            ->call('confirmReloadChange')
+            ->assertSet('bodyHtml', '<p>Nội dung của tab khác</p>')
+            ->assertDispatched('admin-editor-set-html', target: 'bodyHtml', html: '<p>Nội dung của tab khác</p>');
+    });
+});
+
+it('says what happened on the toast: the newest change loaded, or the change gone and the website version shown', function (): void {
+    [$author, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        $post = pcLivePost(pcCollection(), $author, $editor);
+        app(SaveEntryDraft::class)->handle($post->fresh(), $author, 'vi', ['title' => 'Bản đã lưu']);
+        $old = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])->assertSet('title', 'Bản đã lưu');
+        app(DiscardEntryDraft::class)->handle($post->fresh(), $author, pcChange($post)->version());
+        expect(pcChange($post))->toBeNull();
+
+        $old->call('applyChange')
+            ->assertSet('refusal', pcRefusal('apply', 'change_stale'))
+            ->call('reloadChange')
+            ->assertSet('title', 'Bản đang đăng')->assertSet('changeSeen', null)
+            ->assertDispatched('bs-toast', text: __('entries.refuse.reloaded_gone'))
+            ->assertNotDispatched('bs-toast', text: __('entries.refuse.reloaded'));
     });
 });
 
@@ -1447,13 +1514,13 @@ it('sends focus back to something shown when «Chưa làm được» or «Tải 
         $post = pcLivePost(pcCollection(), $author, $editor);
         $old = Livewire::actingAs($author)->test(Editor::class, ['ulid' => $post->ulid]);
         app(SaveEntryDraft::class)->handle($post->fresh(), $editor, 'vi', ['title' => 'Bản của tab khác']);
-        // the button pressed may be gone or hidden: the band's first move, else the bar's main button
-        $fallback = '[data-change-band] [data-change-act]:not([aria-disabled]), [data-guide=main], [data-guide=main-b]';
+        // the button pressed may be gone or hidden: the band's first move, else the bar's main button, else its «⋯»
+        $fallback = '"[data-change-band] [data-change-act]:not([aria-disabled])", "[data-guide=main]", "[data-guide=main-b]", "[data-guide=more]"';
 
         $old->set('title', 'Bản của tab cũ')->call('save')
-            ->assertSeeHtml('data-entry-refusal')->assertSeeHtml($fallback)
+            ->assertSeeHtml('data-entry-refusal')->assertSeeHtml(e($fallback))
             ->call('reloadChange')
-            ->assertSeeHtml('data-entry-reload-ask')->assertSeeHtml($fallback);
+            ->assertSeeHtml('data-entry-reload-ask')->assertSeeHtml(e($fallback));
     });
 });
 
@@ -1691,7 +1758,7 @@ it('keeps a refused «Trả lại» on the line above the form (the board draws 
         $before = pcStored($post);
 
         $review->call('openChangeReturn')->set('changeNote', 'Sửa lại')->call('returnChange')
-            ->assertHasErrors(['workflow' => __('entries.change_err_change_stale')])
+            ->assertHasErrors(['workflow' => __('entries.change_err_change_stale_page')])
             ->assertSet('refusal', null);
         expect(pcStored($post))->toBe($before);
     });
