@@ -6,6 +6,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * «Kéo thả ảnh vào đây hoặc bấm để chọn» on an empty featured-image box (design 07): pictures dropped
@@ -92,5 +93,23 @@ it('leaves the picker shut in another language: the cover is every language\'s a
             ->assertReturned(false)
             ->assertSet('showImagePicker', false)
             ->assertDispatched('bs-toast');
+    });
+});
+
+it('refuses the drop from a member who may add files but no longer may edit the entry, and opens nothing', function (): void {
+    $member = coverDropMember(['media.view', 'media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        $page = coverDropPage();
+        $c = Livewire::actingAs($member)->test(Editor::class, ['ulid' => $page->ulid]);
+
+        // the right to edit goes while the form is open: the method asks again
+        $member->roles()->firstOrFail()->revokePermissionTo('entries.edit.any');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $c->call('dropCover')->assertForbidden()
+            ->assertSet('showImagePicker', false)
+            ->assertSet('coverUlid', '');
+        expect($page->fresh()->cover_media_id ?? null)->toBeNull();
     });
 });

@@ -182,7 +182,8 @@ describe('posts and pages', function (): void {
                 ->assertSeeHtml('data-guide-ctx')
                 ->assertSeeHtml('"id":"more"')
                 ->assertDontSeeHtml('data-guide="preview"')
-                ->assertDontSeeHtml('"id":"preview"');
+                ->assertDontSeeHtml('"id":"preview"')
+                ->assertDontSeeHtml('data-site-preview');
         });
     });
 
