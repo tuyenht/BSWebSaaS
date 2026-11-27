@@ -578,6 +578,8 @@ final class Applier
                 'excerpt' => Cast::stringOrNull($row['excerpt'] ?? null),
                 'seo_title' => Cast::stringOrNull($row['seo_title'] ?? null),
                 'seo_description' => Cast::stringOrNull($row['seo_description'] ?? null),
+                // the editor's own note, never shown on the website; an item without one has none
+                'focus_keyword' => Cast::stringOrNull($row['focus_keyword'] ?? null),
                 'status' => Cast::string($row['status'] ?? null, $status),
             ] + ($isPost ? ['author_name' => Cast::stringOrNull($row['author'] ?? null)] : []));
 

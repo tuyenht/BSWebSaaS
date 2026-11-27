@@ -625,7 +625,7 @@ it('keeps a governed post\'s lock when the main category field is emptied', func
     expect(eccCategoriesOf($post))->toBe([$events->id]);
 });
 
-it('holds the categories in order and the fields added later (cover words, look, shown day, job card) last in what it compares, so a fresh form has nothing unsaved', function (): void {
+it('holds the categories in order and the fields added later (cover words, look, shown day, job card, focus keyword) last in what it compares, so a fresh form has nothing unsaved', function (): void {
     $root = eccSection('tin-tuc', 'Tin tức');
     $events = eccCategory('Sự kiện', $root);
     $notices = eccCategory('Thông báo', $root);
@@ -640,7 +640,7 @@ it('holds the categories in order and the fields added later (cover words, look,
         $form = Livewire::actingAs($editor)->test(Editor::class, ['ulid' => $post->ulid])
             ->assertSet('coverAlt', 'Thợ đứng máy')->assertSet('categoryIds', [$notices->id, $events->id]);
         $print = $form->get('storedPrint');
-        expect(array_slice(array_keys($print), -5))->toBe(['category', 'cover_alt', 'template', 'display_date', 'job'])
+        expect(array_slice(array_keys($print), -6))->toBe(['category', 'cover_alt', 'template', 'display_date', 'job', 'focus_keyword'])
             ->and($print['category'])->toBe($notices->id.','.$events->id);
         expect($form->viewData('changes'))->toBe(0);
 
