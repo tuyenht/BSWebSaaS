@@ -1668,9 +1668,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // change: the writer's band before sending (with «Gửi duyệt thay đổi»), the question before
     // «Bỏ thay đổi»; then, once sent, the reviewer's band (approve / return, discard locked with its
     // reason), «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại».
-    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting): Entry {
+    $staleTab = null;
+    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting, &$staleTab): Entry {
         $entry = Entry::query()->where('ulid', $waiting[2])->firstOrFail();
         app(ApplyEntryWorkflowTransition::class)->handle($entry, 'vi', $owner, 'approve');
+        // a tab opened before the change below was saved: its next save is refused as stale («Chưa làm được» with «Tải lại»)
+        $staleTab = Livewire::actingAs($writer->fresh())->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $entry->ulid]);
         app(SaveEntryDraft::class)->handle($entry->fresh(), $writer->fresh(), 'vi', [
             'title' => 'Gia công khuôn ép nhựa cho ngành ô tô',
             'excerpt' => 'Khuôn 2 tầng, bàn giao tháng 11.',
@@ -1704,6 +1707,18 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
         file_put_contents($dir.'/'.$name.'.html', $swap($html, $part, 'admin\\.entries\\.editor'));
     }
+    // «Chưa làm được»: the writer's save of the sent change (no «Tải lại»), and the stale tab's (with it)
+    $locked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($writer->fresh())
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid])->set('excerpt', 'Gõ thêm sau khi gửi')->call('save')));
+    expect($locked)->toContain('data-entry-refusal', e(__('entries.refuse.t_locked')), e(__('entries.change_err_change_locked')))->not->toContain('data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused.html', $swap($html, $locked, 'admin\\.entries\\.editor'));
+    $stale = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->set('excerpt', 'Gõ ở tab cũ')->call('save')));
+    expect($stale)->toContain('data-entry-refusal', e(__('entries.refuse.t_save')), e(__('entries.change_err_change_stale')), 'data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused-stale.html', $swap($html, $stale, 'admin\\.entries\\.editor'));
+    // «Tải lại» there, with the typed text: «Tải bản mới nhất?» names the field it would replace
+    $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->call('reloadChange')));
+    expect($ask)->toContain('data-entry-reload-ask', e(__('entries.refuse.reload_title')), e(__('entries.refuse.reload_ok')), e(__('entries.refuse.reload_stay')));
+    file_put_contents($dir.'/editor-change-reload-ask.html', $swap($html, $ask, 'admin\\.entries\\.editor'));
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
@@ -1761,5 +1776,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 159);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 162);
 });

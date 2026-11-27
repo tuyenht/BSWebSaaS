@@ -1600,6 +1600,8 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
+        // on live content this is «Cập nhật» (or «Gửi duyệt» without the right to publish): a held save refused names that move
+        $this->changeAct = $this->mayPublish ? 'apply' : 'submit';
         $entry = $this->persist('publish');
         if (! $entry instanceof Entry || $this->saveFailed) {
             // nothing put on the website after a save refused in part (a new page's typed place)
@@ -1674,6 +1676,8 @@ final class Editor extends Component
     {
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
+        // the save this move starts with is what a held change refuses (nothing moved): «Chưa lưu được thay đổi»
+        $this->changeAct = 'save';
         $entry = $this->persist('transition', $key);
         if (! $entry instanceof Entry || ! $this->applyExpiry($entry)) {
             return;
@@ -2772,6 +2776,43 @@ final class Editor extends Component
         return $count;
     }
 
+    /**
+     * The fields with unsaved edits, by the names the form shows them under, once each and in the
+     * form's order; empty when nothing differs from what was loaded or saved (as changeCount counts,
+     * the block list judged again now).
+     *
+     * @return list<string>
+     */
+    private function unsavedNames(): array
+    {
+        $labels = [
+            'title' => $this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post',
+            'slug' => 'entries.ed.slug', 'excerpt' => 'admin.seo.excerpt_label', 'bodyHtml' => 'entries.ed.body_label',
+            'seoTitle' => 'admin.seo.title_label', 'seoDescription' => 'admin.seo.description_label',
+        ];
+        $blocks = $this->blocksHash() !== ($this->saved['blocks'] ?? '');
+        $names = [];
+        $choices = false;
+        foreach ($this->tracked() as $field => $value) {
+            if ($field === 'blocks' || ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value)) {
+                continue;
+            }
+            if (($this->saved[$field] ?? '') === $value && ! ($field === 'bodyHtml' && $blocks)) {
+                continue;
+            }
+            if (isset($labels[$field])) {
+                $names[] = Cast::string(__($labels[$field], ['doc' => $this->docNoun()]));
+            } else {
+                $choices = true;
+            }
+        }
+        if ($choices) {
+            $names[] = Cast::string(__('entries.refuse.reload_choices'));
+        }
+
+        return array_values(array_unique($names));
+    }
+
     /** The list this entry belongs to: a post's content section, the pages list for a page. */
     private function placeInList(?ContentSection $section): void
     {
@@ -3802,7 +3843,7 @@ final class Editor extends Component
                 if ($filled) {
                     $this->slug = '';
                 }
-                $this->addError('workflow', __('entries.change_err_change_stale'));
+                $this->changeRefused('change_stale');
 
                 return null;
             }
