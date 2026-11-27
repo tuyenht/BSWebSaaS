@@ -167,8 +167,9 @@
                     </div>
                     @continue
                 @endif
-                @if ($field['type'] === 'radio' || $field['type'] === 'checkboxes')
-                    {{-- «Chọn một» / «Chọn nhiều»: the field's label is the group's legend, each choice a row
+@if ($field['type'] === 'radio' || $field['type'] === 'checkboxes')
+                    {{-- Written at the margin: a false branch prints nothing, not even the line's indent.
+                         «Chọn một» / «Chọn nhiều»: the field's label is the group's legend, each choice a row
                          like the consent box (the whole row is clickable). A choice is sent by its stable
                          value, read by its label. One round box of a required group carries `required`
                          for the whole group; tick boxes never do one by one (the server asks for a pick). --}}
@@ -197,8 +198,9 @@
                         @endif
                     </fieldset>
                     @continue
-                @endif
+@endif
                 @php
+                    // A number takes a decimal point on a phone's keypad; a day is the browser's own date box.
                     $inputType = in_array($field['type'], ['email', 'tel', 'text', 'number', 'date'], true) ? $field['type'] : 'text';
                     $sfAuto = match (true) {
                         $inputType === 'email' => 'email',
@@ -243,7 +245,6 @@
                             @endforeach
                         </select>
                     @else
-                        {{-- A number takes a decimal point on a phone's keypad; a day is the browser's own date box. --}}
                         <input id="{{ $sfId }}" type="{{ $inputType }}"@if ($inputType === 'number') inputmode="decimal" step="any"@endif name="{{ $field['key'] }}"
                                value="{{ $sfOld($field['key']) }}" @if ($field['is_required']) required @endif
                                @if ($sfAuto !== null) autocomplete="{{ $sfAuto }}" @endif
