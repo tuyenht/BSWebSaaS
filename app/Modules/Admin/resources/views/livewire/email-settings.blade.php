@@ -373,7 +373,7 @@
                          x-data="{ draft: '', add() { const v = this.draft.trim().replace(/,$/, ''); if (v === '') return; this.draft = ''; $wire.addNotify(v) } }">
                         <span class="flex items-center gap-1"><span id="em-notify-l" class="{{ $lab }}">{{ __('admin.em_notify_label') }}</span><x-bs-admin::help-pop :label="__('admin.em_notify_help')">{{ __('admin.em_notify_help_text') }}</x-bs-admin::help-pop></span>
                         <div @class([
-                                'flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-primary-text',
+                                'flex min-h-11 w-full flex-wrap items-center gap-1.5 any-pointer-coarse:gap-y-4 rounded border bg-surface px-2 py-1.5 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-primary-text',
                                 'border-danger-text' => $notifyErr !== '',
                                 'border-border-input has-[input:focus]:border-primary-text' => $notifyErr === '',
                             ]) role="group" aria-labelledby="em-notify-l">
