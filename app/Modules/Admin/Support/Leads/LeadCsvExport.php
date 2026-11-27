@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Support\Leads;
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\LeadAnswers;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use Carbon\CarbonImmutable;
@@ -74,14 +76,14 @@ final readonly class LeadCsvExport
     public function write(int $siteId, array $filter, string $locale, $out, int &$written = 0): bool
     {
         $tab = in_array($filter['tab'], LeadListQuery::TABS, true) ? $filter['tab'] : 'all';
-        /** @var array{0: Collection<int, Form>, 1: LeadListQuery, 2: string, 3: string, 4: list<int>|null} $read */
+        /** @var array{0: Collection<int, Form>, 1: LeadListQuery, 2: string, 3: string, 4: list<int>|null, 5: string} $read */
         $read = $this->tenancy->enter($siteId, function () use ($filter, $tab): array {
             [$forms, $hidden] = LeadListQuery::knownForms();
             $list = LeadListQuery::of($filter['search'], $filter['forms'], $filter['when'], $filter['from'], $filter['to'], $forms, $hidden, $this->time)->pinNow();
 
-            return [$forms, $list, $this->time->zone(), $this->time->dateFormat(), $list->gatheredIds($tab)];
+            return [$forms, $list, $this->time->zone(), $this->time->dateFormat(), $list->gatheredIds($tab), app(SiteLocale::class)->default()];
         });
-        [$forms, $list, $zone, $dayFormat, $ids] = $read;
+        [$forms, $list, $zone, $dayFormat, $ids, $default] = $read;
         $byId = $forms->keyBy('id');
 
         fwrite($out, "\xEF\xBB\xBF");
@@ -100,7 +102,7 @@ final readonly class LeadCsvExport
                 $rows = $this->tenancy->enter($siteId, fn (): BaseCollection => $this->chunk($list, $tab, $undated, $cursor));
             }
             foreach ($rows as $row) {
-                $this->put($out, $this->line($row, $byId->get(Cast::int($row->form_id)), $locale, $zone, $dayFormat));
+                $this->put($out, $this->line($row, $byId->get(Cast::int($row->form_id)), $locale, $zone, $dayFormat, $default));
                 $written++;
             }
             flush();
@@ -180,14 +182,13 @@ final readonly class LeadCsvExport
     }
 
     /** @return list<string> */
-    private function line(\stdClass $row, ?Form $form, string $locale, string $zone, string $dayFormat): array
+    private function line(\stdClass $row, ?Form $form, string $locale, string $zone, string $dayFormat, string $default): array
     {
         $data = json_decode(Cast::string($row->data), true);
-        $answers = array_filter(LeadAnswers::for($form, is_array($data) ? $data : [], $locale), fn (array $a): bool => ! in_array($a['key'], self::OWN_CELLS, true));
+        $answers = array_filter(LeadAnswers::for($form, is_array($data) ? $data : [], $locale, default: $default), fn (array $a): bool => ! in_array($a['key'], self::OWN_CELLS, true));
         $sent = Cast::string($row->created_at);
         $local = $sent === '' ? null : CarbonImmutable::parse($sent)->setTimezone($zone);
-        $names = Cast::arr($form?->name);
-        $formName = Cast::string($names[$locale] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
+        $formName = FormDraft::text($form?->name, $locale, $default);
 
         return [
             Cast::string($row->ulid),

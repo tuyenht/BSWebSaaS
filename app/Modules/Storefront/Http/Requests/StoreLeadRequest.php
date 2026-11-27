@@ -4,6 +4,7 @@ namespace App\Modules\Storefront\Http\Requests;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -161,7 +162,7 @@ final class StoreLeadRequest extends FormRequest
         $attributes = [];
         foreach ($this->collectableFields() as $field) {
             $labels = Cast::arr($field->label);
-            $label = Cast::string($labels[$locale] ?? $labels['vi'] ?? null);
+            $label = FormDraft::text($labels, $locale);
             if ($label !== '') {
                 $attributes[$field->key] = $label;
             }

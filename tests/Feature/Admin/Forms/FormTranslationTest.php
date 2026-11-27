@@ -432,8 +432,13 @@ it('keeps the dropped-lines notice until it is closed, and lets other notices hi
             ->set('fields.1.choices', 'Stainless 304');
         FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
 
-        $notice = fn (string $html): string => substr($html, (int) strpos($html, 'data-tone="info"') - 700, 700);
-        expect($notice($english->call('save')->html()))->not->toContain('arm(');
+        // the info toast's own opening tag (its x-data holds the timer, or does not)
+        $html = $english->call('save')->assertSet('toastTone', 'info')->html();
+        $at = strpos($html, 'data-tone="info"');
+        expect($at)->not->toBeFalse();
+        $start = (int) strrpos(substr($html, 0, (int) $at), '<div');
+        $notice = substr($html, $start, (int) strpos($html, '>', (int) $at) - $start);
+        expect($notice)->toContain('data-tone="info"')->not->toContain('arm(');
         // a plain saved message still hides by itself
         $english->set('name', 'Another name')->call('save')->assertSet('toastTone', 'success')->assertSeeHtml('arm(');
     });

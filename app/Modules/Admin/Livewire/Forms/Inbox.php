@@ -13,6 +13,7 @@ use App\Modules\Forms\Actions\EraseLead;
 use App\Modules\Forms\Actions\SetFormStatus;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\LeadRetention;
 use App\Modules\Identity\Actions\ConfirmIdentity;
 use App\Modules\Identity\Actions\IdentityCheck;
@@ -238,8 +239,7 @@ final class Inbox extends Component
 
             return;
         }
-        $names = Cast::arr($form->name);
-        $name = Cast::string($names[app()->getLocale()] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
+        $name = FormDraft::text($form->name, app()->getLocale());
         $this->say(__('leads.form_on_toast', ['name' => $name !== '' ? $name : __('leads.form_untitled')]));
     }
 

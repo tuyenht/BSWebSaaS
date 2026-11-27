@@ -12,9 +12,11 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -514,4 +516,23 @@ it('names the file after today in the website\'s own calendar', function (): voi
 
     expect($name)->toBe(__('leads.export_file', ['date' => $today]).'.csv')
         ->and(app(CurrentSite::class)->hasId())->toBeFalse();
+});
+
+it('writes the form name and the answers of the CSV in the site default language when the form has no text in the reader language', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'en'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'quote', 'name' => ['de' => 'Anfrage', 'en' => 'Inquiry'], 'status' => 'active']);
+        $form->fields()->create(['key' => 'company', 'type' => 'text', 'label' => ['de' => 'Firma', 'en' => 'Company'], 'sort_order' => 1]);
+        FormSubmission::query()->create(['form_id' => $form->id, 'name' => 'Khách', 'status' => 'new', 'data' => ['name' => 'Khách', 'company' => 'ACME']]);
+    });
+
+    $out = fopen('php://memory', 'r+');
+    app(LeadCsvExport::class)->write(1, ['tab' => 'all', 'search' => '', 'forms' => [], 'when' => '', 'from' => '', 'to' => ''], 'vi', $out);
+    rewind($out);
+    $rows = exportRows((string) stream_get_contents($out));
+
+    expect($rows[1][4])->toBe('Inquiry')
+        ->and($rows[1][8])->toContain('Company')->not->toContain('Firma');
 });

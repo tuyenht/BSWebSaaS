@@ -159,7 +159,7 @@ final class FormDraft
     {
         $byText = [];
         foreach ($existing as $choice) {
-            $text = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
+            $text = self::text($choice['label'], $locale) ?: $choice['value'];
             $byText[$text] ??= $choice;
         }
 
@@ -208,13 +208,16 @@ final class FormDraft
             && filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE) !== false;
     }
 
-    /** A per-language text in $locale, else the site's default language, else any stored language. */
-    public static function text(mixed $map, string $locale): string
+    /**
+     * A per-language text in $locale, else the site's default language, else any stored language.
+     * $default names the site's default language when the caller runs outside the site's context.
+     */
+    public static function text(mixed $map, string $locale, ?string $default = null): string
     {
         $map = Cast::arr($map);
 
         return Cast::string($map[$locale] ?? null)
-            ?: (Cast::string($map[app(SiteLocale::class)->default()] ?? null)
+            ?: (Cast::string($map[$default ?? app(SiteLocale::class)->default()] ?? null)
             ?: Cast::string(array_values(array_filter($map, fn (mixed $v): bool => is_string($v) && $v !== ''))[0] ?? null));
     }
 
@@ -227,7 +230,7 @@ final class FormDraft
     private static function valueOfOther(string $value, array $existing, string $line, string $locale): bool
     {
         foreach ($existing as $choice) {
-            if ($choice['value'] === $value && ((($choice['label'][$locale] ?? '') ?: ($choice['label']['vi'] ?? '')) !== $line)) {
+            if ($choice['value'] === $value && ((self::text($choice['label'], $locale) ?: $choice['value']) !== $line)) {
                 return true;
             }
         }

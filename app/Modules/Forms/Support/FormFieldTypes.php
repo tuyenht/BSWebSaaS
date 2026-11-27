@@ -256,11 +256,11 @@ final class FormFieldTypes
      *
      * @return array<string, string>
      */
-    public static function choiceLabels(FormField $field, string $locale): array
+    public static function choiceLabels(FormField $field, string $locale, ?string $default = null): array
     {
         $labels = [];
         foreach (self::choices($field) as $choice) {
-            $labels[$choice['value']] = FormDraft::text($choice['label'], $locale) ?: $choice['value'];
+            $labels[$choice['value']] = FormDraft::text($choice['label'], $locale, $default) ?: $choice['value'];
         }
 
         return $labels;
