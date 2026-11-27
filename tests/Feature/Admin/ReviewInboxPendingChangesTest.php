@@ -579,7 +579,7 @@ it('judges «the language reviewed» by the website’s language order, not by t
  * @param  list<string>  $locales
  * @param  array<string, string>  $slugs
  */
-function rcNestedAboutChange(array $cast, array $locales, array $slugs, string $clashIn, string $slugPrefix = ''): Entry
+function rcNestedAboutChange(array $cast, array $locales, array $slugs, string $clashIn): Entry
 {
     $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first() ?? rcCollection();
     SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
@@ -590,13 +590,13 @@ function rcNestedAboutChange(array $cast, array $locales, array $slugs, string $
             ]);
         }
     }
-    $about = rcLivePost($category, $cast['author'], $cast['publisher'], $slugPrefix.'gioi-thieu');
+    $about = rcLivePost($category, $cast['author'], $cast['publisher'], 'gioi-thieu');
     $about->update(['type' => 'page']);
     $team = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $cast['author']->id, 'parent_id' => $about->id]);
-    $team->translations()->create(['locale' => 'vi', 'title' => 'Đội ngũ', 'slug' => $slugPrefix.'doi-ngu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+    $team->translations()->create(['locale' => 'vi', 'title' => 'Đội ngũ', 'slug' => 'doi-ngu', 'status' => 'draft', 'body' => ['blocks' => []]]);
     app(PublishEntry::class)->handle($team->fresh(), 'vi', $cast['publisher']);
     foreach ($locales as $locale) {
-        $about->translations()->create(['locale' => $locale, 'title' => 'About '.$locale, 'slug' => $slugPrefix.'about-'.$locale, 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $about->translations()->create(['locale' => $locale, 'title' => 'About '.$locale, 'slug' => 'about-'.$locale, 'status' => 'draft', 'body' => ['blocks' => []]]);
         app(PublishEntry::class)->handle($about->fresh(), $locale, $cast['publisher']);
         $team->translations()->create(['locale' => $locale, 'title' => 'Team '.$locale, 'slug' => 'team', 'status' => 'draft', 'body' => ['blocks' => []]]);
         app(PublishEntry::class)->handle($team->fresh(), $locale, $cast['publisher']);
@@ -612,3 +612,23 @@ function rcNestedAboutChange(array $cast, array $locales, array $slugs, string $
 
     return $about->fresh();
 }
+
+it('keeps logging the approval in the language it always did, whatever language a refusal would name', function (): void {
+    $cast = rcCast();
+    app(Tenancy::class)->enter(1, function () use ($cast): void {
+        // the website lists Japanese before English; the change (no Vietnamese) stores its languages in another order
+        $about = rcNestedAboutChange($cast, ['ja', 'en'], ['ja' => 'about-ja', 'en' => 'about-us'], clashIn: 'en');
+        $stored = array_keys(rcChange($about)->content['locales']);
+        // the address is free again, so the approval goes through and writes its trail row
+        SiteRoute::query()->where('locale', 'en')->where('path', '/about-us/team')->where('entry_id', '!=', $about->id)->delete();
+        $before = WorkflowLog::query()->where('entry_id', $about->id)->count();
+
+        Livewire::actingAs($cast['approver'])->test(ReviewChanges::class)->call('openChange', $about->ulid, 'approve')->call('confirmChange')->assertHasNoErrors();
+
+        $log = WorkflowLog::query()->where('entry_id', $about->id)->orderByDesc('id')->first();
+        // the first stored key (the old rule), not the website's first language (ja)
+        expect(WorkflowLog::query()->where('entry_id', $about->id)->count())->toBe($before + 1)
+            ->and($stored[0])->not->toBe('ja')
+            ->and($log?->locale)->toBe((string) $stored[0]);
+    });
+});

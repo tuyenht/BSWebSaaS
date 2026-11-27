@@ -1918,3 +1918,39 @@ it('says the address a page move would take with its /en prefix, in the refusal 
         expect($by[$services->ulid]['why'])->toBe(__('entries.move_path_taken_label', ['path' => '/en/services/logo']));
     });
 });
+
+it('names the same language in the move refusal and on the «Chuyển đến…» lock when the move clashes in two', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        [$services, , $page] = pcEnglishTree($editor);
+        // English is taken already (the sub-page «logo» stands at /services/logo); Vietnamese, the website's first language, is taken too
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/dich-vu/thiet-ke', 'entry_id' => $other->id]);
+
+        $refused = null;
+        try {
+            app(MovePage::class)->handle($page, $services, 0);
+        } catch (PageMoveRejectedException $e) {
+            $refused = $e;
+        }
+        $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($page->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+
+        expect($refused?->path)->toBe('/dich-vu/thiet-ke')
+            ->and($by[$services->ulid]['why'])->toBe(__('entries.move_path_taken_label', ['path' => '/dich-vu/thiet-ke']));
+    });
+});
+
+it('shows the «new path» label of a page that exists only in English with its /en prefix', function (): void {
+    [, $editor] = pcCast();
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        [$services] = pcEnglishTree($editor);
+        $solo = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $solo->translations()->create(['locale' => 'en', 'title' => 'Solo', 'slug' => 'solo', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(PublishEntry::class)->handle($solo->fresh(), 'en', $editor);
+
+        $by = collect(Livewire::actingAs($editor)->test(Index::class)->instance()->moveTargets($solo->ulid)['opts'] ?? [])->keyBy(fn (array $o): string => $o['k'] ?? 'top');
+
+        expect($by[$services->ulid]['path'])->toBe('/dich-vu/solo')
+            ->and($by[$services->ulid]['label'])->toBe(__('entries.mv_becomes_path', ['n' => 2, 'path' => '/en/dich-vu/solo']));
+    });
+});

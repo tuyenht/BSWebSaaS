@@ -174,6 +174,28 @@ it('takes a due page whose address is taken off the schedule, tells its author a
         ->and(sweepNotices($scheduler))->toHaveCount(1);
 });
 
+it('tells the author the taken address of a non-default language with its /{locale}, as visitors see it', function (): void {
+    $author = User::factory()->create();
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        // another page owns the English address /en/contact; the Vietnamese one is free
+        $live = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()->subDay()]);
+        $live->translations()->create(['locale' => 'en', 'title' => 'Contact', 'slug' => 'contact', 'status' => 'published', 'body' => ['blocks' => []]]);
+        app(RouteSync::class)->sync($live, 'en', 'contact');
+
+        $due = Entry::query()->create(['type' => 'page', 'status' => 'scheduled', 'published_at' => now()->subMinute(), 'author_id' => $author->id, 'scheduled_by' => $author->id]);
+        $due->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he-moi', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $due->translations()->create(['locale' => 'en', 'title' => 'Contact us', 'slug' => 'contact', 'status' => 'draft', 'body' => ['blocks' => []]]);
+    });
+
+    $this->artisan('entries:publish-due')->assertSuccessful();
+
+    expect(sweepNotices($author))->toBe([['failed_address', '/en/contact']]);
+});
+
 it('sends one notice, not two, when the author scheduled the page with a taken address themselves', function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();

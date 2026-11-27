@@ -622,7 +622,7 @@ final class ReviewChanges extends Component
             $error = 'entries.change_err_'.$refused->reason;
             $path = $refused->path;
             if ($refused->reason === 'subpage_path_taken') {
-                $said = SubPageTakenText::say($path, $refused->locale, $this->localeOf($change), Locales::label(...));
+                $said = SubPageTakenText::say($path, $refused->locale, $this->languageOf($change), Locales::label(...));
             }
         } catch (InvalidTransitionException) {
             $error = 'admin.wfb.err_stale';
@@ -774,24 +774,22 @@ final class ReviewChanges extends Component
         return implode(', ', array_map(Locales::label(...), $codes));
     }
 
-    /** The language a move is logged in: the website's own when the change holds it, else the first it holds in the website's order. */
+    /** The language a move is logged in: the website's own when the change holds it, else its first. */
     private function localeOf(EntryDraft $change): string
     {
         $codes = array_map(strval(...), array_keys($change->content['locales']));
         $default = app(SiteLocale::class)->default();
 
-        if (in_array($default, $codes, true) || $codes === []) {
-            return $default;
-        }
-        // not the website's own: the first of its languages the change holds, in the website's order (never the stored key order)
-        foreach (app(SiteLocale::class)->enabled() as $code) {
-            if (in_array($code, $codes, true)) {
-                return $code;
-            }
-        }
-        sort($codes);
+        return in_array($default, $codes, true) || $codes === [] ? $default : $codes[0];
+    }
 
-        return $codes[0];
+    /** The language a refusal names: the website's own when the change holds it, else the first it holds in the website's order (never the stored key order). */
+    private function languageOf(EntryDraft $change): string
+    {
+        $codes = array_map(strval(...), array_keys($change->content['locales']));
+        $default = app(SiteLocale::class)->default();
+
+        return in_array($default, $codes, true) || $codes === [] ? $default : app(SiteLocale::class)->inSiteOrder($codes)[0];
     }
 
     private function writerName(EntryDraft $change): string

@@ -16,6 +16,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -68,6 +69,7 @@ final readonly class MovePage
         private PermalinkConfig $permalinks,
         private CurrentSite $site,
         private SaveEntryDraft $changes,
+        private SiteLocale $locales,
     ) {}
 
     /**
@@ -439,7 +441,10 @@ final readonly class MovePage
     {
         $changed = [];
         try {
-            foreach ($page->translations()->get() as $translation) {
+            $translations = $page->translations()->get();
+            // the website's language order, so a clash in two languages names the same one the move's lock label does
+            $rank = array_flip($this->locales->inSiteOrder($translations->map(fn ($translation): string => (string) $translation->locale)));
+            foreach ($translations->sortBy(fn ($translation): int => $rank[$translation->locale])->values() as $translation) {
                 $locale = $translation->locale;
                 $slug = (string) $translation->slug;
                 if ($page->status === 'published' && $translation->status === 'published') {

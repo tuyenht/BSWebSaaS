@@ -77,6 +77,32 @@ final class SiteLocale
     }
 
     /**
+     * Language codes in the website's own order (default first, then by id); codes it does not know follow, alphabetically.
+     * The one order every screen and action uses to pick "the first" of several languages.
+     *
+     * @param  iterable<string>  $codes
+     * @return list<string>
+     */
+    public function inSiteOrder(iterable $codes): array
+    {
+        $held = [];
+        foreach ($codes as $code) {
+            $held[(string) $code] = true;
+        }
+        $out = [];
+        foreach ($this->enabled() as $code) {
+            if (isset($held[$code])) {
+                $out[] = $code;
+                unset($held[$code]);
+            }
+        }
+        $rest = array_keys($held);
+        sort($rest);
+
+        return [...$out, ...$rest];
+    }
+
+    /**
      * The enabled locales visitors can open, default first then by id. A locale can be enabled
      * (editors prepare its translations) without being public yet. Empty with no site context.
      *

@@ -1414,6 +1414,16 @@ final class Index extends Component
 
         // where the page's address would land in each language it is published in, and which of those are taken
         $leafShown = $shownSlug($page);
+        // the language the shown address is in (the default's, else the first that has one): its /{locale} shows, as visitors see it
+        $shownLocale = $locale;
+        if ($slugIn($page, $locale) === '') {
+            foreach ($page->translations as $translation) {
+                if (trim(Cast::string($translation->slug), '/') !== '') {
+                    $shownLocale = (string) $translation->locale;
+                    break;
+                }
+            }
+        }
         $published = [];
         foreach ($page->status === EntryStatus::Published->value ? $page->translations : [] as $translation) {
             if ($translation->status === EntryStatus::Published->value && trim((string) $translation->slug, '/') !== '') {
@@ -1421,6 +1431,7 @@ final class Index extends Component
             }
         }
         $wanted = [];
+        $published = app(SiteLocale::class)->inSiteOrder($published);
         foreach ($candidates as $i => $c) {
             foreach ($published as $lc) {
                 $p = ($c['row'] === null ? '' : $prefix($c['row'], static fn (Entry $row): string => $slugIn($row, $lc))).'/'.$slugIn($page, $lc);
@@ -1450,6 +1461,7 @@ final class Index extends Component
             $here = $page->parent_id === $row?->id;
             $at = $row === null ? '' : $prefix($row, $shownSlug);
             $ns = $nested && $leafShown !== '' && $at !== $current ? $at.'/'.$leafShown : null;
+            $nsShown = $ns === null ? null : app(PathBuilder::class)->publicUrl($ns, $shownLocale);
             $clash = null;
             foreach ($nested ? ($wanted[$i] ?? []) : [] as $lc => $p) {
                 if (isset($taken[$lc.' '.$p])) {
@@ -1473,7 +1485,7 @@ final class Index extends Component
                 'why' => $why,
                 'label' => $here ? Cast::string(__('entries.mv_here')) : ($why !== null
                     ? Cast::string(__('entries.mv_locked', ['why' => mb_strtolower(mb_substr($why, 0, 1)).mb_substr($why, 1)]))
-                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $ns]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
+                    : Cast::string($ns !== null ? __('entries.mv_becomes_path', ['n' => $c['lv'] + 1, 'path' => $nsShown]) : __('entries.mv_becomes', ['n' => $c['lv'] + 1]))),
                 'path' => $ns,
             ];
         }
