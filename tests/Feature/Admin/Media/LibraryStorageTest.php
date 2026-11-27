@@ -39,10 +39,11 @@ function lsSetUp(int $limitMb, float $usedMb, float $trashMb = 0): void
     });
 }
 
-function lsMember(): User
+/** @param  list<string>  $rights */
+function lsMember(array $rights = ['media.view', 'media.upload', 'media.delete.any']): User
 {
     $user = User::factory()->create();
-    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['media.view', 'media.upload', 'media.delete.any']));
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', $rights));
 
     return $user->fresh();
 }
@@ -93,6 +94,34 @@ it('opens the Trash from the card', function (): void {
         ->call('openUpload')->call('openTrash')
         ->assertSet('status', 'trash')->assertSet('uploadOpen', false));
 });
+
+it('keeps the Trash buttons and the Trash itself from someone who may not delete', function (): void {
+    config(['media.storage_enforce' => true]);
+    $uploader = lsMember(['media.view', 'media.upload']);
+
+    lsSetUp(100, 90); // warn: «Mở Thùng rác» for those who may delete
+    expect($this->actingAs($uploader)->get('http://a.test/admin/media')->assertOk()->getContent())
+        ->toContain('data-lv="warn"')->not->toContain(e(__('media.lib.st_open_trash')));
+
+    app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)->add(MediaStorage::BYTES, 10 * 1048576)); // full: «Dọn Thùng rác»
+    expect($this->actingAs($uploader)->get('http://a.test/admin/media')->assertOk()->getContent())
+        ->toContain('id="tv-full"')->not->toContain(e(__('media.lib.st_clean_trash')));
+
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($uploader)->test(Library::class)
+        ->call('openTrash')->assertStatus(403));
+});
+
+it('takes the level and the percent from the figure the card shows, as the board does', function (int $usedBytes, bool $enforce, string $level, int $pct): void {
+    $meter = Library::storageMeter(['used' => $usedBytes, 'trash' => 0, 'limit' => 500 * 1048576], $enforce);
+
+    expect([$meter['level'], $meter['pct']])->toBe([$level, $pct]);
+})->with([
+    '79,6 %: still ok, the bar short of 80' => [398 * 1048576, false, 'ok', 79],
+    '399,96 MB shows as 400 MB: 80 %, warn' => [(int) (399.96 * 1048576), false, 'warn', 80],
+    '80 % exactly' => [400 * 1048576, false, 'warn', 80],
+    '499,96 MB shows as 500 MB: full with the switch on' => [(int) (499.96 * 1048576), true, 'full', 100],
+    '499,9 MB: warn, the bar short of 100' => [(int) (499.9 * 1048576), true, 'warn', 99],
+]);
 
 it('keeps the library route within one query of its budget with the meter on', function (): void {
     $viewer = User::factory()->create();

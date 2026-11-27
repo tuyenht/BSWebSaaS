@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Recounts the library's two totals (MediaStorage) for `counters:reconcile`: the master sizes of
- * every row the current website keeps, and of those in its Trash. Walks the website's rows by id
- * over the (site_id, id) index, $chunk at a time, one grouped statement per chunk, with no lock.
+ * every row the current website keeps, and of those in its Trash. count() walks the website's rows
+ * by id over the (site_id, id) index, $chunk at a time, one grouped statement per chunk, with no
+ * lock; recount() is the same sums as one statement, for the correction of a drifted website.
  */
 final readonly class MediaStorageReconciler implements CounterReconciler
 {
@@ -44,5 +45,13 @@ final readonly class MediaStorageReconciler implements CounterReconciler
         } while ($read === $chunk);
 
         return [MediaStorage::BYTES => $bytes, MediaStorage::TRASH => $trash];
+    }
+
+    public function recount(): array
+    {
+        return [
+            'SELECT coalesce(sum(size), 0) AS m0, coalesce(sum(size) FILTER (WHERE deleted_at IS NOT NULL), 0) AS m1 FROM media WHERE site_id = ?',
+            [$this->current->id()],
+        ];
     }
 }

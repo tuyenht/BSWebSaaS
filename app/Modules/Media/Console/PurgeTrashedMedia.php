@@ -4,19 +4,22 @@ namespace App\Modules\Media\Console;
 
 use App\Modules\Media\Actions\PurgeMedia;
 use App\Modules\Media\Models\Media;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Permanently deletes media that has sat in the Trash (soft-deleted) longer than the configured
  * retention (config('media.trash_retention_days'), default 30). Scheduled daily; the manual
  * "empty trash" / "delete permanently" picker actions purge immediately regardless of age.
  *
- * Runs per-site inside Tenancy::enter so RLS + the model's global scope resolve each tenant's own
- * trash (a CLI has no site context otherwise). Purge goes through PurgeMedia: per-instance so
- * MediaObserver fires and drops each master's attachments + its single R2 object (a mass forceDelete
- * would skip those events and strand the R2 objects), and the library's storage totals go down with it.
+ * Runs per site inside Tenancy::enter so RLS + the model's global scope resolve each tenant's own
+ * trash (a CLI has no site context otherwise), one transaction per page of CHUNK files: each page
+ * takes its files off the library's storage totals as its last write and commits, so the totals'
+ * rows are held only for that moment and never while a later page deletes its files (an upload of
+ * the same website meanwhile counts itself without waiting). Purge goes through PurgeMedia:
+ * per-instance so MediaObserver fires and drops each master's attachments + its single R2 object (a
+ * mass forceDelete would skip those events and strand the R2 objects).
  */
 class PurgeTrashedMedia extends Command
 {
@@ -36,13 +39,19 @@ class PurgeTrashedMedia extends Command
         $cutoff = now()->subDays($days);
         $purged = 0;
 
-        $tenancy->eachSite(function () use ($cutoff, $purge, &$purged): void {
+        foreach ($tenancy->siteIds() as $siteId) {
             // in pages by id, so a site with a large stale Trash never loads it whole
-            Media::onlyTrashed()->where('deleted_at', '<', $cutoff)
-                ->chunkById(self::CHUNK, function (Collection $stale) use ($purge, &$purged): void {
-                    $purged += $purge->handle($stale);
+            $after = 0;
+            do {
+                [$gone, $after, $full] = $tenancy->enter($siteId, function () use ($cutoff, $purge, $after): array {
+                    $stale = Media::onlyTrashed()->where('deleted_at', '<', $cutoff)->where('id', '>', $after)
+                        ->orderBy('id')->limit(self::CHUNK)->get();
+
+                    return [$purge->handle($stale), Cast::int($stale->last()?->id, $after), $stale->count() === self::CHUNK];
                 });
-        });
+                $purged += $gone;
+            } while ($full);
+        }
 
         $this->info("Purged {$purged} trashed media older than {$days} day(s).");
 

@@ -95,10 +95,10 @@ final readonly class MediaStorage
         $this->counters->add(self::TRASH, -$bytes);
     }
 
-    /** $bytes were deleted for good, $fromTrash of them out of the Trash. */
-    public function purged(int $bytes, int $fromTrash): void
+    /** $bytes in the Trash were deleted for good. */
+    public function purged(int $bytes): void
     {
-        $this->counters->addMany([self::BYTES => -$bytes, self::TRASH => -$fromTrash]);
+        $this->counters->addMany([self::BYTES => -$bytes, self::TRASH => -$bytes]);
     }
 
     /**

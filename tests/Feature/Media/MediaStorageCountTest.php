@@ -18,8 +18,11 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Services\SiteCounters;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -127,10 +130,27 @@ it('moves only the Trash total on trash and restore, and takes both down on a pu
     app(Tenancy::class)->enter(1, fn () => app(TrashMedia::class)->restore(new Collection([Media::withTrashed()->find($a->id)])));
     expect(mscTotals())->toBe(['bytes' => $all, 'trash' => $b->size]);
 
-    // a purge of one in the Trash and one not: both leave the stored total, the trashed one the Trash total
+    // a purge deletes only what is in the Trash: the restored file stays, the trashed one leaves both totals
     $n = app(Tenancy::class)->enter(1, fn () => app(PurgeMedia::class)->handle(Media::withTrashed()->whereKey([$a->id, $b->id])->get()));
-    expect($n)->toBe(2)->and(mscTotals())->toBe(['bytes' => 0, 'trash' => 0])
-        ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->count()))->toBe(0);
+    expect($n)->toBe(1)->and(mscTotals())->toBe(['bytes' => $a->size, 'trash' => 0])
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->pluck('id')->all()))->toBe([$a->id]);
+});
+
+it('keeps a file taken back out of the Trash after the purge listed it', function (): void {
+    $a = mscUpload(1, 'a.png', mscPng('a'));
+    $b = mscUpload(1, 'b.png', mscPng('bb'));
+    app(Tenancy::class)->enter(1, fn () => app(TrashMedia::class)->trash(new Collection([$a, $b])));
+
+    // the purge listed both; someone restores one before it locks them
+    $listed = app(Tenancy::class)->enter(1, fn () => Media::onlyTrashed()->orderBy('id')->get());
+    app(Tenancy::class)->enter(1, fn () => app(TrashMedia::class)->restore(new Collection([Media::withTrashed()->find($a->id)])));
+    $n = app(Tenancy::class)->enter(1, fn () => app(PurgeMedia::class)->handle($listed));
+
+    expect($n)->toBe(1)
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->pluck('id')->all()))->toBe([$a->id])
+        ->and(Storage::disk('r2')->exists($a->storage_key))->toBeTrue()
+        ->and(Storage::disk('r2')->exists($b->storage_key))->toBeFalse()
+        ->and(mscTotals())->toBe(['bytes' => $a->size, 'trash' => 0]);
 });
 
 it('takes a file back out of the Trash on a re-upload of its content, counting it out of the Trash only', function (): void {
@@ -238,3 +258,54 @@ it('refuses an upload past the plan once the storage switch is on, keeping nothi
     $ok = mscUpload(1, 'e.png', mscPng('e'));
     expect(mscTotals()['bytes'])->toBe(1048576 - 1050 + $ok->size);
 });
+
+/*
+ * The screens and endpoints catch storage_full and answer it, and their request still commits. The
+ * refused row must be gone by then (the upload's savepoint), or it would stay in the library
+ * uncounted, its stored file already deleted.
+ */
+it('keeps nothing of a refused upload when the endpoint answers the refusal and the request commits', function (string $route): void {
+    config(['media.storage_enforce' => true]);
+    mscLimitMb(1, 1); // 1 MB
+    app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)->add(MediaStorage::BYTES, 1048576 - 50));
+    $this->withoutMiddleware(PreventRequestForgery::class);
+    $this->actingAs(mscMember(['media.view', 'media.upload']));
+
+    $bytes = mscPng(str_repeat('f', 60));
+    if ($route === 'upload') {
+        $response = $this->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('f.png', $bytes)], ['Accept' => 'application/json']);
+    } else {
+        Storage::disk('r2')->put('_incoming/x/01f.png', $bytes);
+        Cache::put(PresignMediaUpload::ownershipKey('_incoming/x/01f.png'), 1, now()->addMinutes(5));
+        $response = $this->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/x/01f.png', 'filename' => 'f.png']);
+    }
+
+    $response->assertStatus(422)->assertJson(['reason' => 'storage_full']);
+    expect(DB::connection('pgsql_admin')->table('media')->count())->toBe(0)
+        ->and(Storage::disk('r2')->allFiles())->toBe([])
+        ->and(mscTotals()['bytes'])->toBe(1048576 - 50);
+})->with(['upload', 'register']);
+
+it('keeps nothing of a refused link import when the screen shows the refusal and goes on in its transaction', function (string $screen): void {
+    config(['media.storage_enforce' => true]);
+    mscLimitMb(1, 1);
+    app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)->add(MediaStorage::BYTES, 1048576 - 50));
+    $user = mscMember(['catalog.view', 'catalog.manage', 'media.view', 'media.upload']);
+    Http::fake(['https://93.184.216.34/f.png' => Http::response(mscPng(str_repeat('f', 60)), 200)]);
+
+    // one tenant context, as one request: the refusal is caught and the transaction carries on
+    app(Tenancy::class)->enter(1, function () use ($user, $screen): void {
+        $page = $screen === 'library'
+            ? Livewire::actingAs($user)->test(Library::class)->call('openUpload')->call('openPickerSource', 'url')
+            : Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')->call('openPickerSource', 'url');
+        $page->set('pickerUrlInput', 'https://93.184.216.34/f.png')->call('previewPickerUrl')->assertHasNoErrors()
+            ->call('insertPicked')
+            ->assertHasErrors('pickerUrlInput');
+
+        expect(Media::withTrashed()->count())->toBe(0)
+            ->and(mscTotals()['bytes'])->toBe(1048576 - 50)
+            ->and(Storage::disk('r2')->allFiles())->toBe([]);
+    });
+
+    expect(DB::connection('pgsql_admin')->table('media')->count())->toBe(0);
+})->with(['library', 'shared picker']);

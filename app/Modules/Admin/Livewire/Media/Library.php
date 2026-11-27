@@ -1324,9 +1324,11 @@ final class Library extends Component
     /**
      * The «Dung lượng đã dùng» card from the library's totals (board 12): the level — `full` once the
      * ceiling is reached, `warn` from 80 %, else `ok` — the bar's percent (at most 100) and the texts in
-     * megabytes to a tenth. `full` (nothing more can be uploaded) only while the storage switch refuses
-     * uploads: with it off a website above its plan is told so on the `warn` card, never «chưa tải thêm
-     * được», which would not be true.
+     * megabytes to a tenth. As on the board, the level comes from the used figure the card shows (to a
+     * tenth of a megabyte), and the percent is rounded down from it, so the bar never reads 80 while
+     * the card is still `ok`, nor 100 before it says the room is used up. `full` (nothing more can be
+     * uploaded) only while the storage switch refuses uploads: with it off a website above its plan is
+     * told so on the `warn` card, never «chưa tải thêm được», which would not be true.
      *
      * @param  array{used: int, trash: int, limit: int}  $usage  bytes
      * @return array{level: 'ok'|'warn'|'full', pct: int, used: string, limit: string, status: string, trash: string}
@@ -1335,14 +1337,17 @@ final class Library extends Component
     {
         $used = max(0, $usage['used']);
         $limit = max(0, $usage['limit']);
-        $over = $used >= $limit;
-        $level = $over && $enforcing ? 'full' : ($over || $used * 5 >= $limit * 4 ? 'warn' : 'ok');
+        // tenths of a megabyte, the figures the card prints
+        $usedTenths = (int) round($used * 10 / 1048576);
+        $limitTenths = (int) round($limit * 10 / 1048576);
+        $over = $usedTenths >= $limitTenths;
+        $level = $over && $enforcing ? 'full' : ($over || $usedTenths * 5 >= $limitTenths * 4 ? 'warn' : 'ok');
         $limitText = self::megabytes($limit, 0);
         $left = self::megabytes(max(0, $limit - $used));
 
         return [
             'level' => $level,
-            'pct' => $limit === 0 ? 100 : min(100, (int) round($used * 100 / $limit)),
+            'pct' => $over ? 100 : intdiv($usedTenths * 100, $limitTenths),
             'used' => self::megabytes($used),
             'limit' => $limitText,
             'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])

@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\Storage;
  * hash) → stored to R2 under the opaque content-hash key (the source of truth; URL derived later by
  * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context. A new row
  * counts its size into the library's storage total (MediaStorage) as the action's last write; with
- * the storage switch on, a file that does not fit is refused and its stored copy removed.
+ * the storage switch on, a file that does not fit is refused and its stored copy removed (never the
+ * platform's own content: $mayRefuse).
  *
  * GĐ1 allow-list excludes SVG (XSS surface; needs a dedicated sanitizer dependency — deferred).
  */
@@ -52,8 +53,11 @@ final readonly class UploadMedia
      *                            of its own, so the caller decides; false refuses with `in_trash`.
      * @param  int|null  $folderId  the folder a new file goes in (resolved by the caller inside this site);
      *                              a file already here keeps the folder it has
+     * @param  bool  $mayRefuse  false for the platform's own content (a content pack's images): counted like
+     *                           any upload but never refused for room, like a seed (EnsureMediaFromKey),
+     *                           so a pack never stops half-loaded on a website that is short of room
      */
-    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false, ?int $folderId = null): Media
+    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false, ?int $folderId = null, bool $mayRefuse = true): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -114,7 +118,7 @@ final readonly class UploadMedia
         // (the request transaction stays valid) and returns the winner. A double-submit / concurrent
         // upload is thus idempotent, never a 500 / aborted transaction. (site_id is in the unique key
         // but stamped by the trait, so the dedup attributes are collection + hash within this site.)
-        $create = function () use ($collection, $hash, $slug, $key, $file, $mime, $width, $height, $createdBy, $folderId): Media {
+        $create = function () use ($collection, $hash, $slug, $key, $file, $mime, $width, $height, $createdBy, $folderId, $mayRefuse): Media {
             $media = Media::query()->createOrFirst(
                 ['collection' => $collection, 'hash' => $hash],
                 [
@@ -133,16 +137,16 @@ final readonly class UploadMedia
             // 8) Count it into the library's storage total — only a row really created (a concurrent
             // identical upload that won is already counted) — as the last write.
             if ($media->wasRecentlyCreated) {
-                $this->storage->charge($media);
+                $mayRefuse ? $this->storage->charge($media) : $this->storage->added($media);
             }
 
             return $media;
         };
 
         // With the storage switch on, a refusal rolls the new row back (a savepoint) and drops the copy
-        // just stored; while it is off nothing is refused, so no savepoint is spent.
+        // just stored; while it is off (or for content that is never refused) no savepoint is spent.
         try {
-            $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
+            $media = $mayRefuse && MediaStorage::enforcing() ? DB::transaction($create) : $create();
         } catch (MediaRejectedException $e) {
             if ($e->reason === 'storage_full') {
                 Storage::disk(MediaKey::disk())->delete($key);

@@ -24,11 +24,12 @@ use Throwable;
  *
  * - First a recount WITHOUT locks, in chunks of --chunk rows, compared with the stored totals, so
  *   the uploads running meanwhile never wait for it.
- * - Only a website whose totals look drifted is then corrected, in a transaction of its own: its
- *   counter rows are locked (SiteCounters::lock(), the lock every counted change takes on its last
- *   write), recounted and written. A change that counted itself before the lock is in the recount;
- *   one waiting on the lock adds its delta to the corrected number once it goes on. Never lost, and
- *   only totals that differ are written, so a second run reports 0.
+ * - Only a website whose totals look drifted is then corrected, in a transaction of its own and
+ *   still without holding its counter rows: one statement reads the true totals and the stored ones
+ *   from one snapshot (SiteCounters::drift()), and the difference is added (one upsert, like any
+ *   counted change). A change committed before that statement is in both figures, one committed
+ *   after it adds itself on top of the correction: never lost, and an upload is never kept waiting
+ *   by the recount. Only totals that differ are written, so a second run reports 0.
  * - A website that fails is logged (Log::error) and skipped; the others are still reconciled, and
  *   the command then exits non-zero so the scheduler's failure hooks see it.
  */
@@ -55,7 +56,7 @@ final class ReconcileCounters extends Command
                 foreach ($reconcilers as $reconciler) {
                     $looks = $tenancy->enter($siteId, fn (): bool => $this->drifted($reconciler, $chunk));
                     if ($looks) {
-                        $corrected += $tenancy->enter($siteId, fn (): int => $this->correct($reconciler, $siteId, $chunk));
+                        $corrected += $tenancy->enter($siteId, fn (): int => $this->correct($reconciler, $siteId));
                     }
                 }
             } catch (Throwable $e) {
@@ -89,18 +90,15 @@ final class ReconcileCounters extends Command
         return false;
     }
 
-    /** Lock the current website's totals, recount them and write the ones that still differ, logging each. */
-    private function correct(CounterReconciler $reconciler, int $siteId, int $chunk): int
+    /** Recount the current website's totals against the stored ones in one snapshot and add each difference, logging it. */
+    private function correct(CounterReconciler $reconciler, int $siteId): int
     {
         $counters = app(SiteCounters::class);
-        $stored = $counters->lock($reconciler->metrics());
-        $actual = $reconciler->count($chunk);
         $fixed = 0;
-        foreach ($stored as $metric => $value) {
-            $true = $actual[$metric] ?? 0;
-            if ($true !== $value) {
-                Log::warning('Site counter drifted', ['site_id' => $siteId, 'metric' => $metric, 'from' => $value, 'to' => $true]);
-                $counters->set($metric, $true);
+        foreach ($counters->drift($reconciler->metrics(), $reconciler->recount()) as $metric => $seen) {
+            if ($seen['true'] !== $seen['stored']) {
+                Log::warning('Site counter drifted', ['site_id' => $siteId, 'metric' => $metric, 'from' => $seen['stored'], 'to' => $seen['true']]);
+                $counters->add($metric, $seen['true'] - $seen['stored']);
                 $fixed++;
             }
         }

@@ -2,6 +2,8 @@
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaStorage;
+use App\Modules\Shared\Contracts\CounterReconciler;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Services\SiteCounters;
 use Illuminate\Console\Scheduling\Schedule;
@@ -67,6 +69,40 @@ it('leaves totals that already match untouched', function (): void {
 
     Log::shouldNotHaveReceived('warning');
     expect(rcTotals(1))->toBe([MediaStorage::BYTES => 400, MediaStorage::TRASH => 0]);
+});
+
+it('reports a website whose recount fails and still reconciles the others', function (): void {
+    rcFile(1, 'a', 10);
+    rcFile(2, 'z', 77);
+    // a second counter group that breaks on site 1 only
+    app()->instance('test.breaking-reconciler', new class implements CounterReconciler
+    {
+        public function metrics(): array
+        {
+            return ['test.things'];
+        }
+
+        public function count(int $chunk): array
+        {
+            if (app(CurrentSite::class)->id() === 1) {
+                throw new RuntimeException('recount broke');
+            }
+
+            return ['test.things' => 0];
+        }
+
+        public function recount(): array
+        {
+            return ['SELECT 0 AS m0', []];
+        }
+    });
+    app()->tag(['test.breaking-reconciler'], CounterReconciler::TAG);
+
+    Log::spy();
+    $this->artisan('counters:reconcile')->expectsOutputToContain('Failed on 1 site(s)')->assertFailed();
+
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => $context['site_id'] === 1)->once();
+    expect(rcTotals(2))->toBe([MediaStorage::BYTES => 77, MediaStorage::TRASH => 0]);
 });
 
 it('runs the recount every night', function (): void {
