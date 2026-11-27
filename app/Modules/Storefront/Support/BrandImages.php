@@ -27,7 +27,7 @@ use App\Modules\Tenancy\Context\CurrentSite;
 final readonly class BrandImages
 {
     /** Slot → the width its address asks for (null = the master file). */
-    private const array WIDTHS = ['logo' => null, 'logo_dark' => null, 'favicon' => 64, 'og_image' => 1280];
+    public const array WIDTHS = ['logo' => null, 'logo_dark' => null, 'favicon' => 64, 'og_image' => 1280];
 
     public function __construct(
         private MediaUrlResolver $urls,

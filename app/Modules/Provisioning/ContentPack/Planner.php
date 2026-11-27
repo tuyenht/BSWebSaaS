@@ -80,7 +80,7 @@ final class Planner
     /** The brand setting, and the images in it that the site profile now holds (as the settings screen's SetBrandImages moves them). */
     public const string BRAND_ITEM = 'setting:general.brand';
 
-    public const array BRAND_IMAGES = ['logo', 'favicon', 'og_image'];
+    public const array BRAND_IMAGES = ['logo', 'logo_dark', 'favicon', 'og_image'];
 
     private string $locale = '';
 
@@ -548,7 +548,7 @@ final class Planner
         $skip = null;
         if ($draftPending) {
             $skip = [PlanItem::SKIP_DRAFT, 'a staff draft is waiting; overwriting would make it stale'];
-        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current, $ledger), true)) {
+        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current, $ledger, $desired), true)) {
             $skip = [PlanItem::SKIP_EDITED, 'edited by staff since the last load'];
         } elseif ($ledger === null && $evidence !== null) {
             $skip = [PlanItem::SKIP_EDITED, $evidence];
@@ -577,13 +577,42 @@ final class Planner
      * parents were managed), or one whose recorded parent is still the live one: a page staff moved
      * since the last load is never taken for the loader's own write.
      *
+     * Each also with every download button whose file left the library for good (a `media` ulid no
+     * row holds, so filesByKey could not give its key back) read as the button the plan writes at
+     * the same place: the file is gone, so the button is no member's edit, and the item is planned
+     * as an update that writes the pack's button again, never as skipped.
+     *
      * @param  array<string, mixed>  $current
      * @param  array{hash: string, ref: string, parent?: string|null, created?: bool}  $ledger
+     * @param  array<string, mixed>|null  $desired
      * @return list<string>
      */
-    private static function ledgerHashes(array $current, array $ledger): array
+    private static function ledgerHashes(array $current, array $ledger, ?array $desired = null): array
     {
         $optional = [[], ['published_at' => true], ['featured' => true], ['published_at' => true, 'featured' => true]];
+        $readings = [$current];
+        if ($desired !== null) {
+            $asPlanned = self::goneFilesAsPlanned($current, $desired);
+            if ($asPlanned !== $current) {
+                $readings[] = Cast::arr($asPlanned);
+            }
+        }
+        $states = [];
+        foreach ($readings as $reading) {
+            array_push($states, ...self::ledgerStates($reading, $ledger, $optional));
+        }
+
+        return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array{hash: string, ref: string, parent?: string|null, created?: bool}  $ledger
+     * @param  list<array<string, true>>  $optional
+     * @return list<array<string, mixed>>
+     */
+    private static function ledgerStates(array $current, array $ledger, array $optional): array
+    {
         $states = array_map(fn (array $drop): array => array_diff_key($current, $drop), $optional);
         if (! array_key_exists('parent', $ledger) || (array_key_exists('parent', $current) && $ledger['parent'] === $current['parent'])) {
             foreach ($optional as $drop) {
@@ -591,7 +620,34 @@ final class Planner
             }
         }
 
-        return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
+        return $states;
+    }
+
+    /**
+     * $current with every download button that still names its file by a ulid (filesByKey found no
+     * row for it: the file was purged) given the file the plan writes at the same place, when the
+     * plan writes a download button there; anything else as it is.
+     */
+    private static function goneFilesAsPlanned(mixed $current, mixed $desired): mixed
+    {
+        if (! is_array($current)) {
+            return $current;
+        }
+        if (($current['k'] ?? null) === 'file') {
+            $planned = is_array($desired) && ($desired['k'] ?? null) === 'file' && is_string($desired['file'] ?? null) ? $desired['file'] : null;
+            if ($planned === null || ! isset(ButtonLink::fileRef($current)['media'])) {
+                return $current;
+            }
+            unset($current['media']);
+            $current['file'] = $planned;
+
+            return $current;
+        }
+        foreach ($current as $key => $child) {
+            $current[$key] = self::goneFilesAsPlanned($child, is_array($desired) ? ($desired[$key] ?? null) : null);
+        }
+
+        return $current;
     }
 
     /** @param list<string> $claims */
@@ -2422,7 +2478,7 @@ final class Planner
     }
 
     /**
-     * The brand images (logo, favicon, share image) a brand item owns: every one for an item that
+     * The brand images (logo, logo on a dark background, favicon, share image) a brand item owns: every one for an item that
      * owns the whole value, only its managed ones otherwise. The item decides each of them: one its
      * value leaves out or states null ends with no image (Applier::brandImages clears the picture).
      *
@@ -2435,7 +2491,7 @@ final class Planner
     }
 
     /**
-     * The brand setting with each image the pack item owns (logo, favicon, share image) that the
+     * The brand setting with each image the pack item owns (BRAND_IMAGES) that the
      * setting no longer holds read from the site profile's picture, in the address form the plan
      * writes: the loader (and the settings screen) store a brand image as the profile's picture and
      * take its address out of the setting, so a brand image moved to the profile hashes as it did,

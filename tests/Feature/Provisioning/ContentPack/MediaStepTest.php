@@ -539,6 +539,30 @@ it('plans a download button stored by its row as unchanged on the next run, and 
     expect(ContentPacks::verdict($edited, 'page:/gioi-thieu'))->toBe('skip:edited');
 });
 
+it('writes the download button again when its document left the library for good, never reading it as a member\'s edit', function (): void {
+    profileButton($this->folder);
+    mediaLoad();
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $old = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+
+    // the document is purged from the library (no row holds its ulid any more), then uploaded again
+    DB::connection('pgsql_admin')->table('media')->where('id', $old->id)->delete();
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output);
+    $new = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    expect($new->ulid)->not->toBe($old->ulid);
+
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'page:/gioi-thieu'))->toBe('update', $plan);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'media' => $new->ulid]]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'page:/gioi-thieu'))->toBe('unchanged');
+});
+
 it('reads every file a load writes in one locked query, whatever the number of items naming them', function (): void {
     profileButton($this->folder);
     ContentPacks::in($this->siteId, fn () => StorefrontCards::media('product-a'));
