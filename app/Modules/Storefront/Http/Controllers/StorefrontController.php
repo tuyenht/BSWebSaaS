@@ -19,6 +19,7 @@ use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Cms\Support\EntryShareImage;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Support\ReusableBlockExpander;
@@ -328,7 +329,9 @@ final readonly class StorefrontController
         // An old cover value may also be a glyph name (no picture: the brand image stands in) or an
         // outside web address (kept as it is, like the cover the post itself draws); an address of
         // any other scheme names no share image.
-        $metaImageKey = EntryCover::value($entry);
+        // The share picture the editor picked for this language comes first (EntryShareImage), then the cover.
+        $shareKey = EntryShareImage::key($content->translation);
+        $metaImageKey = $shareKey !== null && str_contains($shareKey, '/') ? $shareKey : EntryCover::value($entry);
         if (preg_match('~^https?://~i', $metaImageKey) === 1) {
             $extra['ogImage'] = $metaImageKey;
         } elseif (str_contains($metaImageKey, '/') && ! str_contains($metaImageKey, '://')) {
