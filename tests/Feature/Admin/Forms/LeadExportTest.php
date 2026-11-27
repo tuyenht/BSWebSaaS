@@ -260,7 +260,11 @@ it('escapes every cell a spreadsheet would run as a formula', function (): void 
         ->and(LeadCsvExport::cell("\tcmd"))->toBe("'\tcmd")
         ->and(LeadCsvExport::cell("\rx"))->toBe("'\rx")
         ->and(LeadCsvExport::cell('Bình thường = 1'))->toBe('Bình thường = 1')
-        ->and(LeadCsvExport::cell(''))->toBe('');
+        ->and(LeadCsvExport::cell(''))->toBe('')
+        // a plain negative number is a number, not a formula
+        ->and(LeadCsvExport::cell('-5'))->toBe('-5')
+        ->and(LeadCsvExport::cell('-12.5'))->toBe('-12.5')
+        ->and(LeadCsvExport::cell('-5+1'))->toBe("'-5+1");
 });
 
 it('keeps the leading zero of a phone number by writing it as a text formula, and only that', function (): void {

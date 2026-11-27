@@ -32,6 +32,7 @@ use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
+use App\Modules\Admin\Livewire\EmailRecentMail;
 use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
@@ -179,6 +180,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.otp-challenge', EmailOtpChallenge::class);
         Livewire::component('admin.account', Account::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
+        Livewire::component('admin.email-recent-mail', EmailRecentMail::class);
         Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
         Livewire::component('admin.admin-ui-settings', AdminUiSettings::class);

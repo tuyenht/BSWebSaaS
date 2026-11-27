@@ -54,7 +54,7 @@ final class FormEditor extends Component
     use GatesFormScreens;
 
     /** The kinds of field a member can add, in the board's order, with their icons. */
-    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'select' => 'ri-list-check', 'checkbox' => 'ri-checkbox', FormFieldTypes::FILE => 'ri-attachment-2'];
+    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'number' => 'ri-hashtag', 'date' => 'ri-calendar', 'select' => 'ri-list-check', 'radio' => 'ri-radio-button', 'checkboxes' => 'ri-checkbox-multiple', 'checkbox' => 'ri-checkbox', FormFieldTypes::FILE => 'ri-attachment-2'];
 
     #[Locked]
     public ?string $ulid = null;

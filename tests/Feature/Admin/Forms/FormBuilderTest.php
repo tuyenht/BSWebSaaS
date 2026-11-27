@@ -269,6 +269,66 @@ it('saves renamed, reordered, removed and new fields in place and keeps the cons
     });
 });
 
+it('adds a number, a day, one choice and several choices, and keeps each with its choices', function (): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->assertSeeHtml("addField('number')")->assertSeeHtml("addField('date')")
+            ->assertSeeHtml("addField('radio')")->assertSeeHtml("addField('checkboxes')")
+            ->assertSee(__('form_builder.fields_hint_rest', ['n' => 11]));
+        $keys = [];
+        foreach (['number' => 'Số lượng', 'date' => 'Ngày hẹn', 'radio' => 'Khung giờ', 'checkboxes' => 'Dịch vụ'] as $type => $label) {
+            $page->call('addField', $type);
+            $i = count($page->get('fields')) - 1;
+            $keys[$type] = $page->get("fields.{$i}.key");
+            $page->set("fields.{$i}.label", $label);
+            if ($type === 'radio' || $type === 'checkboxes') {
+                $page->assertSeeHtml('id="bm-o-'.$keys[$type].'"')->set("fields.{$i}.choices", "Buổi sáng\nBuổi chiều");
+            }
+        }
+        $page->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $fields = FormField::query()->where('form_id', $form->id)->get()->keyBy('key');
+        expect(fieldKeys($form))->toBe(['name', 'email', ...array_values($keys), 'consent'])
+            ->and($fields[$keys['number']]->type)->toBe('number')
+            ->and($fields[$keys['date']]->type)->toBe('date')
+            ->and($fields[$keys['radio']]->type)->toBe('radio')
+            ->and(array_column($fields[$keys['radio']]->options['choices'], 'value'))->toBe(['buoi-sang', 'buoi-chieu'])
+            ->and($fields[$keys['checkboxes']]->type)->toBe('checkboxes')
+            ->and(array_column($fields[$keys['checkboxes']]->options['choices'], 'value'))->toBe(['buoi-sang', 'buoi-chieu']);
+    });
+});
+
+it('asks for the choices of «Chọn một» and «Chọn nhiều» before saving', function (string $type): void {
+    $manager = builderManager();
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form, $type): void {
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])->call('addField', $type);
+        $page->set('fields.2.label', 'Khung giờ')->call('save')->assertSee(__('form_builder.choices_error'));
+
+        expect(fieldKeys($form))->toBe(['name', 'email', 'consent']);
+    });
+})->with(['radio', 'checkboxes']);
+
+it('saves every type the editor offers and still refuses a type it does not know', function (): void {
+    $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
+    $save = fn (string $type, string $choices = '') => app(Tenancy::class)->enter(1, fn () => app(SaveForm::class)->handle($form->fresh(), [
+        'name' => 'Báo giá', 'success' => '', 'active' => true, 'emails' => [],
+        'fields' => [['key' => 'name', 'type' => 'text', 'label' => 'Họ tên', 'required' => true, 'choices' => ''],
+            ['key' => 'answer', 'type' => $type, 'label' => 'Câu hỏi', 'required' => false, 'choices' => $choices]],
+    ], 'vi'));
+
+    foreach (['number' => '', 'date' => '', 'radio' => "A\nB", 'checkboxes' => "A\nB"] as $type => $choices) {
+        $save($type, $choices);
+        expect(app(Tenancy::class)->enter(1, fn () => FormField::query()->where('form_id', $form->id)->where('key', 'answer')->value('type')))->toBe($type);
+    }
+
+    expect(fn () => $save('color'))->toThrow(InvalidArgumentException::class);
+});
+
 it('puts a removed field back with undo', function (): void {
     $manager = builderManager();
     $form = seedBuilderForm(1, 'bao-gia', 'Yêu cầu báo giá');
@@ -355,7 +415,7 @@ it('refuses a field key, a field kind or the recipients set straight from the pa
     });
 })->with([
     'key' => ['fields.0.key', 'consent'],
-    'kind' => ['fields.0.type', 'number'],
+    'kind' => ['fields.0.type', 'color'],
     'a kind of file the platform has not' => ['fields.0.accept', 'exe'],
     'too many files' => ['fields.0.max_files', 9],
     'all fields' => ['fields', []],
@@ -521,7 +581,7 @@ it('offers no file type while the platform takes no kind of file', function (): 
 
     app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
         $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
-            ->assertSee(__('form_builder.fields_hint_rest', ['n' => 6]))
+            ->assertSee(__('form_builder.fields_hint_rest', ['n' => 10]))
             ->call('addField', 'file');
         expect(array_column($page->get('fields'), 'type'))->not->toContain('file');
         $page->set('fields.0.type', 'file')->assertForbidden();
