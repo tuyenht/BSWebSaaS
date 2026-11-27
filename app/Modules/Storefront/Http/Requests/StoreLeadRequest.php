@@ -204,6 +204,8 @@ final class StoreLeadRequest extends FormRequest
         foreach ($this->collectableFields() as $field) {
             if (FormFieldTypes::isChoice($field->type)) {
                 $messages[$field->key.'.required'] = __('forms.err_choice_required');
+                // a list sent for one choice is a choice to make again, not text to type again
+                $messages[$field->key.'.string'] = __('forms.err_choice_invalid');
             }
             if ($field->type === FormFieldTypes::FILE) {
                 $messages[$field->key.'.required'] = __('forms.err_file_required');

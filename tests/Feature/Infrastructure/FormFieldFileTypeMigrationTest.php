@@ -39,12 +39,12 @@ function fileTypeForm(string $key, array $types): void
     }
 }
 
-it('lets a form field be a file field, and still no other new type', function (): void {
+it('lets a form field be a file field, and still no unknown type', function (): void {
     fileTypeForm('bao-gia', ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', 'file']);
 
     expect(fieldTypeCheck())->toContain("'file'")->toContain("'checkbox'")
         ->and(DB::connection('pgsql_admin')->table('form_fields')->where('type', 'file')->count())->toBe(1)
-        ->and(fn () => fileTypeForm('khac', ['number']))->toThrow(QueryException::class, 'form_fields_type_check');
+        ->and(fn () => fileTypeForm('khac', ['color']))->toThrow(QueryException::class, 'form_fields_type_check');
 });
 
 it('refuses to go down while a form has a file field, and changes nothing', function (): void {
@@ -80,8 +80,10 @@ it('drops the type on the way down and lists it again on the way up, each twice'
         DB::transaction(fn () => $migration->up());
         DB::transaction(fn () => $migration->up());
     } finally {
-        // whatever failed above, the type is listed again
+        // whatever failed above, the type is listed again, and so are the types a later migration adds
         DB::transaction(fn () => $migration->up());
+        $later = require database_path('migrations/2101_01_01_000000_widen_form_fields_type_check.php');
+        DB::transaction(fn () => $later->up());
         DB::setDefaultConnection($original);
     }
 

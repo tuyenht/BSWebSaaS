@@ -28,25 +28,23 @@ use Illuminate\Validation\Rule;
  * form_submission_files (SubmitForm → StoreLeadFile), and the rules here only ask that what was
  * sent under its name is files.
  *
- * form_fields.type's CHECK allows STORED_TYPES today. number, date, radio and checkboxes already
- * validate here so widening that CHECK is the only schema step they need; until then no form can
- * hold one.
+ * form_fields.type's CHECK lists exactly TYPES (migration 2101_01_01_000000).
  */
 final class FormFieldTypes
 {
-    /** @var list<string> */
-    public const array STORED_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', self::FILE];
+    /** @var list<string> Every field type, in the order «Biểu mẫu» offers them. */
+    public const array TYPES = ['text', 'email', 'tel', 'textarea', 'number', 'date', 'select', 'radio', 'checkboxes', 'checkbox', self::FILE];
 
-    /** @var list<string> */
-    public const array TYPES = [...self::STORED_TYPES, 'number', 'date', 'radio', 'checkboxes'];
+    /** @var list<string> Types a form may hold (the column's CHECK). */
+    public const array STORED_TYPES = self::TYPES;
 
     /**
-     * Types the storefront form block can draw today. Any other type is neither shown nor collected,
+     * Types the storefront form block can draw. Any other type is neither shown nor collected,
      * so a visitor is never asked for an answer they cannot give.
      *
      * @var list<string>
      */
-    public const array DRAWN_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', self::FILE];
+    public const array DRAWN_TYPES = self::TYPES;
 
     /** The attachment type: its files are rows of their own, never part of the lead's data. */
     public const string FILE = 'file';

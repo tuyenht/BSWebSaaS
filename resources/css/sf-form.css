@@ -259,7 +259,19 @@
     display: none;
 }
 
-.lead-form__field > label:not(.lead-form__check) {
+/* «Chọn một» / «Chọn nhiều»: a group without the browser's frame; its legend reads like a field label. */
+.lead-form__field--choices {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.lead-form__field--choices > legend {
+    padding: 0;
+}
+
+.lead-form__field > label:not(.lead-form__check),
+.lead-form__field > legend {
     display: block;
     margin-bottom: 0.25rem;
     color: var(--sch-body, var(--color-text));
