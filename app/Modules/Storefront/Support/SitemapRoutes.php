@@ -77,8 +77,8 @@ final readonly class SitemapRoutes
      *
      * @param  array{0: string, 1: int}|null  $from
      * @param  array{0: string, 1: int}|null  $to
-     *                                             image is the page's main picture, read in the same query: a post or page's cover (the
-     *                                             image_url its og:image uses: a stored key, or a full link kept as it is) or a product's first
+     *                                             image is the page's main picture, read in the same query: a post or page's share picture for that language, else its cover (the
+     *                                             value its og:image uses: a stored key, or a full link kept as it is) or a product's first
      *                                             photo (the storage key of its first gallery media, trashed ones left out); null when none.
      * @return list<array{path: string, locale: string, lastmod: string|null, image: string|null}>
      */
@@ -102,7 +102,10 @@ final readonly class SitemapRoutes
                     where t.site_id = routes.site_id and t.product_id = routes.product_id and t.locale = routes.locale)
             ) end as updated_at')
             ->selectRaw('case when routes.entry_id is not null then
-                (select '.EntryCover::valueSql('e').' from entries e where e.site_id = routes.site_id and e.id = routes.entry_id)
+                coalesce(
+                    (select m.storage_key from entry_translations t join media m on m.site_id = t.site_id and m.id = t.og_image_id and m.deleted_at is null
+                        where t.site_id = routes.site_id and t.entry_id = routes.entry_id and t.locale = routes.locale and m.storage_key like \'%/%\'),
+                    (select '.EntryCover::valueSql('e').' from entries e where e.site_id = routes.site_id and e.id = routes.entry_id))
                 when routes.product_id is not null then
                 (select m.storage_key from product_images pi join media m on m.site_id = pi.site_id and m.id = pi.media_id
                     where pi.site_id = routes.site_id and pi.product_id = routes.product_id and m.deleted_at is null

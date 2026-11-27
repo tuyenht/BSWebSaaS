@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Cms\Support\EntryShareImage;
 use Closure;
 
 /**
@@ -117,7 +118,9 @@ final class RouteResolver
             ->where('status', 'published')
             // the cover's file named by id rides this read (og:image, the post's cover: EntryCover)
             ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
-            ->with('translations')
+            ->with(['translations' => static fn ($translations) => $translations->select('entry_translations.*')
+                // the share picture the editor picked per language rides this read (og:image: EntryShareImage)
+                ->addSelect([EntryShareImage::KEY => EntryShareImage::keySubquery()])])
             ->first();
 
         if ($entry === null || $this->expired($entry)) {
