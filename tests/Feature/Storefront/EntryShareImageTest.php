@@ -68,7 +68,7 @@ it('uses the share image picked for the language as og:image, in the article dat
     expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->toContain('anh-chon-rieng');
 });
 
-it('moves the sitemap lastmod when only the share image changes', function (): void {
+it('leaves the sitemap lastmod alone when only the share image changes', function (): void {
     ['site' => $site, 'post' => $post] = shareSite();
     app(Tenancy::class)->enter($site, function () use ($post): void {
         DB::table('entry_translations')->where('entry_id', $post)->update(['content_changed_at' => '2026-01-02 03:04:05+00', 'updated_at' => '2026-01-02 03:04:05+00']);
@@ -81,7 +81,7 @@ it('moves the sitemap lastmod when only the share image changes', function (): v
     $picked = app(Tenancy::class)->enter($site, fn (): Media => StorefrontCards::media('anh-chon-rieng', 1600, 900));
     app(Tenancy::class)->enter($site, fn () => EntryTranslation::query()->where('entry_id', $post)->firstOrFail()->update(['og_image_id' => $picked->id]));
 
-    expect($lastmod()->greaterThan(CarbonImmutable::parse('2026-01-03', 'UTC')))->toBeTrue();
+    expect($lastmod()->toDateString())->toBe('2026-01-02');
 });
 
 it('falls back to the cover without a picked share image', function (): void {
@@ -103,14 +103,19 @@ it('ignores a picked share image of another website', function (): void {
     $foreign = app(Tenancy::class)->enter($other, fn (): Media => StorefrontCards::media('anh-nguoi-khac', 1600, 900));
 
     // the same-site key (entry_translations_og_image_id_same_site_foreign) refuses the pairing outright
-    expect(fn () => pickShare($site, $post, $foreign->id))->toThrow(QueryException::class);
+    expect(fn () => pickShare($site, $post, $foreign->id))->toThrow(fn (QueryException $e) => expect($e->getCode())->toBe('23503'));
 
     // with the key checks off the pairing exists: the page and the sitemap must still never draw it (site_id match)
-    pickShareUnchecked($post, $foreign->id);
-    expect(DB::connection('pgsql_admin')->table('entry_translations')->where('entry_id', $post)->value('og_image_id'))->toBe($foreign->id);
+    try {
+        pickShareUnchecked($post, $foreign->id);
+        expect(DB::connection('pgsql_admin')->table('entry_translations')->where('entry_id', $post)->value('og_image_id'))->toBe($foreign->id);
 
-    expect(shareHead())->not->toContain('anh-nguoi-khac')->toMatch('/property="og:image" content="[^"]*anh-bia/');
-    expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->not->toContain('anh-nguoi-khac')->toContain('anh-bia');
+        expect(shareHead())->not->toContain('anh-nguoi-khac')->toMatch('/property="og:image" content="[^"]*anh-bia/');
+        expect((string) test()->get('http://mau.platform.test/sitemap.xml')->getContent())->not->toContain('anh-nguoi-khac')->toContain('anh-bia');
+    } finally {
+        // the planted pairing breaks the key: leave the shared database valid even when an expectation above fails
+        DB::connection('pgsql_admin')->table('entry_translations')->where('entry_id', $post)->update(['og_image_id' => null]);
+    }
 });
 
 it('matches the share image to the page by website in the lookup itself, not only by the scope and row security around it', function (): void {
@@ -124,10 +129,12 @@ it('matches the share image to the page by website in the lookup itself, not onl
         ->addSelect(['entry_translations.id', EntryShareImage::KEY => EntryShareImage::keySubquery()->withoutGlobalScopes()])
         ->firstOrFail()->getAttribute(EntryShareImage::KEY);
 
-    pickShareUnchecked($post, $foreign->id);
-    expect($read())->toBeNull();
-
-    pickShareUnchecked($post, $own->id);
+    try {
+        pickShareUnchecked($post, $foreign->id);
+        expect($read())->toBeNull();
+    } finally {
+        pickShareUnchecked($post, $own->id);
+    }
     expect($read())->toBe($own->storage_key);
 });
 

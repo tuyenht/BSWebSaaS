@@ -124,11 +124,6 @@ it('moves the mark when a field of the main content changes', function (array $c
     'the excerpt' => [['excerpt' => 'Ước tính chi phí năm sau ở']],
     'the title for Google' => [['seo_title' => 'Ấn phẩm cho Google về phố']],
     'the description for Google' => [['seo_description' => 'Ước tính mô tả cho Google ở']],
-    // a file of the site: the column's key holds it to one; the sitemap's image changes with it
-    'the share image' => [fn (): array => ['og_image_id' => app(Tenancy::class)->enter(1, fn (): int => Media::query()->create([
-        'collection' => 'library', 'slug' => 'anh-chia-se', 'hash' => hash('sha256', 'anh-chia-se'),
-        'storage_key' => 's/library/anh-chia-se-abcdef123456.png', 'mime' => 'image/png', 'size' => 1024,
-    ])->id)]],
 ]);
 
 it('leaves the mark for a save of anything else on the language', function (array $change): void {
@@ -144,6 +139,11 @@ it('leaves the mark for a save of anything else on the language', function (arra
 })->with([
     'its review status' => [['status' => 'published']],
     'its address' => [['slug' => 'an-pham-dia-chi-moi']],
+    // a file of the site (the column's key holds it to one): the share image is not drawn on the page, so it moves neither the content date nor the language-bar mark
+    'the share image the page does not draw' => [fn (): array => ['og_image_id' => app(Tenancy::class)->enter(1, fn (): int => Media::query()->create([
+        'collection' => 'library', 'slug' => 'anh-chia-se', 'hash' => hash('sha256', 'anh-chia-se'),
+        'storage_key' => 's/library/anh-chia-se-abcdef123456.png', 'mime' => 'image/png', 'size' => 1024,
+    ])->id)]],
 ]);
 
 it('leaves the mark for a save of the entry that keeps its cover', function (array $change): void {
