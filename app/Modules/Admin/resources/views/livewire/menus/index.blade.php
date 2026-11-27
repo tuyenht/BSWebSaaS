@@ -20,7 +20,7 @@
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'areaMainMenu', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
-        'iconHits', 'iconTipDone', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
+        'iconHits', 'iconTipDone', 'descTaken', 'areaTip', 'codeTip', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
         'blockDraft', 'blocksTitle', 'blocksBody',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
     // support staff signed in for a member: every change says why instead of happening (the server refuses it too)
@@ -49,6 +49,8 @@
     $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';
     $title = 'min-w-0 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]';
     $chipHide = '@max-[32.5rem]:hidden';
+    // Each area's icon as its theme declares it (MenuAreas), drawn by the area's row.
+    $areaIcons = array_values(array_unique(array_column(\App\Modules\Theme\Theming\MenuAreas::all(), 'icon')));
 @endphp
 
 <div class="@container" x-ignore wire:ignore.self data-bs-lazy="bsMenus" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
@@ -297,12 +299,17 @@
                                 <div>
                                     <div x-show="a.head" class="border-t border-border-soft px-3.5 pb-1 pt-2.5 text-caption font-bold uppercase tracking-wider text-text-muted" x-text="a.group"></div>
                                     <div class="flex flex-col gap-1.5 px-3.5 pb-2.5 pt-1">
-                                        <span class="flex items-center gap-1.5 text-caption font-semibold text-text-strong" :title="a.help">
-                                            <span class="text-text-muted"><x-bs-admin::icon name="ri-layout-top" class="size-4" /></span>
+                                        <span class="flex items-center gap-1.5 text-caption font-semibold text-text-strong" :title="a.tip">
+                                            <span class="text-text-muted">
+                                                @foreach ($areaIcons as $areaIcon)
+                                                    <template x-if="a.icon === '{{ $areaIcon }}'"><x-bs-admin::icon :name="$areaIcon" class="size-4" /></template>
+                                                @endforeach
+                                            </span>
                                             <span class="min-w-0 [overflow-wrap:anywhere]" x-text="a.label"></span>
+                                            <span x-show="a.empty" class="ml-auto shrink-0 text-text-muted" title="{{ $u('area_empty') }}"><x-bs-admin::icon name="ri-subtract" class="size-4" /><span class="sr-only">{{ $u('area_empty') }}</span></span>
                                         </span>
                                         <template x-if="devOn">
-                                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="self-start font-mono" x-on:click="copyCode(a.key)" title="{{ $u('copy_code') }}">
+                                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="self-start font-mono" x-on:click="copyCode(a.key)" x-bind:title="a.codeTip">
                                                 <span x-text="a.key"></span><x-bs-admin::icon name="ri-file-copy" class="size-3.5" />
                                             </x-bs-admin::button>
                                         </template>
@@ -343,7 +350,7 @@
                             </template>
                             <div class="flex flex-col gap-2 border-t border-border-soft px-3 pb-3 pt-2">
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-show="d.areas.some(a => a.advanced)" x-on:click="advOn = !advOn"
-                                    ><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}">{{ $u('adv_show') }}</span></x-bs-admin::button>
+                                    ><x-bs-admin::icon name="ri-arrow-up-s" class="size-4" x-show="advOn" /><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" x-show="! advOn" /><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}.replace(':n', advCount)"></span></x-bs-admin::button>
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-on:click="devOn = !devOn" title="{{ $u('dev_tip') }}">
                                     <x-bs-admin::icon name="ri-code-s-slash" class="size-4" /><span x-text="devOn ? {{ $j($u('dev_hide')) }} : {{ $j($u('dev_show')) }}"></span>
                                 </x-bs-admin::button>
