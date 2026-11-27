@@ -335,7 +335,7 @@
                                     </x-bs-admin::button>
                                 </div>
                             @endunless
-                            <div class="grid gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
+                            <div class="grid grid-cols-1 gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
                                 <div>
                                     <label for="catalog-price" class="{{ $label }} mb-1.5">{{ __('catalog.ed.price_label') }}</label>
                                     <div class="{{ $moneyBox }}">
@@ -357,7 +357,7 @@
                             </div>
                             <div x-show="more" x-cloak>
                                 <p class="{{ $label }} mb-2">{{ __('catalog.ed.sale_head') }}</p>
-                                <div class="grid gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-x-4 gap-y-3.5 @min-[32.5rem]:grid-cols-2">
                                     <div>
                                         <label for="catalog-sale" class="{{ $subLabel }}">{{ __('catalog.ed.sale_label') }}</label>
                                         <div class="{{ $moneyBox }}">
