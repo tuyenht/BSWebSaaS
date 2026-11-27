@@ -1,11 +1,14 @@
 <?php
 
 use App\Modules\Admin\Livewire\Forms\Inbox;
+use App\Modules\Admin\Support\Dashboard\DashboardReader;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -197,4 +200,33 @@ it('lists leads on a flat query budget (no N+1 across rows or forms)', function 
     // +1: the admin address limit, read once per site and then served from the shared cache.
     expect($cold)->toBeLessThanOrEqual(24)
         ->and($many)->toBe($few)->toBeLessThanOrEqual(14);
+});
+
+it('names a form by the site default language in the inbox, its toast and the dashboard when the form has no text in the reader language', function (): void {
+    $manager = User::factory()->create();
+    $form = app(Tenancy::class)->enter(1, function () use ($manager): Form {
+        grantRole($manager, 'admin', ['forms.view', 'forms.manage']);
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'en'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'quote', 'name' => ['de' => 'Anfrage', 'en' => 'Inquiry'], 'status' => 'disabled']);
+        FormSubmission::query()->create(['form_id' => $form->id, 'name' => 'Khách', 'status' => 'new', 'data' => ['name' => 'Khách']]);
+
+        return $form;
+    });
+
+    // the list: the off band and the lead's row
+    $this->actingAs($manager)->withSession(['locale' => 'vi'])->get('http://a.test/admin/forms')->assertOk()
+        ->assertSee('Inquiry')
+        ->assertDontSee('Anfrage');
+
+    app(Tenancy::class)->enter(1, function () use ($manager, $form): void {
+        app()->setLocale('vi'); // the reader's language: the form has no text in it
+        Livewire::actingAs($manager)->test(Inbox::class)
+            ->call('turnFormOn', $form->ulid)
+            ->assertSet('toastMsg', __('leads.form_on_toast', ['name' => 'Inquiry']));
+        app()->setLocale('vi');
+
+        expect(app(DashboardReader::class)->unreadLeads()['latest']['form'] ?? null)->toBe('Inquiry');
+    });
 });

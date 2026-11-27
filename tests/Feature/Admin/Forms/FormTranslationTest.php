@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Forms\FormEditor;
 use App\Modules\Admin\Support\LangBar;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
@@ -384,5 +385,167 @@ it('shows neither the language bar nor the language chips on a site with one lan
             ->assertSet('langBar', [])
             ->assertDontSee('data-lang-bar', false)
             ->assertDontSee('data-lang-chip', false);
+    });
+});
+
+it('counts the lines typed for a choice field the main language removed meanwhile', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', 'Stainless 304');
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
+
+        $english->call('save')
+            ->assertSet('toastMsg', trans_choice('form_builder.toast_saved_dropped', 1, ['n' => 1, 'lang' => LangBar::name('vi')]))
+            ->assertSet('toastTone', 'info');
+    });
+});
+
+it('counts the lines typed for a field the main language turned into a kind without choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', "Stainless 304\nCopper");
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->update(['type' => 'text']);
+
+        $english->call('save')
+            ->assertSet('toastMsg', trans_choice('form_builder.toast_saved_dropped', 2, ['n' => 2, 'lang' => LangBar::name('vi')]))
+            ->assertSet('toastTone', 'info');
+    });
+});
+
+it('keeps the dropped-lines notice until it is closed, and lets other notices hide by themselves', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        ftLanguages('en');
+        $form = ftForm();
+
+        $english = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid, 'locale' => 'en'])
+            ->set('fields.1.choices', 'Stainless 304');
+        FormField::query()->where('form_id', $form->id)->where('key', 'material')->delete();
+
+        // the info toast's own opening tag (its x-data holds the timer, or does not)
+        $html = $english->call('save')->assertSet('toastTone', 'info')->html();
+        $at = strpos($html, 'data-tone="info"');
+        expect($at)->not->toBeFalse();
+        $start = (int) strrpos(substr($html, 0, (int) $at), '<div');
+        $notice = substr($html, $start, (int) strpos($html, '>', (int) $at) - $start);
+        expect($notice)->toContain('data-tone="info"')->not->toContain('arm(');
+        // a plain saved message still hides by itself
+        $english->set('name', 'Another name')->call('save')->assertSet('toastTone', 'success')->assertSeeHtml('arm(');
+    });
+});
+
+it('keeps both choices on a main-language save that leaves them untouched when two choices show the same words', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'ja'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'steel', 'name' => ['ja' => 'Quote'], 'status' => 'active']);
+        // a has Japanese words, b only English ones: in Japanese both read «Steel»
+        $form->fields()->create(['key' => 'material', 'type' => 'select', 'label' => ['ja' => 'Material'], 'is_required' => false, 'sort_order' => 1,
+            'options' => ['choices' => [['value' => 'a', 'label' => ['ja' => 'Steel']], ['value' => 'b', 'label' => ['en' => 'Steel']]]]]);
+
+        $page = Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->assertSet('locale', 'ja')
+            ->assertSet('fields.0.choices', "Steel\nSteel");
+        expect($page->instance()->changeCount())->toBe(0);
+        // only the form's name changes; the choices box is saved as it was shown
+        $page->set('name', 'Quote request');
+        expect($page->instance()->changeCount())->toBe(1);
+        $page->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+        expect($page->instance()->changeCount())->toBe(0);
+
+        expect(Form::query()->whereKey($form->id)->value('name'))->toEqual(['ja' => 'Quote request'])
+            ->and(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'])->toEqual([
+                ['value' => 'a', 'label' => ['ja' => 'Steel']],
+                ['value' => 'b', 'label' => ['en' => 'Steel', 'ja' => 'Steel']],
+            ]);
+    });
+});
+
+it('stores a line typed twice once when no other choice shows those words', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', "Inox 304\nNhôm\nĐồng\nĐồng\nGang\nGang")
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        expect(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'])->toEqual([
+            ['value' => 'inox', 'label' => ['vi' => 'Inox 304']],
+            ['value' => 'nhom', 'label' => ['vi' => 'Nhôm']],
+            ['value' => 'dong', 'label' => ['vi' => 'Đồng']],
+            ['value' => 'gang', 'label' => ['vi' => 'Gang']],
+        ]);
+    });
+});
+
+it('refuses 51 different choices with the limit message and stores nothing', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+        $before = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options');
+        $lines = implode("\n", array_map(fn (int $n): string => 'Loại '.$n, range(1, FormDraft::MAX_CHOICES + 1)));
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', $lines)
+            ->call('save')
+            ->assertSee(__('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]));
+
+        expect(FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options'))->toEqual($before);
+    });
+});
+
+it('saves 50 different choices with one accidental repeat as 50 choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        $form = ftForm();
+        $lines = array_map(fn (int $n): string => 'Loại '.$n, range(1, FormDraft::MAX_CHOICES));
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('fields.1.choices', implode("\n", [...$lines, 'Loại 7']))
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $stored = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'];
+        expect($stored)->toHaveCount(FormDraft::MAX_CHOICES)
+            ->and(array_column(array_column($stored, 'label'), 'vi'))->toBe($lines);
+    });
+});
+
+it('keeps both of two stored choices that show the same words when the box holds the most choices', function (): void {
+    $manager = ftMember();
+
+    app(Tenancy::class)->enter(1, function () use ($manager): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'ja'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        $form = Form::query()->create(['key' => 'steel', 'name' => ['ja' => 'Quote'], 'status' => 'active']);
+        $others = array_map(fn (int $n): array => ['value' => 'v'.$n, 'label' => ['ja' => 'Type '.$n]], range(1, FormDraft::MAX_CHOICES - 2));
+        $form->fields()->create(['key' => 'material', 'type' => 'select', 'label' => ['ja' => 'Material'], 'is_required' => false, 'sort_order' => 1,
+            'options' => ['choices' => [...$others, ['value' => 'a', 'label' => ['ja' => 'Steel']], ['value' => 'b', 'label' => ['en' => 'Steel']]]]]);
+
+        Livewire::actingAs($manager)->test(FormEditor::class, ['ulid' => $form->ulid])
+            ->set('name', 'Quote request')
+            ->call('save')->assertSet('toastMsg', __('form_builder.toast_saved'));
+
+        $stored = FormField::query()->where('form_id', $form->id)->where('key', 'material')->value('options')['choices'];
+        expect($stored)->toHaveCount(FormDraft::MAX_CHOICES)
+            ->and(array_slice(array_column($stored, 'value'), -2))->toBe(['a', 'b']);
     });
 });

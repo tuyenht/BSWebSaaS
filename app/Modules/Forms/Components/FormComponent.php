@@ -4,6 +4,7 @@ namespace App\Modules\Forms\Components;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Forms\Support\LeadFileStorage;
 use App\Modules\Shared\Contracts\Component;
@@ -103,12 +104,10 @@ final class FormComponent implements Component
     }
 
     /**
-     * Pick the value for the active locale from a per-locale JSONB map (vi fallback).
+     * Pick the value for the active locale from a per-locale JSONB map (site default language fallback).
      */
     private function localized(mixed $value, string $locale): string
     {
-        $map = Cast::arr($value);
-
-        return Cast::string($map[$locale] ?? $map['vi'] ?? null);
+        return FormDraft::text($value, $locale);
     }
 }

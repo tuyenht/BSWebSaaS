@@ -4,6 +4,7 @@ namespace App\Modules\Forms\Notifications;
 
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\LeadAnswers;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\MailText;
@@ -64,12 +65,7 @@ final class NewLeadNotification extends Notification
 
     private function localizedFormName(): string
     {
-        $names = Cast::arr($this->form->name);
-
-        return Cast::string(
-            $names[app()->getLocale()] ?? $names['vi'] ?? null,
-            __('forms.lead_default_name'),
-        );
+        return FormDraft::text($this->form->name, app()->getLocale()) ?: __('forms.lead_default_name');
     }
 
     /**

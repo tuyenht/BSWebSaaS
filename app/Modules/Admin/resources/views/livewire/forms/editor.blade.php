@@ -338,5 +338,5 @@
     <x-bs-admin::save-bar :changes="$changes" :invalid="$invalid" live first-error="bm-first-error" />
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$title" save="save" discard="resetChanges" :body="$leave"
         :save-label="__('form_builder.leave_save')" :discard-label="__('form_builder.leave_discard')" />
-    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$removed !== null ? 'undoLast' : null" />
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" :sticky="$toastTone === 'info'" dismiss="closeToast" :undo="$removed !== null ? 'undoLast' : null" />
 </div>

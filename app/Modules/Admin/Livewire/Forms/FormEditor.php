@@ -528,14 +528,21 @@ final class FormEditor extends Component
             // the add button, or the message itself once the form holds the most fields
             $out['fields'] = ['msg' => __('form_builder.fields_none'), 'id' => count($this->fields) < FormDraft::MAX_FIELDS ? 'bm-add' : 'bm-add-err'];
         }
+        $stored = null; // the saved form, read once and only when a box passes the limit
         foreach ($this->fields as $f) {
             $label = trim($f['label']);
             $lines = FormDraft::lines($f['choices']);
+            $count = FormDraft::storedChoiceCount($f['choices'], $this->locale, function () use (&$stored, $f): array {
+                $stored ??= $this->ulid !== null ? Form::query()->where('ulid', $this->ulid)->with('fields')->first() : null;
+                $field = $stored?->fields->firstWhere('key', $f['key']);
+
+                return $field === null ? [] : FormFieldTypes::choices($field);
+            });
             $msg = match (true) {
                 $label === '' => ['msg' => __('form_builder.field_label_error'), 'id' => 'bm-l-'.$f['key']],
                 mb_strlen($label) > FormDraft::MAX_NAME => ['msg' => __('form_builder.too_long', ['max' => FormDraft::MAX_NAME]), 'id' => 'bm-l-'.$f['key']],
                 FormFieldTypes::isChoice($f['type']) && $lines === [] => ['msg' => __('form_builder.choices_error'), 'id' => 'bm-o-'.$f['key']],
-                FormFieldTypes::isChoice($f['type']) && (count($lines) > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
+                FormFieldTypes::isChoice($f['type']) && ($count > FormDraft::MAX_CHOICES || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) => ['msg' => __('form_builder.choices_long', ['n' => FormDraft::MAX_CHOICES, 'max' => FormDraft::MAX_NAME]), 'id' => 'bm-o-'.$f['key']],
                 default => null,
             };
             if ($msg !== null) {
@@ -564,7 +571,7 @@ final class FormEditor extends Component
                 'required' => Cast::bool($f['required']),
                 'choices' => ! FormFieldTypes::isChoice(Cast::string($f['type'])) ? '' : implode("\n", $this->translating()
                     ? FormDraft::translatedLines(Cast::string($f['choices']))
-                    : FormDraft::lines(Cast::string($f['choices']))),
+                    : FormDraft::lines(Cast::string($f['choices']), unique: false)), // repeats kept: two choices can show the same words
                 'accept' => Cast::string($f['accept']),
                 'max_files' => Cast::int($f['max_files']),
             ]), $this->fields),

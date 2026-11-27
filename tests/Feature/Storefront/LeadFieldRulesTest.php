@@ -3,7 +3,9 @@
 use App\Modules\Forms\Components\FormComponent;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Tenancy\Context\SiteLocale as SiteLanguages;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -193,4 +195,20 @@ it('looks the form and its fields up once per lead', function (): void {
     expect($queries->filter(fn (string $sql): bool => (bool) preg_match('/from "forms"/', $sql))->count())->toBe(1)
         ->and($queries->filter(fn (string $sql): bool => (bool) preg_match('/from "form_fields"/', $sql))->count())->toBe(1)
         ->and(lrLead()?->data['consent'])->toBe('Consent');
+});
+
+it('names a field in the error by the site default language when the field has no text in the visitor language', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteLocale::query()->update(['is_default' => false]);
+        SiteLocale::query()->updateOrCreate(['locale' => 'en'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLanguages::class)->forget();
+        Form::query()->create(['key' => 'quote', 'name' => ['en' => 'Quote'], 'status' => 'active'])->fields()->createMany([
+            lrField('name', 'text', true),
+            ['key' => 'company', 'type' => 'text', 'label' => ['de' => 'Firma', 'en' => 'Material'], 'is_required' => true, 'sort_order' => 99],
+        ]);
+    });
+
+    // sent from the Vietnamese page: the field has no Vietnamese text, so it is named in the default language
+    test()->post('http://a.test/forms/quote', ['name' => 'A', 'locale' => 'vi'])
+        ->assertSessionHasErrors(['company' => 'Vui lòng điền Material.']);
 });

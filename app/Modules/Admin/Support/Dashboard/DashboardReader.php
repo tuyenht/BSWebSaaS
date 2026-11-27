@@ -13,6 +13,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -108,9 +109,7 @@ final class DashboardReader
             return ['count' => 0, 'latest' => null];
         }
 
-        $names = Cast::arr(Form::query()->whereKey($first->form_id)->value('name'));
-        $locale = app()->getLocale();
-        $form = Cast::string($names[$locale] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
+        $form = FormDraft::text(Form::query()->whereKey($first->form_id)->value('name'), app()->getLocale());
         $at = $first->getAttribute('created_at');
 
         return ['count' => $rows->count(), 'latest' => [

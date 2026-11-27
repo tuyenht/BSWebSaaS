@@ -6,6 +6,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Models\FormSubmissionFile;
 use App\Modules\Forms\Notifications\NewLeadNotification;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Notifications\Support\Notify;
 use App\Modules\Shared\Contracts\MailFailureRecorder;
@@ -100,8 +101,7 @@ final readonly class SubmitForm
     {
         foreach ($form->fields as $field) {
             if ($field->type === 'checkbox' && ! empty($data[$field->key])) {
-                $labels = Cast::arr($field->label);
-                $data[$field->key] = Cast::string($labels[app()->getLocale()] ?? $labels['vi'] ?? null) ?: true;
+                $data[$field->key] = FormDraft::text($field->label, app()->getLocale()) ?: true;
             }
         }
 

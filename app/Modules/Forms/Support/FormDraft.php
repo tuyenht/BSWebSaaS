@@ -7,6 +7,7 @@ namespace App\Modules\Forms\Support;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Support\Str;
 
 /**
@@ -149,24 +150,36 @@ final class FormDraft
     /**
      * The choices of a choice field from the lines typed in $locale: a line whose text is an existing
      * choice keeps that choice (its stored value and its other languages), a new line gets a value of
-     * its own. Empty and repeated lines are dropped.
+     * its own. Empty lines are dropped, and so is a repeated line no further choice shows the words of.
      *
      * @param  list<array{value: string, label: array<string, string>}>  $existing
      * @return list<array{value: string, label: array<string, string>}>
      */
     public static function choicesFrom(string $lines, string $locale, array $existing): array
     {
+        // Two choices can show the same words (each reads another language); give the lines of those
+        // words the choices in order, so an untouched save keeps them all.
         $byText = [];
         foreach ($existing as $choice) {
-            $text = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
-            $byText[$text] ??= $choice;
+            $byText[self::text($choice['label'], $locale) ?: $choice['value']][] = $choice;
         }
 
         $out = [];
         $taken = [];
-        foreach (self::lines($lines) as $line) {
-            $choice = $byText[$line] ?? null;
-            if ($choice === null || isset($taken[$choice['value']])) {
+        $seen = [];
+        foreach (self::lines($lines, unique: false) as $line) {
+            $choice = null;
+            foreach ($byText[$line] ?? [] as $candidate) {
+                if (! isset($taken[$candidate['value']])) {
+                    $choice = $candidate;
+                    break;
+                }
+            }
+            if ($choice === null && isset($seen[$line])) {
+                continue; // typed twice, with no other choice to take it
+            }
+            $seen[$line] = true;
+            if ($choice === null) {
                 $base = Str::slug($line) ?: 'lua-chon';
                 $value = $base;
                 for ($n = 2; isset($taken[$value]) || self::valueOfOther($value, $existing, $line, $locale); $n++) {
@@ -183,16 +196,30 @@ final class FormDraft
     }
 
     /**
-     * The non-empty lines of a choices box, trimmed, each once.
+     * How many choices saving $lines in $locale would store: what choicesFrom returns, so a repeated
+     * line that no other choice shows the words of does not count. $existing (the field's stored
+     * choices) is only read when the lines alone pass the limit.
+     *
+     * @param  \Closure(): list<array{value: string, label: array<string, string>}>  $existing
+     */
+    public static function storedChoiceCount(string $lines, string $locale, \Closure $existing): int
+    {
+        $raw = count(self::lines($lines, unique: false));
+
+        return $raw > self::MAX_CHOICES ? count(self::choicesFrom($lines, $locale, $existing())) : $raw;
+    }
+
+    /**
+     * The non-empty lines of a choices box, trimmed, each once unless $unique is false.
      *
      * @return list<string>
      */
-    public static function lines(string $text): array
+    public static function lines(string $text, bool $unique = true): array
     {
         $lines = [];
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
             $line = trim($line);
-            if ($line !== '' && ! in_array($line, $lines, true)) {
+            if ($line !== '' && (! $unique || ! in_array($line, $lines, true))) {
                 $lines[] = $line;
             }
         }
@@ -207,12 +234,17 @@ final class FormDraft
             && filter_var($email, FILTER_VALIDATE_EMAIL, FILTER_FLAG_EMAIL_UNICODE) !== false;
     }
 
-    /** A per-language text in $locale, else Vietnamese, else its first language. */
-    public static function text(mixed $map, string $locale): string
+    /**
+     * A per-language text in $locale, else the site's default language, else any stored language.
+     * $default names the site's default language when the caller runs outside the site's context.
+     */
+    public static function text(mixed $map, string $locale, ?string $default = null): string
     {
         $map = Cast::arr($map);
 
-        return Cast::string($map[$locale] ?? null) ?: (Cast::string($map['vi'] ?? null) ?: Cast::string(array_values($map)[0] ?? null));
+        return Cast::string($map[$locale] ?? null)
+            ?: (Cast::string($map[$default ?? app(SiteLocale::class)->default()] ?? null)
+            ?: Cast::string(array_values(array_filter($map, fn (mixed $v): bool => is_string($v) && $v !== ''))[0] ?? null));
     }
 
     /**
@@ -224,7 +256,7 @@ final class FormDraft
     private static function valueOfOther(string $value, array $existing, string $line, string $locale): bool
     {
         foreach ($existing as $choice) {
-            if ($choice['value'] === $value && ((($choice['label'][$locale] ?? '') ?: ($choice['label']['vi'] ?? '')) !== $line)) {
+            if ($choice['value'] === $value && ((self::text($choice['label'], $locale) ?: $choice['value']) !== $line)) {
                 return true;
             }
         }

@@ -26,7 +26,7 @@ final class LeadAnswers
      * @param  array<mixed>  $data  the submission's data
      * @return list<array{key: string, label: string, value: string, ticked: bool, wide: bool}>
      */
-    public static function for(?Form $form, array $data, string $locale, bool $withEmpty = false): array
+    public static function for(?Form $form, array $data, string $locale, bool $withEmpty = false, ?string $default = null): array
     {
         $answers = [];
         $seen = [];
@@ -38,7 +38,7 @@ final class LeadAnswers
                 continue;
             }
             $seen[$field->key] = true;
-            $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty);
+            $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty, $default);
             if ($answer !== null) {
                 $answers[] = $answer;
             }
@@ -58,7 +58,7 @@ final class LeadAnswers
     }
 
     /** @return array{key: string, label: string, value: string, ticked: bool, wide: bool}|null */
-    private static function answer(FormField $field, mixed $value, string $locale, bool $withEmpty): ?array
+    private static function answer(FormField $field, mixed $value, string $locale, bool $withEmpty, ?string $default): ?array
     {
         if ($field->type === 'checkbox') {
             if ($value === null || $value === false || $value === '' || $value === '0') {
@@ -70,7 +70,7 @@ final class LeadAnswers
         }
 
         if (FormFieldTypes::isChoice($field->type)) {
-            $labels = FormFieldTypes::choiceLabels($field, $locale);
+            $labels = FormFieldTypes::choiceLabels($field, $locale, $default);
             $picked = is_array($value) ? $value : [$value];
             $value = array_map(static fn (mixed $one): string => $labels[self::plain($one)] ?? self::plain($one), $picked);
         }
@@ -82,17 +82,16 @@ final class LeadAnswers
 
         return [
             'key' => $field->key,
-            'label' => self::label($field, $locale),
+            'label' => self::label($field, $locale, $default),
             'value' => $text,
             'ticked' => false,
             'wide' => $field->type === 'textarea',
         ];
     }
 
-    private static function label(FormField $field, string $locale): string
+    private static function label(FormField $field, string $locale, ?string $default): string
     {
-        $labels = Cast::arr($field->label);
-        $label = Cast::string($labels[$locale] ?? $labels['vi'] ?? null);
+        $label = FormDraft::text($field->label, $locale, $default);
 
         return $label !== '' ? $label : $field->key;
     }
