@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Concerns;
 
 use App\Modules\Admin\Support\BlockKinds;
+use App\Modules\Admin\Support\Builder\LayoutForStorage;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Media\Models\Media;
@@ -17,7 +18,6 @@ use App\Modules\Theme\Components\StyleProps;
 use App\Modules\Theme\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 
 /**
@@ -351,30 +351,13 @@ trait EditsBlockList
 
     /**
      * The layout as stored: each formatted-text block names its library pictures by id. A picture
-     * that is not one of this site's library pictures refuses: saving would drop it.
+     * that is not one of this site's library pictures refuses: saving would drop it (LayoutForStorage).
      *
      * @return list<array{type: string, props: array<string, mixed>}>
      */
     private function layoutForStorage(): array
     {
-        $prose = app(EntryProseBody::class);
-        $blocks = $this->blocks;
-        $foreign = 0;
-        foreach ($blocks as $index => $block) {
-            $props = $block['props'] ?? null;
-            if (($block['type'] ?? null) === EntryProseBody::TYPE && is_array($props) && is_string($props['html'] ?? null)) {
-                $stored = $prose->forStorage($props['html']);
-                $props['html'] = $stored['html'];
-                $blocks[$index]['props'] = $props;
-                $foreign += $stored['foreign'];
-            }
-        }
-        if ($foreign > 0) {
-            throw ValidationException::withMessages(['blocks' => __('entries.ed.body_foreign_images', ['n' => $foreign])]);
-        }
-
-        /** @var list<array{type: string, props: array<string, mixed>}> $blocks */
-        return $blocks;
+        return app(LayoutForStorage::class)->blocks($this->blocks);
     }
 
     /**

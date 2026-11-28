@@ -11,6 +11,7 @@ use App\Modules\Admin\Console\ReconcileBlockUsage;
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Console\RekeySiteMedia;
+use App\Modules\Admin\Http\Controllers\BuilderPreviewController;
 use App\Modules\Admin\Http\Controllers\FacebookDataDeletionController;
 use App\Modules\Admin\Http\Middleware\AddServerTiming;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
@@ -80,6 +81,7 @@ use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Contracts\MailFailureRecorder;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\LayoutSlots;
@@ -140,6 +142,14 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Meta's data-deletion callback and its status page: per IP, a burst Meta never needs.
         RateLimiter::for(FacebookDataDeletionController::LIMITER, static fn (Request $request): Limit => Limit::perMinute(30)->by((string) $request->ip()));
+        // The page builder's preview frame: per member and website (the browser already batches what it
+        // sends, so normal use stays well under it).
+        RateLimiter::for(BuilderPreviewController::LIMITER, static function (Request $request): Limit {
+            $site = app(CurrentSite::class);
+
+            return Limit::perMinute(BuilderPreviewController::PER_MINUTE)
+                ->by(Cast::int($request->user()?->getAuthIdentifier()).':'.($site->hasId() ? $site->id() : 0));
+        });
 
         // The block slots setting, the footer (its branch pictures) and the floating contact (its
         // channels' icon pictures) own "in use" rows in the

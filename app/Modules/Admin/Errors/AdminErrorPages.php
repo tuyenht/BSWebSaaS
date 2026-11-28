@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Errors;
 
+use App\Modules\Admin\Http\Controllers\BuilderPreviewController;
 use App\Modules\Admin\Support\AccessRequests;
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Builder\BuilderFrameError;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -59,6 +61,14 @@ final class AdminErrorPages
 
     public function render(Throwable $e, Request $request): ?Response
     {
+        // The page builder's preview frame: its parent cannot read a frame's status, so a refusal the
+        // middleware raises (the CSRF check's 419, the limiter's 429, a body over PHP's limit) gets the
+        // frame's own small page, which says the code to the editor.
+        if (BuilderPreviewController::handles($request) && in_array($code = self::status($e), BuilderFrameError::CODES, true)) {
+            $retry = $e instanceof HttpExceptionInterface ? ($e->getHeaders()['Retry-After'] ?? null) : null;
+
+            return BuilderFrameError::response($code, $request, is_numeric($retry) ? (int) $retry : null);
+        }
         if (! self::isAdminRequest($request)
             || $e instanceof ValidationException
             || $e instanceof HttpResponseException) {
