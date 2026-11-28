@@ -128,6 +128,17 @@
   pointer-events: none;
 }
 
+/* Someone who asked their device for less motion gets a still background (sign-in pages and the
+   console front page alike). */
+@media (prefers-reduced-motion: reduce) {
+
+  .auth-bg,
+  .auth-orb-1,
+  .auth-orb-2 {
+    animation: none;
+  }
+}
+
 /* ============================================================================
    MAIN CONTENT CONTAINER
    ============================================================================ */
@@ -819,6 +830,12 @@
    Same card, title and button as the sign-in page; the colours are this file's own
    (slate-700 text, slate-800 strong text, blue-700 links and marks, blue-50 note).
    ============================================================================ */
+/* The glow shapes reach past the screen's edge on a narrow phone; clip (unlike hidden) also keeps
+   the background from becoming a scroll box of its own. */
+.intro-bg {
+  overflow: clip;
+}
+
 .intro-main {
   max-width: 560px;
 }
@@ -904,7 +921,13 @@
   font-size: 14px;
 }
 
+/* A link inside the sentence: padding above and below makes the tap area 44px tall, and the
+   matching negative margin keeps the line where it was. */
 .intro-main .auth-footer a {
+  --intro-foot-pad: calc((44px - 21px) / 2);
+  display: inline-block;
+  padding-block: var(--intro-foot-pad);
+  margin-block: calc(var(--intro-foot-pad) * -1);
   text-decoration: underline;
 }
 
