@@ -85,7 +85,7 @@
             @endif
 
             <div class="min-w-0 max-[599.98px]:rounded-md max-[599.98px]:border max-[599.98px]:border-border max-[599.98px]:bg-surface max-[599.98px]:[&_.list-g]:border-t-0">
-                <x-bs-admin::list kind="facts" data-cols="forms" :label="__('form_builder.list_label')" busy="search,tab,has,clearFilters,clearSearch,removeHas">
+                <x-bs-admin::list kind="facts" card-acts data-cols="forms" :label="__('form_builder.list_label')" busy="search,tab,has,clearFilters,clearSearch,removeHas">
                     @if ($rows !== [])
                         <x-bs-admin::list.head>
                             <x-bs-admin::list.cell head col="main">{{ __('form_builder.col_name') }}</x-bs-admin::list.cell>

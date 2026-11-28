@@ -1,6 +1,5 @@
 // The "Thông báo" page (admin::livewire.notifications; design c-thong-bao), Alpine.data
 // 'bsNotifications', started by the shared lazy loader (admin-lazy.js):
-//  - the tabs: arrow keys, Home and End move to the next tab, choose it and keep the focus on it;
 //  - a click anywhere on a row (outside its buttons) opens it like its own button; a plain click on a
 //    notice's link marks it read on the server, which then opens it; Ctrl/Cmd/Shift-click keeps the
 //    browser's own new tab or window (the notice stays unread);
@@ -46,21 +45,6 @@ export function bsNotifications() {
 
         destroy() {
             this.stopIntercept?.();
-        },
-
-        tabKey(e) {
-            const tabs = Array.from(this.$root.querySelectorAll('[role="tab"]'));
-            const i = tabs.indexOf(document.activeElement);
-            if (i < 0) {
-                return;
-            }
-            const to = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
-            if (to === undefined) {
-                return;
-            }
-            e.preventDefault();
-            tabs[to].focus();
-            tabs[to].click();
         },
 
         row(e, ulid) {

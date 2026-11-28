@@ -830,6 +830,26 @@
         display: none;
     }
 
+    /* In a tree's sub line (the categories, board 10) the language versions read by the tree's
+       width: below 900 the line is text only, the «Chưa dịch: …» note standing for the chips (a
+       summary button, more than four languages, stays) and nothing when every version exists; from
+       900 the chips alone, which name what is missing themselves. */
+    @container tree (width < 56.25rem) {
+        .tree .list-m[data-for='langs'] .list-lcg {
+            display: none;
+        }
+
+        .tree .list-m[data-for='langs']:not(:has(.list-lmiss, .list-lsw)) {
+            display: none;
+        }
+    }
+
+    @container tree (width >= 56.25rem) {
+        .tree .list-m[data-for='langs'] .list-lmiss {
+            display: none;
+        }
+    }
+
     .list-pop-h {
         font-weight: 600;
         color: var(--color-text-strong);
@@ -1522,8 +1542,51 @@
         overflow-wrap: break-word;
     }
 
+    /* The card line (.list-line): pieces joined by " · ", drawn only where a list's card shows it
+       (below 600; some lists to 768 or 900). As in the meta line, each dot hangs in the gap before
+       its piece and a dot that would open a line falls left of the line box and is clipped away, so
+       a wrapped line never starts with «·». A status pill takes no dot before it (the boards'
+       .sx-nd): no dot is ever drawn inside the pill. */
     .list-line {
+        --list-dw: 0.5em;
+        --list-dg: 0.25rem;
         display: none;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: calc(var(--list-dw) + 2 * var(--list-dg));
+        row-gap: 0;
+        margin-top: 0.125rem;
+        clip-path: inset(-100vh -100vw -100vh calc(-1 * var(--list-dg)));
+        font-size: var(--text-small);
+        line-height: 1.4;
+        color: var(--color-text-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .list-line > * {
+        position: relative;
+        min-width: 0;
+    }
+
+    .list-line > *::before {
+        content: '·';
+        display: inline-block;
+        width: var(--list-dw);
+        margin-inline: calc(-1 * (var(--list-dw) + var(--list-dg))) var(--list-dg);
+        text-align: center;
+        pointer-events: none;
+    }
+
+    .list-line > [data-s]::before {
+        content: none;
+    }
+
+    /* The status pill inside the line is as tall as the text: it is not a button. */
+    .list-line [data-s] {
+        min-height: 0;
+        padding-block: 0;
+        line-height: 1.4;
+        font-size: var(--text-caption);
     }
 
     @container list (width < 37.5rem) {
@@ -1557,27 +1620,6 @@
 
         .list-line {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0 0.25rem;
-            margin-top: 0.125rem;
-            font-size: var(--text-small);
-            line-height: 1.4;
-            color: var(--color-text-muted);
-            overflow-wrap: anywhere;
-        }
-
-        .list-line > * + *::before {
-            content: '·';
-            margin-inline-end: 0.25rem;
-        }
-
-        /* The status pill inside the line is as tall as the text: it is not a button. */
-        .list-line [data-s] {
-            min-height: 0;
-            padding-block: 0;
-            line-height: 1.4;
-            font-size: var(--text-caption);
         }
     }
 
@@ -1701,8 +1743,8 @@
     }
 
     /* data-cols="invites" (the members screen's invitations): the state is the chosen tab, so from
-       768 the status column is not drawn (the card line below 600 and the 600–767 status row keep
-       it); the sent and end times hold "dd/mm/yyyy hh:mm" on one line at every text size, the end
+       768 the status column is not drawn (below 768 the card keeps it at its top right, and its
+       line carries the times in words, board 22 .tv-icardm); the sent and end times hold "dd/mm/yyyy hh:mm" on one line at every text size, the end
        time with its "Còn N giờ" chip under it (board 22 .tv-irow). */
     @container list (width >= 48rem) {
         .list-rows[data-kind='facts'][data-cols='invites'] .list-c-st {
@@ -1729,35 +1771,83 @@
         }
     }
 
-    /* 600–767 the invitations keep the phone card: the times need their words ("gửi …", "hết hạn …"),
-       which only the meta line under the address carries (board 22 .tv-icardm up to 767). */
-    @container list (37.5rem <= width < 48rem) {
-        .list-rows[data-kind='facts'][data-cols='invites'] :is(.list-c-st, .list-c-f) {
+    /* A facts list whose card keeps its row buttons (list kind="facts" card-acts; boards 15 «Biểu mẫu»,
+       22 «Lời mời», 28 «Thư viện khối»). Below 768 a card reads: [name … status] at the top (the
+       status pill drops under the name when the two do not fit), the card line (or the facts the
+       screen shows on the card), then the row's buttons and ⋮ on a row of their own at the right.
+       The status is the pill at the top right, so a screen leaves it out of the card line. */
+    @container list (width < 48rem) {
+        .list-rows[data-kind='facts'][data-card='acts'] .list-r:not(.list-hd) {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            column-gap: 0.5rem;
+            row-gap: 0.375rem;
+            padding: 0.625rem 0.75rem;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-main {
+            order: 1;
+            flex: 1 1 min(100%, 10rem);
+        }
+
+        /* level with the name's first line: both stand in a hit-sized band */
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-st {
+            display: flex;
+            order: 2;
+            flex: 0 0 auto;
+            align-self: flex-start;
+            align-items: center;
+            min-height: var(--spacing-hit);
+            max-width: 100%;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-f {
+            display: none;
+            order: 3;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-full {
+            flex: 1 1 100%;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-act {
+            order: 4;
+            flex: 1 1 100%;
+            align-self: auto;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-act:not(:has(*)) {
             display: none;
         }
 
-        .list-rows[data-kind='facts'][data-cols='invites'] .list-line {
+        /* !important: the facts rules hide the row buttons below 768 the same way. */
+        .list-rows[data-kind='facts'][data-card='acts'] .list-c-act [data-row-btn] {
+            display: inline-flex !important;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'] .list-line {
             display: flex;
-            flex-wrap: wrap;
+        }
+
+        /* The block library (board 28): the card shows the reference code on its own line, then
+           "region · usage"; «Sửa» fills its row beside ⋮. */
+        .list-rows[data-kind='facts'][data-card='acts'][data-cols='blocks'] .list-c-f {
+            display: flex;
             align-items: center;
-            gap: 0 0.25rem;
-            margin-top: 0.125rem;
-            font-size: var(--text-small);
-            line-height: 1.4;
-            color: var(--color-text-muted);
-            overflow-wrap: anywhere;
+            flex: 0 1 auto;
         }
 
-        .list-rows[data-kind='facts'][data-cols='invites'] .list-line > * + *::before {
-            content: '·';
-            margin-inline-end: 0.25rem;
+        .list-rows[data-kind='facts'][data-card='acts'][data-cols='blocks'] .list-c-f1 {
+            flex: 1 1 100%;
         }
 
-        .list-rows[data-kind='facts'][data-cols='invites'] .list-line [data-s] {
-            min-height: 0;
-            padding-block: 0;
-            line-height: 1.4;
-            font-size: var(--text-caption);
+        .list-rows[data-kind='facts'][data-card='acts'][data-cols='blocks'] .list-c-f2::before {
+            content: none;
+        }
+
+        .list-rows[data-kind='facts'][data-card='acts'][data-cols='blocks'] .list-c-act [data-row-btn] {
+            flex: 1 1 auto;
         }
     }
 
@@ -1961,19 +2051,6 @@
 
         .list-rows[data-kind='facts'][data-cols='redirects'] .list-line {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0 0.25rem;
-            margin-top: 0.125rem;
-            font-size: var(--text-small);
-            line-height: 1.4;
-            color: var(--color-text-muted);
-            overflow-wrap: anywhere;
-        }
-
-        .list-rows[data-kind='facts'][data-cols='redirects'] .list-line > * + *::before {
-            content: '·';
-            margin-inline-end: 0.25rem;
         }
     }
 
@@ -2065,19 +2142,6 @@
 
         .list-rows[data-kind='facts'][data-cols='roles'] .list-line {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0 0.25rem;
-            margin-top: 0.125rem;
-            font-size: var(--text-small);
-            line-height: 1.4;
-            color: var(--color-text-muted);
-            overflow-wrap: anywhere;
-        }
-
-        .list-rows[data-kind='facts'][data-cols='roles'] .list-line > * + *::before {
-            content: '·';
-            margin-inline-end: 0.25rem;
         }
     }
 

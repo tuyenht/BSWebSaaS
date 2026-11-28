@@ -33,7 +33,7 @@
                 ])>
             <span class="[overflow-wrap:anywhere]">{{ $tab['label'] }}</span>
             @if (($n = $fmt($tab['count'] ?? null, $tab['cap'] ?? null)) !== null)
-                <span class="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-surface-hover px-1.5 text-caption font-semibold leading-normal text-text">{{ $n }}</span>
+                <x-bs-admin::tab-count>{{ $n }}</x-bs-admin::tab-count>
             @endif
         </button>
     @endforeach
