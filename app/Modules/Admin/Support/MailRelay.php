@@ -21,6 +21,9 @@ final class MailRelay
     /** In the board's tile order; `smtp` is «Email khác (nhập máy chủ gửi thư)». */
     public const array KEYS = ['sendgrid', 'postmark', 'ses', 'mailgun', 'brevo', 'resend', 'mailtrap', 'smtp'];
 
+    /** Public mailbox domains: such a mailbox sends only as itself, and its owner publishes its records. */
+    public const array PUBLIC_MAILBOXES = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.vn', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com'];
+
     /** Amazon SES regions that have an SMTP endpoint; a region is picked from here, never typed into a host. */
     public const array SES_REGIONS = ['us-east-1', 'us-east-2', 'us-west-2', 'eu-west-1', 'eu-central-1',
         'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1', 'ap-south-1'];

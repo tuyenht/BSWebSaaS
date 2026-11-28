@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Tests\Fixtures\FakeDns;
 
 /*
  * «Gửi thư kiểm tra tới»: a test mail goes to the one address typed in (empty = the member's own).
@@ -43,6 +44,7 @@ beforeEach(function (): void {
 
         return false; // never leaves
     });
+    FakeDns::install(); // «Kiểm tra & lưu kết nối» also checks the domain's records: no lookup leaves the test
 });
 
 afterEach(function (): void {
