@@ -179,7 +179,8 @@
                 @foreach ($trail as $row)
                     @php
                         $who = $row['actor'] ?? __('admin.wfb.actor_gone');
-                        $initial = mb_strtoupper(mb_substr((string) \Illuminate\Support\Str::of($who)->trim()->afterLast(' '), 0, 1));
+                        // the review history's disc (board 17): the last word's first letter
+                        $initial = \App\Modules\Admin\Support\DisplayName::initials($who, words: 1);
                         $when = \Carbon\CarbonImmutable::parse($row['at'])->locale(app()->getLocale())->diffForHumans();
                     @endphp
                     <li class="relative flex gap-3 pb-3.5 {{ ! $loop->last ? 'before:absolute before:bottom-0 before:left-[14px] before:top-8 before:w-px before:bg-border-soft' : '' }}" wire:key="wf-log-{{ $row['id'] }}">

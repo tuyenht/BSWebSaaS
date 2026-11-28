@@ -18,15 +18,22 @@ use Illuminate\Support\Str;
  */
 final readonly class PlatformNav
 {
-    /** Screens that draw their own trail in their header: every console settings screen. */
-    private const NO_SHELL_TRAIL = ['platform.dashboard', 'platform.settings.*'];
+    /**
+     * Screens that draw their own trail in their header: every console settings screen, and the
+     * screens on the shared screen head (customers, websites, plans, the audit log).
+     */
+    private const NO_SHELL_TRAIL = [
+        'platform.dashboard', 'platform.settings.*',
+        'platform.tenants.index', 'platform.sites.index', 'platform.plans.index', 'platform.audit.index',
+    ];
 
     /**
-     * Top-level screens whose trail steps aside below 600px and on a short landscape screen: the
-     * screens the shell board (shell-screens.js) marks `lvl1` or heads with a short main button
-     * («Thêm»), whose way back on a phone is the menu.
+     * The console's top-level screens, the ones the shell board (shell-screens.js) marks `lvl1`:
+     * customers, websites and the support sign-ins. Below 600px (and on a short landscape screen)
+     * such a screen sits 12px under the bar and its trail steps aside: the way back is the menu. The
+     * plans screen is not one: its «Thêm gói» has no short form on the board.
      */
-    private const TOP_LEVEL_SCREENS = ['platform.tenants.index', 'platform.sites.index', 'platform.support.index', 'platform.plans.index'];
+    private const TOP_LEVEL_SCREENS = ['platform.tenants.index', 'platform.sites.index', 'platform.support.index'];
 
     public function __construct(private PlatformAccess $platform) {}
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
+use App\Modules\Admin\Support\DisplayName;
 use App\Modules\Admin\Support\EmailChange;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Support\SignedInDevices;
@@ -1414,16 +1415,9 @@ final class Account extends Component
         return $out;
     }
 
-    /** The last two words' first letters ("Nguyễn Ngọc Anh" → "NA"), or the first two letters of one word. */
+    /** The avatar's letters (DisplayName::initials, board 23 as board 01): «Nguyễn Ngọc Anh» → «NA»; an empty name «?». */
     public static function initials(string $name): string
     {
-        $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        if (count($words) >= 2) {
-            $initials = mb_substr($words[count($words) - 2], 0, 1).mb_substr($words[count($words) - 1], 0, 1);
-        } else {
-            $initials = mb_substr($words[0] ?? '?', 0, 2);
-        }
-
-        return Str::upper($initials);
+        return DisplayName::initials($name) ?: '?';
     }
 }

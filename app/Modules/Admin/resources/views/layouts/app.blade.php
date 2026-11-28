@@ -95,11 +95,13 @@
             $activeGroup = $navItems->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
             // The page's trail (⌂ › entry › child) from the same menu, shown above the page. An error
             // page inside the frame has none: its board keeps only the menu and the top bar, and its
-            // heading already says where the reader is. On a top-level screen the trail gives its room
-            // to the screen below 600px (and on a short landscape screen): the way back is the menu.
+            // heading already says where the reader is. Below 600px (and on a short landscape screen) a
+            // top-level screen sits 12px under the bar and its trail gives its room to the screen: the
+            // way back is the menu.
             $shellNav = app(\App\Modules\Admin\Navigation\AdminNav::class);
             $trail = empty($errorFrame) ? $shellNav->trail($navItems, isset($title) ? (string) $title : null) : [];
-            $trailTop = $trail !== [] && $shellNav->onTopLevelScreen();
+            $topLevel = empty($errorFrame) && $shellNav->onTopLevelScreen();
+            $trailTop = $trail !== [] && $topLevel;
             // The current page's row (its group's only while that group is closed or the rail is collapsed): white
             // ink, the active fill and an inset bar on the left — told apart by shape, not only by
             // color, now that resting items are white/.85. Links also carry aria-current="page".
@@ -266,7 +268,7 @@
         </header>
 
         {{-- Page content --}}
-        <main class="flex-1 p-4 lg:p-6">
+        <main @class(['flex-1 p-4 lg:p-6', 'max-[599.98px]:pt-3 [@media(max-height:500px)]:pt-3' => $topLevel])>
             @include('admin::partials.session-guard')
             {{-- One trail per page: none on the dashboard, nor where the screen draws its own header or trail. --}}
             @if ($trail !== [])

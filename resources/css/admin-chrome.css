@@ -134,6 +134,7 @@
     --color-topbar-user: #24304d;
     --color-topbar-user-fg: #eef2fa;
     --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
+    --color-topbar-button-hover: rgb(255 255 255 / 0.08);
     --color-topbar-press: rgb(255 255 255 / 0.08);    /* a pressed icon button keeps the hover fill (board 01) */
 
     /* sidebar (dark preset under a dark scheme) — a fixed night navy, not the brand */
@@ -180,9 +181,10 @@
 :root[data-topbar='dark'] {
     --color-topbar-bg: var(--color-primary);
     --color-topbar-border: var(--color-primary);
-    --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
+    --color-topbar-fg-strong: #ffffff;                 /* the icon buttons' ink and the user name (board 01 --tb-tx) */
     --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
-    --color-topbar-hover: rgb(255 255 255 / 0.14);
+    --color-topbar-hover: rgb(255 255 255 / 0.14);     /* the menu tile and the logo under the pointer */
+    --color-topbar-button-hover: rgb(0 0 0 / 0.12);    /* an icon button under the pointer (board 01 --tb-hv) */
     --color-topbar-press: rgb(0 0 0 / 0.2);       /* pressed icon button on the brand bar (board 01) */
     --color-topbar-search: rgb(255 255 255 / 0.05);
     --color-topbar-search-fg: #ffffff;
@@ -202,9 +204,10 @@
     :root[data-topbar='auto']:not([data-bs-theme='dark'], [data-theme='dark']) { /* legacy-token-ok: AdminChromeResolver still writes this attribute */
         --color-topbar-bg: var(--color-primary);
         --color-topbar-border: var(--color-primary);
-        --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
+        --color-topbar-fg-strong: #ffffff;                 /* the icon buttons' ink and the user name (board 01 --tb-tx) */
         --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
-        --color-topbar-hover: rgb(255 255 255 / 0.14);
+        --color-topbar-hover: rgb(255 255 255 / 0.14);     /* the menu tile and the logo under the pointer */
+        --color-topbar-button-hover: rgb(0 0 0 / 0.12);    /* an icon button under the pointer (board 01 --tb-hv) */
         --color-topbar-press: rgb(0 0 0 / 0.2);       /* pressed icon button on the brand bar (board 01) */
         /* The search field and the avatar stay light on the brand bar, as the board draws them. */
         --color-topbar-search: #f3f3f9;

@@ -42,3 +42,13 @@ it('gives a one-word name its first two letters and an empty name none', functio
         ->and(DisplayName::initials('  An   Vinh  '))->toBe('AV')
         ->and(DisplayName::initials('   '))->toBe('');
 });
+
+it('gives board 05\'s list disc one letter for a one-word name and board 17\'s history disc the last word\'s letter', function (): void {
+    // the list's «Người tạo» disc: the last two words, a one-word name one letter
+    expect(DisplayName::initials('Lê Văn Bình', fillOneWord: false))->toBe('VB')
+        ->and(DisplayName::initials('Tuyền', fillOneWord: false))->toBe('T')
+        // the review history's disc: the last word's first letter, a decomposed letter kept whole
+        ->and(DisplayName::initials('Lê Văn Bình', words: 1))->toBe('B')
+        ->and(DisplayName::initials("Nguy\u{0065}\u{0302}\u{0303}n \u{0041}\u{0301}nh", words: 1))->toBe('Á')
+        ->and(DisplayName::initials('   ', words: 1))->toBe('');
+});

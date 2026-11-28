@@ -448,8 +448,8 @@
                         $title = $t?->title ?? __('entries.untitled');
                         $isSelected = in_array($entry->ulid, $selected, true);
                         $creator = $entry->author?->name;
-                        $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
-                        $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
+                        // board 05's disc: the first letters of the last two words, one letter for a one-word name
+                        $initials = ($creator ? \App\Modules\Admin\Support\DisplayName::initials($creator, fillOneWord: false) : '') ?: '—';
                         $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
                         // "Sửa hôm nay, 10:20" … "Sửa 7 ngày trước", then the day; a scheduled one "Đăng lúc 23/11/2026 · 08:00"
                         $when = $siteTime->forDisplay($isScheduled ? $entry->published_at : $entry->updated_at);
