@@ -28,6 +28,7 @@ use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Site;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\RedirectResponse;
@@ -460,7 +461,8 @@ final class EmailSettings extends Component
         $repo = $this->configRepo();
         $cfg = Cast::arr($repo->get('email'));
         if ($refused) {
-            // nothing was tested: an earlier check stands
+            // nothing was tested: an earlier check stands (reached when the day's count fills
+            // between the check before saving and this send)
             $this->relayChecked = $this->ownReady && isset($cfg['checked_at']);
 
             return;
@@ -975,19 +977,19 @@ final class EmailSettings extends Component
         $now = app(SiteTime::class)->now();
         $untilTomorrow = (int) ceil(abs($now->diffInSeconds($now->addDay()->startOfDay())));
 
-        return RateLimiter::hit($this->testDayKey(), $untilTomorrow + 3600) > self::TEST_SENDS_PER_DAY;
+        return RateLimiter::hit($this->testDayKey($now), $untilTomorrow + 3600) > self::TEST_SENDS_PER_DAY;
     }
 
     /** Whether the website's test mails of its day are used up already (reads the count, takes none). */
     private function testDayFull(): bool
     {
-        return RateLimiter::attempts($this->testDayKey()) >= self::TEST_SENDS_PER_DAY;
+        return RateLimiter::attempts($this->testDayKey(app(SiteTime::class)->now())) >= self::TEST_SENDS_PER_DAY;
     }
 
-    /** The website's count of test mails for its current day (its own time zone). */
-    private function testDayKey(): string
+    /** The website's count of test mails for the day of $now (its own time zone); the same instant names the key and its expiry. */
+    private function testDayKey(CarbonInterface $now): string
     {
-        return 'mail-test-day:'.app(CurrentSite::class)->id().':'.app(SiteTime::class)->now()->toDateString();
+        return 'mail-test-day:'.app(CurrentSite::class)->id().':'.$now->toDateString();
     }
 
     private function testDayFullMessage(): string
