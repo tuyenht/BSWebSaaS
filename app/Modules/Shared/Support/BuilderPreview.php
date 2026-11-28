@@ -22,7 +22,8 @@ final class BuilderPreview
 
     /**
      * The type of the empty mark a shared block that shows nothing leaves (never a registered block
-     * type); its `state` says why: «draft» (still a draft) or «gone» (deleted, or nothing in any language).
+     * type); its `state` says why: «draft» (still a draft), «gone» (deleted, or nothing in any language)
+     * or «hidden» (published, but none of its blocks may stand here: only slot types, or the page is full).
      */
     public const string EMPTY_TYPE = '_pb_empty';
 

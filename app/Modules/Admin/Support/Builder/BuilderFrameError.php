@@ -12,14 +12,15 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * The page the builder's preview frame gets when its preview is refused: the frame's parent cannot
  * read the status or headers of a form it sent into a frame, so every refusal of the preview route
- * (BuilderPreviewController for 404 / 413 / 422, AdminErrorPages for the 419 and 429 the middleware
- * raise) answers with the same small page carrying `<meta name="bs-pb-error">` and the preview's own
- * headers and CSP. The nonce the request sent is printed only when well formed.
+ * (BuilderPreviewController for 404 / 413 / 422, AdminErrorPages for what the route's middleware
+ * raise: 403, 404, 413, 419, 429, 503, and a fault of ours, 500) answers with the same small page
+ * carrying `<meta name="bs-pb-error">` and the preview's own headers and CSP. The nonce the request
+ * sent is printed only when well formed.
  */
 final class BuilderFrameError
 {
-    /** The refusals the frame's page exists for. */
-    public const array CODES = [404, 413, 419, 422, 429];
+    /** The refusals (and the one fault) the frame's page exists for. */
+    public const array CODES = [403, 404, 413, 419, 422, 429, 500, 503];
 
     /** The longest wait a 429 names (seconds): the limiter's window. */
     private const int RETRY_MAX = 300;

@@ -36,8 +36,9 @@ use Symfony\Component\HttpFoundation\Response;
  * 413 before anything is decoded; a nonce that is not 32 lower-case hex digits → 422 (a string the
  * client sent is never printed unchecked); blocks a save would refuse → 422. A language the site has
  * on that the entry has no translation in yet is drawn from the posted title and blocks (the editor
- * opens it as an empty form), never 404. Every refusal is BuilderFrameError's small page, so the
- * frame's script can tell the editor; the 419 and 429 the middleware raise get it from AdminErrorPages.
+ * opens it as an empty form), never 404; a title there a save would refuse → 422. Every refusal
+ * is BuilderFrameError's small page, so the frame's script can tell the editor; what the middleware
+ * raise (403, 404, 413, 419, 429, 503) and a fault of ours (500) get it from AdminErrorPages.
  *
  * At most PER_MINUTE previews a minute per member and site (LIMITER, AdminServiceProvider).
  */
@@ -83,9 +84,14 @@ final readonly class BuilderPreviewController
             return BuilderFrameError::response(422, $request);
         }
 
+        $translation = $this->translation($entry, $locale, $request->input('title'), $blocks);
+        if ($translation === null) {
+            return BuilderFrameError::response(422, $request);
+        }
+
         BuilderPreview::enable($request, $nonce);
 
-        return $this->pages->respond($request, $entry, $this->translation($entry, $locale, $request->input('title'), $blocks), $locale);
+        return $this->pages->respond($request, $entry, $translation, $locale);
     }
 
     /** Whether $request is one for this route, matched by its address (a refusal may come before routing: a body over PHP's limit). */
@@ -128,15 +134,24 @@ final readonly class BuilderPreviewController
 
     /**
      * The translation drawn: the saved one with the posted blocks, or — in a language the entry has
-     * none in yet — one made from the posted title and blocks. Neither is ever saved.
+     * none in yet — one made from the posted title and blocks, or null when a save would refuse that
+     * title (the editor's rule: one line of plain text, required, at most 200 characters). Neither is
+     * ever saved.
      *
      * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
      */
-    private function translation(Entry $entry, string $locale, mixed $title, array $blocks): EntryTranslation
+    private function translation(Entry $entry, string $locale, mixed $title, array $blocks): ?EntryTranslation
     {
         $translation = $entry->translationFor($locale);
         if ($translation === null) {
-            $title = PlainText::line(Cast::string($title));
+            if (! is_string($title)) {
+                return null;
+            }
+            // normalized first, then the rule a save checks, as the editor does (Editor::rules)
+            $title = PlainText::line($title);
+            if (Validator::make(['title' => $title], ['title' => app(EntryContentRules::class)->rules()['title']])->fails()) {
+                return null;
+            }
             $translation = new EntryTranslation([
                 'locale' => $locale,
                 'title' => $title,

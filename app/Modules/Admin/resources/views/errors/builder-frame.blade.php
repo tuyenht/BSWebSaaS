@@ -1,5 +1,5 @@
 {{--
-    The page builder's preview frame when the preview was refused (404 / 413 / 419 / 422 / 429): the
+    The page builder's preview frame when the preview was refused (BuilderFrameError::CODES): the
     editor cannot read the status of a form it sent into a frame, so this tiny page says it instead.
     It holds no words (the editor shows the message in the member's language), names the frame's nonce
     only when the one sent was well formed (BuilderPreview::nonceOf), and loads the frame's script,

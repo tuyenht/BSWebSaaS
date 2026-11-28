@@ -9,9 +9,11 @@ use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Shared\Support\BuilderPreview;
+use App\Modules\Storefront\Rendering\EntryPreviewPage;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Chrome\StorefrontCsp;
 use App\Modules\Theme\Components\BlockReference;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +26,7 @@ use Tests\Fixtures\StorefrontCards;
  * The page builder's preview frame (admin.entries.builder-preview): the real storefront page of an
  * entry drawn from the editor's UNSAVED blocks, posted as a multipart form, for a member who may EDIT
  * the entry. It writes nothing, checks the blocks as a save would, answers within the preview's own
- * headers and CSP, and every refusal (404 / 413 / 419 / 422 / 429) is the frame's small page naming
+ * headers and CSP, and every refusal (BuilderFrameError::CODES) is the frame's small page naming
  * its code (<meta name="bs-pb-error">) so the frame's script can tell the editor. Only this frame
  * marks the blocks (data-pb-i) and names the nonce (<meta name="bs-pb">): a visitor's page and the
  * plain «Xem trước» never do.
@@ -438,4 +440,158 @@ it('keeps two sites’ previews apart when one worker draws them in turn', funct
         bpRefused(bpPost($editorB, $a, [bpText('x')], host: 'b.test'), 404);
         bpFresh();
     }
+});
+
+it('leaves an empty mark in the frame for a published shared block none of whose blocks may stand in the body: only slot blocks, or the page already full', function (): void {
+    [$slotOnly, $full, $late] = app(Tenancy::class)->enter(1, function (): array {
+        $make = static function (string $key, array $blocks): string {
+            $block = ContentBlock::query()->create(['key' => $key, 'name' => 'Khối '.$key, 'region' => 'inline', 'status' => 'published']);
+            ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => $blocks]]);
+
+            return $block->ulid;
+        };
+
+        return [
+            $make('chi-dai', [['type' => 'recent_posts', 'props' => []]]),
+            $make('day', array_map(static fn (int $i): array => ['type' => 'cta', 'props' => ['heading' => 'Phần đầy '.$i]], range(1, BlockReference::PAGE_MAX))),
+            $make('sau', [['type' => 'cta', 'props' => ['heading' => 'Phần sau cùng']]]),
+        ];
+    });
+    $ref = static fn (string $ulid): array => ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $ulid]];
+    $blocks = [$ref($slotOnly), bpText('Giữa trang'), $ref($full), $ref($late)];
+    $home = app(Tenancy::class)->enter(1, fn () => StorefrontCards::page('/', 'Trang chủ', $blocks)->ulid);
+    $editor = bpMember();
+
+    $html = (string) bpPost($editor, $home, $blocks)->assertOk()->getContent();
+
+    // the page's own block counts first, so the full shared block brings all but its last one
+    expect($html)->toContain('<div data-pb-i="0" data-pb-empty="hidden"></div>')
+        ->toContain('Giữa trang')
+        ->toContain('Phần đầy '.(BlockReference::PAGE_MAX - 1))
+        ->not->toContain('Phần đầy '.BlockReference::PAGE_MAX.'<')
+        ->not->toContain('Phần sau cùng')
+        ->toContain('<div data-pb-i="3" data-pb-empty="hidden"></div>')
+        ->not->toContain('data-pb-empty="gone"');
+
+    bpFresh();
+    expect((string) $this->get('http://a.test/')->assertOk()->getContent())->not->toContain('data-pb-');
+});
+
+it('answers every refusal the route’s middleware raises with the frame’s page, not the admin’s', function (string $case, int $code): void {
+    $ulid = bpDraft();
+    $response = match ($case) {
+        // signed in, but no role on this site (tenant.member)
+        'not a member' => bpPost(User::factory()->create(), $ulid, [bpText('x')]),
+        // the site is not open (site.active)
+        'a closed site' => (function () use ($ulid): TestResponse {
+            $editor = bpMember();
+            DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['status' => 'suspended']);
+
+            return bpPost($editor, $ulid, [bpText('x')]);
+        })(),
+        // the sign-in ended (auth): the frame cannot follow the redirect to the sign-in page
+        'signed out' => test()->post("http://a.test/admin/content/{$ulid}/builder-preview", ['locale' => 'vi', 'blocks' => '[]', 'nonce' => BP_NONCE]),
+        // an unknown host (SetCurrentSite)
+        'an unknown host' => bpPost(bpMember(), $ulid, [bpText('x')], host: 'khong-co.test'),
+    };
+
+    bpRefused($response, $code);
+})->with([
+    'not a member' => ['not a member', 403],
+    'a closed site' => ['a closed site', 403],
+    'signed out' => ['signed out', 419],
+    'an unknown host' => ['an unknown host', 404],
+]);
+
+it('answers maintenance and a fault of ours inside the frame with the frame’s page', function (int $code): void {
+    config(['app.debug' => false]);
+    $ulid = bpDraft();
+    $editor = bpMember();
+    // the preview cannot even be put together: the route answers $code
+    app()->bind(EntryPreviewPage::class, static fn () => $code === 503 ? abort(503) : throw new RuntimeException('boom'));
+
+    bpRefused(bpPost($editor, $ulid, [bpText('x')]), $code);
+})->with([
+    'maintenance' => [503],
+    'a fault' => [500],
+]);
+
+it('falls back to Laravel’s own handling when the frame’s page itself cannot be drawn', function (): void {
+    $this->swap(Vite::class, new class extends Vite
+    {
+        public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+        {
+            throw new RuntimeException('no manifest');
+        }
+    });
+    $ulid = bpDraft();
+
+    // the sign-in ended: the first fault (AuthenticationException) is handled as Laravel would
+    test()->post("http://a.test/admin/content/{$ulid}/builder-preview", ['locale' => 'vi', 'blocks' => '[]', 'nonce' => BP_NONCE])
+        ->assertRedirect();
+});
+
+it('checks the posted title of a language the entry has no translation in yet as a save would', function (mixed $title, ?string $shown): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $ulid = bpDraft();
+    $editor = bpMember();
+
+    $response = bpPost($editor, $ulid, [bpText('Words not saved yet.')], ['locale' => 'en', 'title' => $title]);
+
+    if ($shown === null) {
+        bpRefused($response, 422);
+    } else {
+        expect((string) $response->assertOk()->getContent())->toContain($shown)->toContain('Words not saved yet.');
+    }
+})->with([
+    '200 characters' => [str_repeat('a', 200), str_repeat('a', 200)],
+    '201 characters' => [str_repeat('a', 201), null],
+    'empty' => ['', null],
+    'only a line break' => ["\n", null],
+    'not text' => [['About'], null],
+    'a line break inside, made one line' => ["About\nour workshop", 'About our workshop'],
+]);
+
+it('draws a post from its unsaved blocks: only the body is marked, the category’s slots drawn as the website draws them', function (): void {
+    $other = app(Tenancy::class)->enter(1, function (): string {
+        $news = StorefrontCards::category('Tin tức', 'tin-tuc');
+        $news->update(['meta' => ['layout_blocks' => [
+            'post_aside' => ['vi' => ['blocks' => [['type' => 'recent_posts', 'props' => ['heading' => 'Bài mới nhất']]]]],
+            'after_post' => ['vi' => ['blocks' => [['type' => 'cta', 'props' => ['heading' => 'Dải cuối bài']]]]],
+        ]]]);
+        StorefrontCards::post($news, 'Bài hôm trước', 'bai-hom-truoc', CarbonImmutable::parse('2026-10-01 08:00', 'UTC'));
+
+        return StorefrontCards::post($news, 'Bài đang sửa', 'bai-dang-sua', CarbonImmutable::parse('2026-10-02 08:00', 'UTC'))->ulid;
+    });
+    $editor = bpMember();
+
+    $html = (string) bpPost($editor, $other, [bpText('Thân bài chưa lưu.'), ['type' => 'cta', 'props' => ['heading' => 'Nút trong thân bài']]])->assertOk()->getContent();
+
+    expect($html)->toContain('Thân bài chưa lưu.')
+        ->toContain('Nút trong thân bài')
+        ->toContain('Dải cuối bài')
+        ->toContain('Bài hôm trước')
+        ->and(substr_count($html, 'data-pb-i="0"'))->toBe(1)
+        ->and(substr_count($html, 'data-pb-i="1"'))->toBe(1)
+        // the slots' blocks are the category's, not the editor's: never marked
+        ->and(substr_count($html, 'data-pb-i='))->toBe(2);
+
+    bpFresh();
+    expect((string) $this->get('http://a.test/tin-tuc/bai-dang-sua')->assertOk()->getContent())->not->toContain('data-pb-')->not->toContain('Thân bài chưa lưu.');
+});
+
+it('draws a post in a language it has no translation in yet from the posted title and blocks, creating none', function (): void {
+    DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $post = app(Tenancy::class)->enter(1, fn (): string => StorefrontCards::post(StorefrontCards::category('Tin tức', 'tin-tuc'), 'Bài tiếng Việt', 'bai-tieng-viet')->ulid);
+    $editor = bpMember();
+
+    $html = (string) bpPost($editor, $post, [bpText('An English post not saved yet.')], ['locale' => 'en', 'title' => 'Our workshop news'])
+        ->assertOk()->getContent();
+
+    expect($html)->toContain('An English post not saved yet.')
+        ->toContain('Our workshop news')
+        ->toContain('<html lang="en"')
+        ->toContain('data-pb-i="0"')
+        ->not->toContain('Bài tiếng Việt</h1>')
+        ->and(app(Tenancy::class)->enter(1, fn () => EntryTranslation::query()->where('locale', 'en')->count()))->toBe(0);
 });

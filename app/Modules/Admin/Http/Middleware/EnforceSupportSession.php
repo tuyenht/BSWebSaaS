@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Middleware;
 
+use App\Modules\Admin\Http\Controllers\BuilderPreviewController;
 use App\Modules\Admin\Support\SupportAccess;
 use App\Modules\Admin\Support\SupportSessions;
 use App\Modules\Admin\Support\SupportSignIn;
@@ -62,7 +63,8 @@ final readonly class EnforceSupportSession
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        abort_if($request->hasHeader('X-Livewire') || $request->expectsJson(), 403, __('admin.support.ended'));
+        // a Livewire update, a JSON caller and the page builder's preview frame cannot follow a redirect to sign in
+        abort_if($request->hasHeader('X-Livewire') || $request->expectsJson() || BuilderPreviewController::handles($request), 403, __('admin.support.ended'));
 
         return redirect()->route('admin.login')->with('status', __('admin.support.ended'));
     }

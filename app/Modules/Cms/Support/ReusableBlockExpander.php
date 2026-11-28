@@ -40,7 +40,8 @@ use Illuminate\Support\Facades\Log;
  * In the page builder's preview frame (BuilderPreview) every block of the body carries its place in
  * the editor's list (BuilderPreview::INDEX), the blocks a shared block brings carry the place of the
  * reference, and a reference that shows nothing leaves an empty mark there (BuilderPreview::EMPTY_TYPE,
- * «draft» or «gone»: one more query, only in that frame and only when such a reference is placed), so
+ * «draft» or «gone»: one more query, only in that frame and only when such a reference is placed;
+ * «hidden»: published, but none of its blocks may stand there, no query), so
  * the frame can point at every block the editor lists. A visitor's page never carries any of it.
  */
 final class ReusableBlockExpander
@@ -152,7 +153,7 @@ final class ReusableBlockExpander
      * nothing in a slot that takes no reference. An anchor the page already uses (its own blocks', or
      * one an earlier shared block brought) is left off. With $marks (the body, in the builder's preview
      * frame) every block out carries the place in $blocks it came from, and a reference that shows
-     * nothing leaves an empty mark there.
+     * nothing (a draft, gone, or none of its blocks may stand here) leaves an empty mark there.
      *
      * @param  array<array-key, mixed>  $blocks
      * @param  array<string, list<array<array-key, mixed>>|null>  $found
@@ -185,6 +186,7 @@ final class ReusableBlockExpander
 
                 continue;
             }
+            $shown = 0;
             foreach ($inner as $one) {
                 $type = $one['type'] ?? null;
                 if (! is_string($type) || $type === BlockReference::TYPE) {
@@ -214,6 +216,12 @@ final class ReusableBlockExpander
                 }
                 $out[] = $one;
                 $state['count']++;
+                $shown++;
+            }
+            // a published shared block none of whose blocks may stand here (only slot types, or the
+            // page already holds the most blocks it may) still leaves its mark in the frame
+            if ($marks && $shown === 0) {
+                $out[] = ['type' => BuilderPreview::EMPTY_TYPE, 'props' => [], BuilderPreview::INDEX => $place, 'state' => 'hidden'];
             }
         }
 

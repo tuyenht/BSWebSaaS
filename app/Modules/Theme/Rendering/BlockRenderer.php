@@ -259,7 +259,11 @@ final readonly class BlockRenderer
                 $place = $marks && $isOwn && is_int($block[BuilderPreview::INDEX] ?? null) ? $block[BuilderPreview::INDEX] : null;
                 $type = $block['type'] ?? null;
                 if ($place !== null && $type === BuilderPreview::EMPTY_TYPE) {
-                    $state = ($block['state'] ?? null) === 'draft' ? 'draft' : 'gone';
+                    $state = match ($block['state'] ?? null) {
+                        'draft' => 'draft',
+                        'hidden' => 'hidden',
+                        default => 'gone',
+                    };
                     $html .= '<div data-pb-i="'.$place.'" data-pb-empty="'.$state.'"></div>';
 
                     continue;
