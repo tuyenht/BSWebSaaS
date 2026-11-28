@@ -480,6 +480,7 @@ window.Alpine.data('bsEmailTpl', (cfg) => {
             this.guard = null;
             this.dirty = false;
             if (g) {
+                this.$wire.discarded();
                 g.goOn();
             }
         },

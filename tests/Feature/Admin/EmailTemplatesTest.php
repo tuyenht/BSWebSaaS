@@ -558,3 +558,54 @@ it('holds test mails at the per-minute cap, sending nothing', function (): void 
     Mail::assertNothingSent();
     Mail::assertNothingOutgoing();
 });
+
+describe('the list on the board', function (): void {
+    it('shows the search box only when the catalog has more templates than the limit', function (): void {
+        $admin = mailTplAdmin();
+        mailTplModules('users', 'contacts');
+
+        app(Tenancy::class)->enter(1, function () use ($admin): void {
+            Livewire::actingAs($admin)->test(EmailTemplates::class)
+                ->assertDontSee(__('admin.mt_search_aria'));
+
+            config(['admin.mail_template_search_from' => 3]);
+            Livewire::actingAs($admin)->test(EmailTemplates::class)
+                ->assertSee(__('admin.mt_search_aria'))
+                ->assertSeeHtml('placeholder="'.__('admin.mt_search').'"')
+                ->assertSee(__('admin.mt_empty_q', ['q' => '']))
+                ->assertDontSee(__('admin.mt_empty_both', ['q' => '']))
+                ->assertSeeHtml('data-hay="'.__('admin.mt_n_welcome').' '.__('admin.mt_w_welcome').'"')
+                ->call('setFilter', 'off')
+                ->assertSee(__('admin.mt_empty_both', ['q' => '']))
+                ->assertSee(__('admin.mt_clear_filter_keep_q'))
+                ->assertDontSee(__('admin.mt_empty_q', ['q' => '']));
+        });
+    });
+
+    it('shows «Đã sửa» on an edited switch row but not on a locked row, and the row block opens the editor', function (): void {
+        $admin = mailTplAdmin();
+
+        app(Tenancy::class)->enter(1, function () use ($admin): void {
+            $store = app(MailTemplateStore::class);
+            $store->put('pwchanged', 'vi', 'C', '<p>Chào</p>');
+            Livewire::actingAs($admin)->test(EmailTemplates::class)
+                ->assertDontSee(__('admin.mt_b_edited'))
+                ->assertSeeHtml('after:absolute after:inset-0');
+
+            $store->put('welcome', 'vi', 'W', '<p>Chào</p>');
+            Livewire::actingAs($admin)->test(EmailTemplates::class)
+                ->assertSee(__('admin.mt_b_edited'));
+        });
+    });
+
+    it('tells the screen that unsaved changes were discarded', function (): void {
+        $admin = mailTplAdmin();
+
+        app(Tenancy::class)->enter(1, function () use ($admin): void {
+            Livewire::actingAs($admin)->test(EmailTemplates::class)
+                ->call('discarded')
+                ->assertSet('toast', __('admin.mt_discarded'))
+                ->assertSet('toastTone', 'success');
+        });
+    });
+});

@@ -14,6 +14,8 @@
     $gbtn = 'hit-area inline-flex min-h-control cursor-pointer items-center justify-center gap-1.5 rounded border border-border-input bg-surface px-[15px] text-[calc(0.8125rem+var(--user-text-boost))] font-semibold whitespace-nowrap text-text hover:bg-surface-hover disabled:cursor-not-allowed disabled:border-border-strong disabled:bg-surface-hover disabled:text-text-muted any-pointer-coarse:min-h-hit '.$focus;
     $editBtn = 'hit-area inline-flex min-h-control min-w-[84px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border-input bg-surface px-3.5 text-[calc(0.78125rem+var(--user-text-boost))] font-semibold text-primary-text hover:bg-primary-soft any-pointer-coarse:min-h-hit '.$focus;
     $tlink = 'hit-area inline-flex shrink-0 cursor-pointer items-center gap-[5px] border-0 bg-transparent p-0 text-start text-[calc(0.75rem+var(--user-text-boost))] font-medium whitespace-nowrap text-primary-text hover:underline '.$focus;
+    // the name is the one real button of the row; its ::after stretches over the name / «when» / note block (an inner control sits above it with z-10)
+    $rowBtn = 'cursor-pointer border-0 bg-transparent p-0 text-start after:absolute after:inset-0 after:content-[\'\'] hover:underline '.$focus;
     $badge = [
         'sys' => ['text' => __('admin.mt_b_sys'), 'icon' => 'ri-shield-check', 'cls' => 'bg-surface-muted text-text-muted'],
         'lock' => ['text' => __('admin.mt_b_lock'), 'icon' => 'ri-lock', 'cls' => 'bg-warning-soft text-warning-text'],
@@ -24,9 +26,24 @@
 <div class="flex flex-col gap-3.5">
     @if ($editor === null)
         {{-- The list --}}
-        <section class="{{ $card }} overflow-hidden" aria-label="{{ __('admin.em_tab_tpl') }}">
+        <section class="{{ $card }} overflow-hidden" aria-label="{{ __('admin.em_tab_tpl') }}" x-data="{
+            q: '',
+            fold(s) { return String(s || '').normalize('NFC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim(); },
+            hit(el) { const q = this.fold(this.q); return q === '' || this.fold(el.dataset.hay).includes(q); },
+            asked() { return this.fold(this.q) !== ''; },
+            none() { return this.asked() && ! Array.from($el.querySelectorAll('[data-hay]')).some((r) => this.hit(r)); },
+            anyIn(g) { return Array.from(g.querySelectorAll('[data-hay]')).some((r) => this.hit(r)); },
+        }">
             <div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3.5">
-                <div role="group" aria-label="{{ __('admin.mt_filter_aria') }}" class="inline-flex min-w-0 max-w-full flex-wrap overflow-hidden rounded-md border border-border-strong">
+                @if ($showSearch)
+                    <label class="flex min-h-control min-w-0 flex-[1_1_260px] items-center gap-2 rounded-md border border-border-strong bg-surface px-3 focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-primary-text any-pointer-coarse:min-h-hit">
+                        <x-bs-admin::icon name="ri-search" class="{{ $sm }} text-text-muted" />
+                        <span class="sr-only">{{ __('admin.mt_search_aria') }}</span>
+                        <input type="search" x-model="q" {{-- focus-ring-ok: the search box draws the ring (focus-within) --}} placeholder="{{ __('admin.mt_search') }}" autocomplete="off"
+                               class="min-w-0 flex-1 self-stretch border-0 bg-transparent p-0 text-[calc(0.84375rem+var(--user-text-boost))] text-text outline-none placeholder:text-placeholder">
+                    </label>
+                @endif
+                <div role="group" aria-label="{{ __('admin.mt_filter_aria') }}" class="me-auto inline-flex min-w-0 max-w-full flex-wrap overflow-hidden rounded-md border border-border-strong">
                     @foreach (\App\Modules\Admin\Livewire\EmailTemplates::FILTERS as $f)
                         <button type="button" wire:key="tf-{{ $f }}" wire:click="setFilter(@js($f))" aria-pressed="{{ $filter === $f ? 'true' : 'false' }}"
                                 class="hit-area min-h-control cursor-pointer border-0 border-e border-border-strong bg-surface px-[13px] text-[calc(0.78125rem+var(--user-text-boost))] font-medium whitespace-nowrap text-text-muted last:border-e-0 hover:bg-surface-hover aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-on-primary any-pointer-coarse:min-h-hit focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text">
@@ -37,7 +54,7 @@
             </div>
 
             @if ($groups !== [])
-                <div class="grid grid-cols-[20px_minmax(0,1fr)_108px_152px] gap-3 border-t border-border bg-surface-muted px-[18px] pt-2 pb-[7px] @max-[35rem]:hidden" aria-hidden="true">
+                <div x-show="! none()" class="grid grid-cols-[20px_minmax(0,1fr)_108px_152px] gap-3 border-t border-border bg-surface-muted px-[18px] pt-2 pb-[7px] @max-[35rem]:hidden" aria-hidden="true">
                     <span></span>
                     <span class="{{ $cap }}">{{ __('admin.mt_col_tpl') }}</span>
                     <span class="{{ $cap }} text-center">{{ __('admin.mt_col_lang') }}</span>
@@ -46,19 +63,19 @@
             @endif
 
             @foreach ($groups as $g)
-                <div wire:key="tg-{{ $loop->index }}" role="group" aria-labelledby="tg-l-{{ $loop->index }}">
+                <div wire:key="tg-{{ $filter }}-{{ $loop->index }}" x-show="anyIn($el)" role="group" aria-labelledby="tg-l-{{ $loop->index }}">
                     <div id="tg-l-{{ $loop->index }}" class="{{ $cap }} px-[18px] pt-3 pb-1.5">{{ $g['label'] }}</div>
                     @foreach ($g['items'] as $t)
-                        <div wire:key="tr-{{ $t['key'] }}" class="grid grid-cols-[20px_minmax(0,1fr)_108px_152px] items-center gap-3 border-t border-border px-[18px] py-[13px] @max-[35rem]:flex @max-[35rem]:flex-wrap @max-[35rem]:py-3">
+                        <div wire:key="tr-{{ $t['key'] }}" data-hay="{{ $t['name'] }} {{ $t['when'] }}" x-show="hit($el)" class="grid grid-cols-[20px_minmax(0,1fr)_108px_152px] items-center gap-3 border-t border-border px-[18px] py-[13px] @max-[35rem]:flex @max-[35rem]:flex-wrap @max-[35rem]:py-3">
                             <x-bs-admin::icon :name="$t['icon']" @class(['size-[min(1.5rem,calc(1.1875rem+var(--user-text-boost)))] shrink-0', 'text-text-muted' => $t['on'], 'text-text-faint' => ! $t['on']]) />
-                            <div class="flex min-w-0 flex-col items-start gap-0.5 @max-[35rem]:flex-[1_1_calc(100%-31px)]">
+                            <div class="relative flex min-w-0 flex-col items-start gap-0.5 @max-[35rem]:flex-[1_1_calc(100%-31px)]">
                                 <span class="flex flex-wrap items-center gap-2">
                                     <button type="button" wire:click="open(@js($t['key']))"
-                                            @class(['hit-area cursor-pointer border-0 bg-transparent p-0 text-start text-[calc(0.875rem+var(--user-text-boost))] font-semibold hover:underline '.$focus, 'text-text-strong' => $t['on'], 'text-text-muted' => ! $t['on']])>{{ $t['name'] }}</button>
+                                            @class([$rowBtn.' text-[calc(0.875rem+var(--user-text-boost))] font-semibold', 'text-text-strong' => $t['on'], 'text-text-muted' => ! $t['on']])>{{ $t['name'] }}</button>
                                     @if ($t['edited'])
                                         <span class="inline-flex items-center gap-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold whitespace-nowrap text-primary-text"><span class="size-[7px] shrink-0 rounded-full bg-primary-text" aria-hidden="true"></span>{{ __('admin.mt_b_edited') }}</span>
                                         <span class="text-[calc(0.75rem+var(--user-text-boost))] text-text-muted" aria-hidden="true">·</span>
-                                        <button type="button" class="{{ $tlink }}" wire:click="askReset(@js($t['key']))"
+                                        <button type="button" class="{{ $tlink }} z-10" wire:click="askReset(@js($t['key']))"
                                                 title="{{ __('admin.mt_undo_tip', ['name' => $t['name']]) }}" aria-label="{{ __('admin.mt_undo_tip', ['name' => $t['name']]) }}">
                                             <x-bs-admin::icon name="ri-arrow-go-back" class="{{ $xs }}" />{{ __('admin.mt_undo') }}
                                         </button>
@@ -91,10 +108,23 @@
             @endforeach
 
             @if ($groups === [])
-                <div class="px-9 py-8 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted">
+                <div x-show="! asked()" class="px-9 py-8 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted">
                     {{ __('admin.mt_empty_filter') }}<br>
                     <button type="button" class="{{ $tlink }} mt-[9px] text-[calc(0.8125rem+var(--user-text-boost))] font-semibold" wire:click="setFilter('all')">
                         <x-bs-admin::icon name="ri-close-circle" class="{{ $xs }}" />{{ __('admin.mt_clear_filter') }}
+                    </button>
+                </div>
+            @endif
+
+            @if ($filter === 'all')
+                <div wire:key="tpl-empty-q" x-show="none()" x-cloak class="px-9 py-9 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="q" role="status">
+                    <span x-text="@js(__('admin.mt_empty_q', ['q' => ':q'])).replace(':q', () => q.trim())">{{ __('admin.mt_empty_q', ['q' => '']) }}</span>
+                </div>
+            @else
+                <div wire:key="tpl-empty-both" x-show="none()" x-cloak class="px-9 py-8 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="both" role="status">
+                    <span x-text="@js(__('admin.mt_empty_both', ['q' => ':q'])).replace(':q', () => q.trim())">{{ __('admin.mt_empty_both', ['q' => '']) }}</span><br>
+                    <button type="button" class="{{ $tlink }} mt-[9px] text-[calc(0.8125rem+var(--user-text-boost))] font-semibold" wire:click="setFilter('all')">
+                        <x-bs-admin::icon name="ri-close-circle" class="{{ $xs }}" />{{ __('admin.mt_clear_filter_keep_q') }}
                     </button>
                 </div>
             @endif
@@ -125,12 +155,9 @@
                     @php $b = $badge[$t['kind'] === \App\Modules\Admin\Support\Mail\MailTemplateCatalog::SYSTEM ? 'sys' : 'lock']; @endphp
                     <div wire:key="tl-{{ $t['key'] }}" class="flex items-center gap-2.5 border-t border-border px-[18px] py-3 @max-[35rem]:flex-wrap">
                         <x-bs-admin::icon :name="$t['icon']" class="size-[min(1.5rem,calc(1.1875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
-                        <div class="flex min-w-0 flex-1 flex-col gap-px">
+                        <div class="relative flex min-w-0 flex-1 flex-col gap-px">
                             <span class="flex flex-wrap items-center gap-2">
-                                <button type="button" wire:click="open(@js($t['key']))" class="hit-area cursor-pointer border-0 bg-transparent p-0 text-start text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong hover:underline {{ $focus }}">{{ $t['name'] }}</button>
-                                @if ($t['edited'])
-                                    <span class="inline-flex items-center gap-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold whitespace-nowrap text-primary-text"><span class="size-[7px] shrink-0 rounded-full bg-primary-text" aria-hidden="true"></span>{{ __('admin.mt_b_edited') }}</span>
-                                @endif
+                                <button type="button" wire:click="open(@js($t['key']))" class="{{ $rowBtn }} text-[calc(0.875rem+var(--user-text-boost))] font-semibold text-text-strong">{{ $t['name'] }}</button>
                             </span>
                             <span class="text-[calc(0.75rem+var(--user-text-boost))] leading-[1.45] text-text-muted">{{ $t['when'] }}</span>
                         </div>

@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // The «Mẫu thư» list shows its search box once it holds more templates than this.
+    'mail_template_search_from' => 8,
+
     // Admin chrome branding — env-sourced so a white-label / rebrand (ADR-12) is a config
     // change, not a code hunt. Consumed by the admin shell (brand mark + tagline).
     'brand' => [
