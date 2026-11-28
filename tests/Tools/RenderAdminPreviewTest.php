@@ -533,8 +533,11 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // password-changed notice the website reworded; a «Hệ thống» template, which the website only reads
     app(Tenancy::class)->enter(1, function (): void {
         app(MailTemplateStore::class)->put('pwchanged', 'vi', 'Mật khẩu tại {site_name} vừa được đổi', '<p>Chào {customer_name},</p><p>Mật khẩu của bạn vừa được đổi lúc {change_time}, từ địa chỉ {change_ip}.</p><p>Nếu không phải bạn, hãy gọi {hotline} hoặc viết tới {contact_email} ngay.</p>');
+        app(MailTemplateStore::class)->put('welcome', 'vi', 'Chào mừng đến {site_name}', '<p>Chào {customer_name}</p>');
         app(MailTemplateStore::class)->setOff('welcome', true);
     });
+    // the board's catalog has 21 templates, so its search box shows; the built one has fewer
+    config(['admin.mail_template_search_from' => 3]);
     $tplPage = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email?tab=tpl')->assertOk()->getContent();
     expect($tplPage)->toContain(e(__('admin.mt_n_pwchanged')))->toContain(e(__('admin.mt_b_edited')));
     file_put_contents($dir.'/email-tpl.html', $tplPage);

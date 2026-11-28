@@ -50,6 +50,9 @@ final class EmailTemplates extends Component
 
     public const array FILTERS = ['all', 'on', 'off'];
 
+    /** The search box shows when the catalog has more templates than this. */
+    public const int SEARCH_FROM = 8;
+
     /** The board's per-minute and per-day caps on test mails are the Email page's (shared counts). */
     public const int TEST_SENDS_PER_MINUTE = 5;
 
@@ -118,6 +121,12 @@ final class EmailTemplates extends Component
         $this->editing = null;
         $this->resetErrorBag();
         $this->dispatch('email-tpl-editing', on: false);
+    }
+
+    /** «Bỏ thay đổi và chuyển» in the unsaved-changes question: the one message that the typed text was dropped. */
+    public function discarded(): void
+    {
+        $this->notify(__('admin.mt_discarded'));
     }
 
     /** Another language of the open template (the editor asked about unsaved text first). */
@@ -380,6 +389,7 @@ final class EmailTemplates extends Component
         return view('admin::livewire.email-templates', [
             'groups' => $groups,
             'counts' => $counts,
+            'showSearch' => count($rows) > Cast::int(config('admin.mail_template_search_from', self::SEARCH_FROM)),
             'locked' => $locked,
             'editedCount' => $editedCount,
             'brand' => $brand,
