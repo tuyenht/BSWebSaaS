@@ -163,7 +163,7 @@ final class Login extends Component
             $verifyKey = 'email-verify-send:'.Cast::int($user->getAuthIdentifier());
             if (! RateLimiter::tooManyAttempts($verifyKey, 6)) {
                 RateLimiter::hit($verifyKey, 3600);
-                app(TenantMailer::class)->apply();
+                app(TenantMailer::class)->applyPlatform();
                 $user->sendEmailVerificationNotification();
             }
             $this->refreshChallenge();

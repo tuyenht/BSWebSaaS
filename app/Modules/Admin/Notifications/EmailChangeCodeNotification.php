@@ -18,7 +18,8 @@ use Throwable;
  * second step (no authenticator app), or to the new address to prove the member reads it. Sent
  * on demand to the address captured when the code was made, never through the account, so a
  * queued mail cannot follow the account to another address. Queued and retried like the sign-in
- * code (EmailOtpNotification); a final failure goes on record.
+ * code (EmailOtpNotification); a final failure goes on record. Through the platform's outbox only:
+ * the code changes the sign-in email of the account every website shares.
  */
 final class EmailChangeCodeNotification extends Notification implements ShouldQueue
 {
@@ -63,7 +64,7 @@ final class EmailChangeCodeNotification extends Notification implements ShouldQu
 
     public function toMail(object $notifiable): MailMessage
     {
-        $this->applyTenantMailer();
+        $this->applyPlatformMailer();
         $which = $this->toNewAddress ? 'new' : 'current';
 
         return (new MailMessage)

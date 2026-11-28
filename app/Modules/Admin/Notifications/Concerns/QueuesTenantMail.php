@@ -99,4 +99,13 @@ trait QueuesTenantMail
     {
         app(TenantMailer::class)->apply();
     }
+
+    /**
+     * As applyTenantMailer(), but only ever the platform's shared outbox: for a mail carrying a link
+     * or code that acts on the person's account on every website (TenantMailer::applyPlatform()).
+     */
+    protected function applyPlatformMailer(): void
+    {
+        app(TenantMailer::class)->applyPlatform();
+    }
 }

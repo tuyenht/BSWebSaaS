@@ -18,6 +18,8 @@ it('confirms a completed password reset on the login page', function (): void {
     seedTenancy();
     fakePwnedVerifier(); // breach check: treat the new password as not compromised
     $user = User::factory()->create();
+    // The website's reset page serves its members only.
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'reset-member', []));
     $token = Password::createToken($user);
 
     app(Tenancy::class)->enter(1, function () use ($user, $token): void {

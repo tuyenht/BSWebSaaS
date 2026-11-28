@@ -55,9 +55,9 @@ final readonly class TenantMailer implements TenantMailConfigurator
      *
      * @return array{0: array<string, mixed>|null, 1: bool}
      */
-    private function pick(): array
+    private function pick(bool $platformOnly = false): array
     {
-        $tenant = $this->tenant->get('email');
+        $tenant = $platformOnly ? null : $this->tenant->get('email');
         if ($this->usable($tenant)) {
             return [$tenant, true];
         }
@@ -94,6 +94,23 @@ final readonly class TenantMailer implements TenantMailConfigurator
      */
     public function apply(bool $fallback = true): bool
     {
+        return $this->configure($fallback, platformOnly: false);
+    }
+
+    /**
+     * For a mail that carries something acting on the person's account across every website (a
+     * password-reset link, an email-verification link, a sign-in code, a code that changes the sign-in
+     * email): it leaves only through the platform's shared outbox, never the website's own, so a
+     * website's mail server never sees it. The website's sender name stays; the address and the
+     * server are the platform's. No platform outbox → the log mailer, never the website's own.
+     */
+    public function applyPlatform(): bool
+    {
+        return $this->configure(false, platformOnly: true);
+    }
+
+    private function configure(bool $fallback, bool $platformOnly): bool
+    {
         // Purge cached transports FIRST so a warmed Octane worker cannot reuse the previous
         // request/tenant's live transport object regardless of what we configure below.
         Mail::purge('smtp');
@@ -103,7 +120,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
         $context = app(MailSendContext::class);
         $context->begin();
 
-        [$cfg, $siteOwn] = $this->pick();
+        [$cfg, $siteOwn] = $this->pick($platformOnly);
         if ($cfg === null) {
             // No email override found anywhere in the resolution chain. Force the global
             // config to a safe no-op mailer so a previous request's SMTP config cannot

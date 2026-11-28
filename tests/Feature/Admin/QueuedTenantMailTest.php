@@ -76,6 +76,12 @@ it('re-enters the site and re-applies the mailer when the queued OTP is processe
 
             return true;
         }
+
+        // The sign-in code leaves through the platform's outbox only, still applied inside the site.
+        public function applyPlatform(): bool
+        {
+            return $this->apply();
+        }
     });
 
     $user = User::factory()->create();

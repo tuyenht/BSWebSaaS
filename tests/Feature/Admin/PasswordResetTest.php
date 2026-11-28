@@ -42,6 +42,8 @@ it('audits a completed reset and rejects a password shorter than 10', function (
     seedTenancy();
     fakePwnedVerifier(); // breach check: treat the new password as not compromised
     $user = User::factory()->create();
+    // The website's reset page serves its members only.
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'reset-member', []));
     $token = Password::createToken($user);
 
     app(Tenancy::class)->enter(1, function () use ($user, $token): void {
@@ -69,6 +71,8 @@ it('queues the reset mail with a request-built link so the reply never blocks on
     seedTenancy();
     Notification::fake();
     $user = User::factory()->create();
+    // A website's «Quên mật khẩu» mails its members only.
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'reset-member', []));
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Livewire::test(ForgotPassword::class)

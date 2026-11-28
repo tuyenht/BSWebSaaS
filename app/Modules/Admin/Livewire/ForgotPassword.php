@@ -8,6 +8,8 @@ use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -20,10 +22,16 @@ use Livewire\Component;
  * the same generic confirmation to avoid account enumeration. Actual reset-link delivery
  * (mailer + token broker) is wired separately — this screen is the request entry point.
  *
- * Abuse-throttled like Login: reset mail goes out over the TENANT's own SMTP, so an
- * un-throttled spray would weaponise the tenant's sender identity / mail quota. Two hourly
- * ceilings (per email+IP, per IP) bound it; a throttled request returns the SAME generic
- * message so the cap itself leaks nothing.
+ * Abuse-throttled like Login: reset mail carries the website's sender name and counts on its
+ * mail log, so an un-throttled spray would weaponise its identity. Two hourly ceilings (per
+ * email+IP, per IP) bound it; a throttled request returns the SAME generic message so the cap
+ * itself leaks nothing.
+ *
+ * On a website's host a link goes only to someone who may enter that website's admin (the same
+ * rule as EnsureTenantMember); anyone else gets the same reply and no mail. The account is shared
+ * by every website, so a website must never be able to start a reset of an account it does not
+ * hold. The link itself always leaves through the platform's outbox (TenantMailer::applyPlatform()).
+ * The platform console (no website) serves every account, as before.
  */
 #[Layout('admin::layouts.auth')]
 final class ForgotPassword extends Component
@@ -62,6 +70,13 @@ final class ForgotPassword extends Component
         RateLimiter::hit($key, 3600);
         RateLimiter::hit($ipKey, 3600);
 
+        // Not a member here → the same reply, no token made (an existing link of theirs stays valid).
+        if (! $this->mayResetHere()) {
+            $this->sentResponse();
+
+            return;
+        }
+
         // The link is composed HERE, in the request — the queued notification runs in a worker
         // with no request host, which could pick neither the right plane (admin ↔ platform route
         // names) nor the right absolute host. Queuing also makes the reply constant-time: a
@@ -78,6 +93,18 @@ final class ForgotPassword extends Component
         });
 
         $this->sentResponse();
+    }
+
+    /** No website (the platform console), an unknown address (the broker's own miss), or a member here. */
+    private function mayResetHere(): bool
+    {
+        if (! app(CurrentSite::class)->hasId()) {
+            return true;
+        }
+
+        $user = Password::broker()->getUser(['email' => $this->email]);
+
+        return ! $user instanceof User || app(EnsureTenantMember::class)->admits($user);
     }
 
     /** Uniform "sent" reply — identical whether the address exists or the request was capped. */

@@ -14,7 +14,9 @@ use Throwable;
 /**
  * Delivers the email second-factor OTP — branded + i18n. Queued (ShouldQueue) so the login
  * response never blocks on SMTP; the worker re-enters the sending site's isolation (WithinSite)
- * and re-applies the resolved mailer before building the message (see QueuesTenantMail).
+ * and re-applies the platform's outbox before building the message (see QueuesTenantMail). Never
+ * the website's own: the code is kept per account, not per website (EmailOtp), so a code read on one
+ * website's mail server would pass the second step on any other host.
  *
  * Because delivery is deferred to a worker (Horizon runs tries=1), a transient SMTP/worker blip
  * would otherwise silently lose a login code. So retry a few times with short backoffs (which finish
@@ -71,7 +73,7 @@ final class EmailOtpNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $this->applyTenantMailer();
+        $this->applyPlatformMailer();
 
         return (new MailMessage)
             ->subject(__('auth.otp_email_subject'))
