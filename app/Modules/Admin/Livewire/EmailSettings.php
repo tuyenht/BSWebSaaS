@@ -91,7 +91,7 @@ final class EmailSettings extends Component
     public const int TEST_SENDS_PER_DAY = 20;
 
     /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
-    public const array TABS = ['send', 'sign'];
+    public const array TABS = ['send', 'tpl', 'sign'];
 
     /** The mailbox providers whose address cannot carry a website's own «info@…» (no suggestion from them). */
     private const array PUBLIC_MAILBOXES = MailRelay::PUBLIC_MAILBOXES;

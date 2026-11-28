@@ -1,6 +1,8 @@
 {{-- The shared frame of every notification mail (Laravel's own, with a website's look when one is in context:
      its logo on top, buttons and the greeting in its colour, its signature at the foot — Admin\Support\MailBrand).
-     The body is Markdown: keep each HTML part on its own lines, unindented, with no blank line inside it. --}}
+     The body is Markdown: keep each HTML part on its own lines, unindented, with no blank line inside it.
+     A mail built from a «Mẫu thư» template (Admin\Support\Mail\MailTemplateMail) brings its own body:
+     it takes the place of the greeting, the lines, the button and the closing words. --}}
 @php($brand = app(\App\Modules\Admin\Support\MailBrand::class)->current())
 <x-mail::layout>
 {{-- Header --}}
@@ -18,6 +20,10 @@
 <x-mail::brand-logo :brand="$brand" />
 
 @endif
+@isset($templateHtml)
+<x-mail::template-body :html="$templateHtml" :text="$templateText ?? ''" />
+
+@else
 {{-- Greeting --}}
 @if (! empty($greeting))
 @if ($brand !== null)
@@ -73,6 +79,7 @@
 @lang('Regards,')<br>
 {{ $brand !== null && $brand['name'] !== '' ? $brand['name'] : config('app.name') }}
 @endif
+@endisset
 
 {{-- Subcopy --}}
 @isset($actionText)
