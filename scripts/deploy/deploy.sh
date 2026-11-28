@@ -202,14 +202,32 @@ mig_scan() { # mig_scan <git dir> <commit> <name>: the file without its down() b
 MIG_NONADD='->change\(|->drop[A-Za-z]*\(|Schema::drop|rename|nullable\(false\)|SET NOT NULL|DROP (TABLE|COLUMN|INDEX|CONSTRAINT|VIEW|TYPE)|ALTER COLUMN|TRUNCATE|DELETE FROM|INSERT INTO|UPDATE[[:space:]]+[^[:space:](]+([[:space:]]+(AS[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*)?[[:space:]]+SET[[:space:]]|DB::(table|select|insert|update|delete|statement|unprepared|connection)\b|->(insert|insertGetId|insertOrIgnore|insertUsing|upsert|updateOrInsert|increment|decrement|incrementEach|decrementEach|exec|create|createMany|saveMany|attach|detach|sync|syncWithoutDetaching|push)\(|->(update|delete|forceDelete|save|restore|touch)(Quietly|OrFail)?\(|getPdo|Artisan::(call|callSilent|queue)\(|\$this->call(Silent|With|Once)?\('
 MIG_ELOQUENT='::(create|insert|upsert|firstOrCreate|updateOrCreate|forceCreate|query|where|destroy|forceDestroy|truncate|all|find|findOrFail|first)\('   # Model::create(…) & co.; Schema::create is removed first
 mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonadd table concurrent
-    local t f=
+    local t f= e
     t=$(mig_scan "$@")
-    printf '%s' "$t" | grep -qE 'DB::(statement|unprepared|raw)|->(statement|unprepared)\(' && f="$f raw"
-    { printf '%s' "$t" | grep -qiE -e "$MIG_NONADD" || printf '%s' "$t" | sed -E 's/Schema::(create|table|hasTable|hasColumn|hasColumns|hasIndex|getColumnType|getColumns|getIndexes|getForeignKeys|getTables|withoutForeignKeyConstraints|disableForeignKeyConstraints|enableForeignKeyConstraints)\(//g' | grep -qE "$MIG_ELOQUENT"; } && f="$f nonadd"
-    printf '%s' "$t" | grep -qE 'Schema::(table|create|rename|drop)|ALTER TABLE' && f="$f table"
+    # every match reads a here-string, never a pipe: under pipefail, grep -q stopping at its first match can kill
+    # the writer with SIGPIPE and turn a hit into a miss (a flag lost now and then)
+    grep -qE 'DB::(statement|unprepared|raw)|->(statement|unprepared)\(' <<< "$t" && f="$f raw"
+    e=$(sed -E 's/Schema::(create|table|hasTable|hasColumn|hasColumns|hasIndex|getColumnType|getColumns|getIndexes|getForeignKeys|getTables|withoutForeignKeyConstraints|disableForeignKeyConstraints|enableForeignKeyConstraints)\(//g' <<< "$t")
+    { grep -qiE -e "$MIG_NONADD" <<< "$t" || grep -qE "$MIG_ELOQUENT" <<< "$e"; } && f="$f nonadd"
+    grep -qE 'Schema::(table|create|rename|drop)|ALTER TABLE' <<< "$t" && f="$f table"
     case "$f" in *raw*) case "$f" in *table*) ;; *) f="$f table" ;; esac ;; esac   # raw SQL: assume it touches a table
-    printf '%s' "$t" | grep -qE '\$withinTransaction[[:space:]]*=[[:space:]]*false' && f="$f concurrent"
+    grep -qE '\$withinTransaction[[:space:]]*=[[:space:]]*false' <<< "$t" && f="$f concurrent"
     echo "${f# }"
+}
+mig_colchange() { # mig_colchange <git dir> <commit> <name>: true when the file changes the columns of an existing
+    # table that stays (the cached-plan error needs a table whose result columns change): Schema::table, dropColumns,
+    # whenTableHasColumn/whenTableDoesntHaveColumn (also through Schema::connection(…)), or raw SQL that adds, drops,
+    # alters or renames a COLUMN. Matched in bash on the whole file, newlines folded: no pipe, so no early exit of
+    # grep under pipefail. Row security, storage settings, constraints, a new or dropped table do not count
+    local t r=1
+    t=$(mig_scan "$@"); t=${t//$'\n'/ }; t=${t//$'\t'/ }; t=${t//\\n/ }; t=${t//\\t/ }   # also PHP's written \n \t
+    shopt -s nocasematch
+    [[ $t =~ Schema::(connection\(.*\)->)?(table|dropColumns|whenTableHasColumn|whenTableDoesntHaveColumn)\( ]] && r=0
+    # a table dropped or renamed and then created again under a name the pooled plans still point at
+    [[ $t =~ Schema::(connection\(.*\)->)?(drop|dropIfExists|rename)\( && $t =~ Schema::(connection\(.*\)->)?create\( ]] && r=0
+    [[ $t =~ (ADD|DROP|ALTER|RENAME)[[:space:]]+COLUMN[[:space:]] ]] && r=0
+    shopt -u nocasematch
+    return $r
 }
 env_names() { # env_names <git dir> <commit>: env('X') names in config/bootstrap + keys of .env.example
     { git -C "$1" grep -ohE "env\(['\"][A-Z][A-Z0-9_]*" "$2" -- config bootstrap 2>/dev/null | sed -E "s/^env\(['\"]//"
@@ -245,6 +263,9 @@ analyse() {
     expect "migration mới (theo thứ tự tên)" "$(printf '%s\n' "$ADDED_MIGS" | joinw)" "$(printf '%s\n' "${MIGRATIONS[@]}" | joinw)"
     for m in "${MIGRATIONS[@]}"; do
         FLAGS[$m]=$(mig_flags "$g" "$TARGET" "$m")
+        case " ${FLAGS[$m]} " in *" concurrent "*)
+            ! mig_colchange "$g" "$TARGET" "$m" || die "migration $m vừa đổi cột của bảng vừa chạy ngoài giao dịch (\$withinTransaction = false): tách làm hai tệp, tệp đầu chỉ có lệnh đổi cột ngắn, chỉ mục CONCURRENTLY sang tệp sau. Để chung thì suốt lúc dựng chỉ mục, truy vấn qua PgBouncer vào bảng đó báo lỗi «cached plan» cho tới khi PgBouncer khởi động lại (.claude/rules/migrations.md)"
+        esac
         case " ${FLAGS[$m]} " in *" raw "*|*" nonadd "*)
             [ -n "${MIG_OK[$m]:-}" ] || die "migration $m có SQL viết tay hoặc thay đổi không chỉ thêm (${FLAGS[$m]}): tệp khai báo phải ghi lý do trong MIG_OK"
         esac
@@ -253,7 +274,7 @@ analyse() {
         note "migration $m: [${FLAGS[$m]:-không cờ}] PgBouncer: $x${MIG_OK[$m]:+; duyệt: ${MIG_OK[$m]}}"
     done
     for m in "${!MIG_OK[@]}" "${!PGB_SKIP[@]}"; do
-        printf '%s\n' "${MIGRATIONS[@]}" | grep -qxF "$m" || die "tệp khai báo nêu migration không có trong bản này: $m"
+        grep -qxF "$m" <<< "$(printf '%s\n' "${MIGRATIONS[@]}")" || die "tệp khai báo nêu migration không có trong bản này: $m"
     done
     NEW_ENV=$(comm -13 <(env_names "$g" "$OLD") <(env_names "$g" "$TARGET") | joinw)
     note "khóa .env mới mà code đọc: ${NEW_ENV:-không có}"
@@ -268,7 +289,7 @@ analyse() {
     case " $CLASSES " in *" content-pack "*) note "gói nội dung đổi: chỉ báo, bản này không nạp gói" ;; esac
     for k in "${ONEOFFS[@]}" "${ONEOFFS_PRE[@]}"; do declare -F "oneoff_$k" >/dev/null || die "thiếu hàm oneoff_$k trong tệp khai báo"; done
     for k in "${ONEOFFS_PRE[@]}"; do
-        if printf '%s\n' "${ONEOFFS[@]}" | grep -qxF -- "$k"; then die "một lần $k có trong cả ONEOFFS và ONEOFFS_PRE: chỉ được chạy một lần"; fi
+        if grep -qxF -- "$k" <<< "$(printf '%s\n' "${ONEOFFS[@]}")"; then die "một lần $k có trong cả ONEOFFS và ONEOFFS_PRE: chỉ được chạy một lần"; fi
     done
     [ "${#ONEOFFS_PRE[@]}" = 0 ] || note "một lần trước khi nạp lại (sau optimize, code mới, worker cũ còn phục vụ; ghi phải vô hại với code cũ): ${ONEOFFS_PRE[*]}"
     for x in "${SCHEMA_REMOVED_OK[@]}"; do   # the CATALOG_SQL line shapes; a column type may hold spaces ("timestamp(0) with time zone")
@@ -429,8 +450,8 @@ s1() {
     for k in "${MIGRATIONS[@]}"; do printf '%s\n' "${FLAGS[$k]}" > "$STATE/flags-$k"; done
     # new env keys: names only, against prod .env (a missing one would silently fall back to its default)
     for k in $NEW_ENV; do
-        if ! sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$PROD/.env" | grep -qxF "$k"; then
-            printf '%s\n' "${ENV_DEFAULT_OK[@]}" | grep -qxF "$k" && { note "khóa .env $k chưa có trên prod: dùng mặc định (tệp khai báo cho phép)"; continue; }
+        if ! grep -qxF "$k" <<< "$(sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$PROD/.env")"; then
+            grep -qxF "$k" <<< "$(printf '%s\n' "${ENV_DEFAULT_OK[@]}")" && { note "khóa .env $k chưa có trên prod: dùng mặc định (tệp khai báo cho phép)"; continue; }
             missing="$missing $k"
         fi
     done
@@ -474,7 +495,7 @@ s3() {
     dump_fresh
     need_state classes 1
     if [ "${#MIGRATIONS[@]}" = 0 ]; then
-        q "SELECT max(migration) FROM migrations" > "$STATE/prev-migration"
+        q "SELECT max(migration COLLATE \"C\") FROM migrations" > "$STATE/prev-migration"
         echo "Bản này không có migration. Migration mới nhất trên prod: $(cat "$STATE/prev-migration")"
         date '+%F %T' > "$STATE/s3-ok"; return 0
     fi
@@ -482,7 +503,7 @@ s3() {
     # the newest migration prod ran BEFORE this release's own, for step 7. Written on every attempt of step 3
     # (the database may have changed since a failed one) and never later: once step 3 passed, the line above
     # skips, and step 4 runs no file before that
-    q "SELECT max(migration) FROM migrations" > "$STATE/prev-migration"
+    q "SELECT max(migration COLLATE \"C\") FROM migrations" > "$STATE/prev-migration"
     pending; expect "migration của bản cũ còn chờ" "${PENDING:-không}" "không"
     stage "${MIGRATIONS[@]}"
     pending ops_mig --path=/deploy-migrations --realpath
@@ -676,10 +697,10 @@ s7() {
         # rows). The earlier one must be a file of TARGET: a row without its file is not this code's schema
         need_state prev-migration 3
         x=$(printf '%s\n' "$(cat "$STATE/prev-migration")" "${MIGRATIONS[-1]}" | LC_ALL=C sort | tail -n 1)
-        expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$x"
+        expect "migration mới nhất đã chạy" "$(q "SELECT max(migration COLLATE \"C\") FROM migrations")" "$x"
         git -C "$PROD" cat-file -e "$TARGET:database/migrations/$x.php" 2>/dev/null \
             || die "migration mới nhất trên prod ($x) không có tệp trong bản $TARGET"
-    else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
+    else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration COLLATE \"C\") FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
     if has_class permission; then
         if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
         # Each worker keeps the permission list it loaded first in its own memory (the package's Octane

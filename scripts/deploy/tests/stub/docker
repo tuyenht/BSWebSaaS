@@ -7,7 +7,7 @@ mig_table() { sort -u "$FAKE/migrations.txt"; }
 answer_sql() {
     local s=$1
     case "$s" in
-        *"max(migration)"*) mig_table | tail -n 1 ;;
+        *"max(migration COLLATE"*) mig_table | tail -n 1 ;;
         *"FROM migrations WHERE migration IN"*)
             local n=0 m
             for m in $(printf '%s' "$s" | grep -oE "'[0-9]{4}_[0-9_a-z]+'" | tr -d "'"); do grep -qxF "$m" "$FAKE/migrations.txt" && n=$((n + 1)); done
