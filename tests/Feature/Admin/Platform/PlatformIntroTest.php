@@ -50,3 +50,20 @@ it('sends a signed-in operator on to the console', function (): void {
     $this->actingAs($operator)->get('http://'.config('tenancy.platform_host').'/')
         ->assertRedirect(route('platform.tenants.index'));
 });
+
+it('turns away a signed-in non-operator: the console answers forbidden, never the intro', function (): void {
+    $member = User::factory()->create();
+
+    $response = $this->actingAs($member)->followingRedirects()->get('http://'.config('tenancy.platform_host').'/');
+
+    $response->assertForbidden()->assertDontSee(__('intro.signin_heading'));
+});
+
+it('leaves a website\'s own front page to the storefront', function (): void {
+    seedHomepage(1, 'A home');
+
+    $this->get('http://a.test/')
+        ->assertOk()
+        ->assertSee('A home')
+        ->assertDontSee(__('intro.signin_heading'));
+});
