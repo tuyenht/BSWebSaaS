@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Media\Actions\PresignMediaUpload;
+use App\Modules\Media\Actions\PurgeMedia;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Actions\UploadMedia;
@@ -251,6 +252,36 @@ it('never holds the totals while the nightly purge deletes a later page of files
     test()->artisan('media:purge-trash')->assertSuccessful();
 
     expect($deletes)->toBe($count)
+        ->and($inline)->toBeTrue()
+        ->and(scrValue(1))->toBe(500 + 64)
+        ->and(scrValue(1, MediaStorage::TRASH))->toBe(0);
+});
+
+it('never holds the totals while emptying the Trash deletes a later page of files', function (): void {
+    Storage::fake('r2');
+    app(Tenancy::class)->enter(1, function (): void {
+        foreach (range(1, 5) as $i) {
+            scrFile("xoa-{$i}", 10, trashed: true);
+        }
+        app(SiteCounters::class)->addMany([MediaStorage::BYTES => 50 + 500, MediaStorage::TRASH => 50]);
+    });
+
+    // an upload of the same website counts itself while the second page (of three) is being deleted
+    $deletes = 0;
+    $inline = null;
+    DB::listen(function (QueryExecuted $query) use (&$deletes, &$inline): void {
+        if ($query->connectionName === 'pgsql_admin' || ! str_starts_with(strtolower($query->sql), 'delete from "media" where')) {
+            return;
+        }
+        if (++$deletes === 3) {
+            $inline = scrRival([["update site_counters set value = value + 64 where site_id = 1 and metric = 'media.bytes'", []]]);
+        }
+    });
+
+    $done = app(Tenancy::class)->enter(1, fn (): array => app(PurgeMedia::class)->purgeAll(Media::onlyTrashed(), 2));
+
+    expect($done)->toBe(['files' => 5, 'bytes' => 50])
+        ->and($deletes)->toBe(5)
         ->and($inline)->toBeTrue()
         ->and(scrValue(1))->toBe(500 + 64)
         ->and(scrValue(1, MediaStorage::TRASH))->toBe(0);

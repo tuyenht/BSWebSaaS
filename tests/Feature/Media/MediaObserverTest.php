@@ -5,6 +5,7 @@ use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
@@ -232,6 +233,28 @@ it('deletes a whole Trash a page at a time, with one last look for all of it', f
     foreach ($rows as $media) {
         Storage::disk('r2')->assertMissing($media->storage_key);
     }
+});
+
+/*
+ * The totals' row is the purge's last write (SiteCounters): a whole Trash takes its size off the
+ * totals once, after its last page, so the row is not held while the later pages delete.
+ */
+it('takes a whole Trash off the totals once, after its last page is deleted', function (): void {
+    app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(5));
+
+    $writes = [];
+    DB::listen(function ($query) use (&$writes): void {
+        $sql = strtolower($query->sql);
+        if (str_starts_with($sql, 'delete from "media" where')) {
+            $writes[] = 'media';
+        } elseif (str_starts_with(ltrim($sql), 'insert into site_counters')) {
+            $writes[] = $query->bindings[1]; // the metric: one upsert per total
+        }
+    });
+    $done = app(Tenancy::class)->enter(1, fn (): array => app(PurgeMedia::class)->purgeAll(Media::onlyTrashed(), 2));
+
+    expect($done)->toBe(['files' => 5, 'bytes' => 30])
+        ->and($writes)->toBe(['media', 'media', 'media', 'media', 'media', MediaStorage::BYTES, MediaStorage::TRASH]);
 });
 
 /*

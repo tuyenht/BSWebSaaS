@@ -58,30 +58,19 @@ final readonly class PurgeMedia
 
         // one savepoint, and one after-commit delete of the stored files for the whole page (PurgedObjects)
         return DB::transaction(fn (): array => app(PurgedObjects::class)->batch(function () use ($rows): array {
-            // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
-            $state = Media::onlyTrashed()->whereKey($rows->modelKeys())->orderBy('id')->lockForUpdate()
-                ->toBase()->get(['id', 'size'])->keyBy('id');
-            $gone = 0;
-            $bytes = 0;
-            foreach ($rows as $media) {
-                $row = $state->get($media->id);
-                if ($row === null) {
-                    continue; // deleted or taken out of the Trash meanwhile
-                }
-                $media->forceDelete();
-                $bytes += max(0, Cast::int($row->size));
-                $gone++;
-            }
-            $this->storage->purged($bytes);
+            $done = $this->deleteTrashed($rows);
+            $this->storage->purged($done['bytes']);
 
-            return ['files' => $gone, 'bytes' => $bytes];
+            return $done;
         }));
     }
 
     /**
      * Deletes for good every file in the Trash that $trashed matches, CHUNK at a time by id, so a large
      * Trash is never loaded whole. All pages share one savepoint and one after-commit delete: when one
-     * page fails, none is deleted and the caller sees the error, as with a single purge().
+     * page fails, none is deleted and the caller sees the error, as with a single purge(). Their sizes
+     * come off the totals once, after the last page, so the totals' row is not held while the later
+     * pages delete.
      *
      * @param  Builder<Media>  $trashed  files in the Trash (Media::onlyTrashed()…)
      * @return array{files: int, bytes: int} how many files were deleted, and their size
@@ -96,12 +85,44 @@ final readonly class PurgeMedia
             $after = 0;
             do {
                 $page = (clone $trashed)->where($trashed->qualifyColumn('id'), '>', $after)->orderBy($trashed->qualifyColumn('id'))->limit($chunk)->get();
-                $part = $this->purge($page);
+                $part = $this->deleteTrashed($page);
                 $done = ['files' => $done['files'] + $part['files'], 'bytes' => $done['bytes'] + $part['bytes']];
                 $after = Cast::int($page->last()?->id, $after);
             } while ($page->count() === $chunk);
+            $this->storage->purged($done['bytes']);
 
             return $done;
         }));
+    }
+
+    /**
+     * Locks $rows in id order and deletes for good those still in the Trash under the lock. The caller
+     * takes their size off the totals afterwards, as its last write.
+     *
+     * @param  Collection<int, Media>  $rows
+     * @return array{files: int, bytes: int}
+     */
+    private function deleteTrashed(Collection $rows): array
+    {
+        if ($rows->isEmpty()) {
+            return ['files' => 0, 'bytes' => 0];
+        }
+
+        // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
+        $state = Media::onlyTrashed()->whereKey($rows->modelKeys())->orderBy('id')->lockForUpdate()
+            ->toBase()->get(['id', 'size'])->keyBy('id');
+        $gone = 0;
+        $bytes = 0;
+        foreach ($rows as $media) {
+            $row = $state->get($media->id);
+            if ($row === null) {
+                continue; // deleted or taken out of the Trash meanwhile
+            }
+            $media->forceDelete();
+            $bytes += max(0, Cast::int($row->size));
+            $gone++;
+        }
+
+        return ['files' => $gone, 'bytes' => $bytes];
     }
 }
