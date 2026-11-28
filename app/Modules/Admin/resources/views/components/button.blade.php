@@ -35,12 +35,12 @@
     // đổi"; the dashboard's and notifications' row buttons): the field edge (>= 3:1 on the card), the
     // card fill and body ink, a light grey on hover; its icon sits 6px from its words, and a label
     // that wraps keeps the page's alignment (as the hand-built copies it replaced drew it).
-    // `variant="outline" color="secondary"` is drawn in the same neutral colours: every board draws a
-    // bordered button beside a main one as the plain `.sx-btn` (field edge, card fill, body ink), never
-    // in the secondary hue; it keeps its own spacing and centred label.
+    // `variant="outline" color="secondary"` is the same button: every board draws a bordered button
+    // beside a main one, or on a list row (board 10's «Sửa» / «Mục con»), as the plain `.sx-btn` (field
+    // edge, card fill, body ink, its icon 6px from its words), never in the secondary hue.
     // A button marked `aria-disabled="true"` (kept focusable so a tap can say why it is off) looks off
     // as the boards draw it (`.sx-btn[aria-disabled="true"]`): faded, with the not-allowed cursor.
-    $neutral = $variant === 'outline' && $color === 'neutral';
+    $neutral = $variant === 'outline' && in_array($color, ['neutral', 'secondary'], true);
     $base = 'hit-area inline-flex items-center justify-center '.($neutral ? 'gap-1.5' : 'gap-2 text-center').' rounded font-medium leading-tight transition-colors disabled:opacity-60 disabled:pointer-events-none aria-disabled:opacity-60 aria-disabled:cursor-not-allowed aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
 
     $sizes = $icon ? [

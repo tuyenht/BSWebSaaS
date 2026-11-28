@@ -255,16 +255,16 @@
                                             <span>{{ $count }}</span>
                                         @endif
                                     </span>
-                                    <x-bs-admin::button size="sm" variant="soft" x-on:click="openEdit({{ $j($n['key']) }})" aria-label="{{ $u('edit_of', ['name' => $n['name']]) }}" class="@max-[20.6rem]:hidden">
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openEdit({{ $j($n['key']) }})" aria-label="{{ $u('edit_of', ['name' => $n['name']]) }}" class="@max-[20.6rem]:hidden">
                                         <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ $u('edit') }}
                                     </x-bs-admin::button>
                                     @if ($r['level'] < $depth)
-                                        <x-bs-admin::button size="sm" variant="soft" x-on:click="openAdd({{ $j($n['key']) }}, true)" aria-disabled="{{ $off }}"
+                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openAdd({{ $j($n['key']) }}, true)" aria-disabled="{{ $off }}"
                                             aria-label="{{ $u('add_child_of', ['name' => $n['name']]) }}" :title="$offWhy ?? $u('add_child_of', ['name' => $n['name']])" class="@max-[37.49rem]:hidden">
                                             <x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('child') }}
                                         </x-bs-admin::button>
                                     @else
-                                        <span class="invisible @max-[37.49rem]:hidden" aria-hidden="true"><x-bs-admin::button size="sm" variant="soft" tabindex="-1"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('child') }}</x-bs-admin::button></span>
+                                        <span class="invisible @max-[37.49rem]:hidden" aria-hidden="true"><x-bs-admin::button size="sm" variant="outline" color="secondary" tabindex="-1"><x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('child') }}</x-bs-admin::button></span>
                                     @endif
                                     <x-bs-admin::list.actions :name="$n['name']" :title="$n['name']">
                                         <x-slot:menu>
