@@ -18,7 +18,7 @@ final class MediaRejectedException extends DomainException
         'unsupported_type', 'too_large', 'image_too_large', 'file_invalid',
         'upload_session_invalid', 'upload_missing', 'storage_failed', 'in_trash',
         'url_invalid', 'host_unresolvable', 'private_address', 'redirect_invalid', 'too_many_redirects',
-        'fetch_failed', 'fetch_unreachable', 'empty_response', 'not_an_image',
+        'fetch_failed', 'fetch_unreachable', 'empty_response', 'not_an_image', 'storage_full',
     ];
 
     /** Reasons whose sentence already existed under another key (the upload form's own rules). */

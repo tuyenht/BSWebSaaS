@@ -4,6 +4,7 @@ namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,10 @@ use Illuminate\Support\Str;
  */
 final readonly class PresignMediaUpload
 {
-    public function __construct(private CurrentSite $current) {}
+    public function __construct(
+        private CurrentSite $current,
+        private MediaStorage $storage,
+    ) {}
 
     /**
      * @return array{url: string, headers: array<string, mixed>, tempKey: string}
@@ -33,6 +37,11 @@ final readonly class PresignMediaUpload
         }
         if ($declaredSize > UploadMedia::MAX_KB * 1024) {
             throw new MediaRejectedException('too_large');
+        }
+        // With the storage switch on, a file that would not fit is told so before its bytes travel
+        // (register checks again, in the same statement that counts it).
+        if (! $this->storage->fits($declaredSize)) {
+            throw new MediaRejectedException('storage_full');
         }
 
         // Leading `_incoming/` prefix — the site slug is nested INSIDE it, not before it — so ONE R2

@@ -6,7 +6,9 @@ use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Actions\PurgeMedia;
 use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
@@ -669,14 +671,14 @@ trait WithMediaLibraryPicker
     }
 
     /**
-     * Soft-delete the selection (Thùng rác) — per-model so observers keep firing. With
+     * Soft-delete the selection (Thùng rác) — per-model, through TrashMedia (the Trash total). With
      * media.delete.own only the chosen files this person uploaded and nobody uses go; the rest stay.
      */
     public function pickerBulkDelete(): void
     {
         abort_unless(MediaDeleteRights::some(), 403);
 
-        app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('id', $this->pickerSelected))->get()->each->delete();
+        app(TrashMedia::class)->trash(app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('id', $this->pickerSelected))->get());
         $this->pickerSelected = [];
     }
 
@@ -686,8 +688,8 @@ trait WithMediaLibraryPicker
     |------------------------------------------------------------------------
     | Restore is gated to the delete rights (same as sending to trash); deleting for
     | good — a selection or the whole Trash — is the website admin's media.purge.
-    | Purge is per-instance so MediaObserver fires (drops attachments + the R2
-    | object); a mass forceDelete would bypass those events.
+    | Purge goes through PurgeMedia: per-instance so MediaObserver fires (drops
+    | attachments + the R2 object), and the storage totals go down with it.
     */
 
     public function restorePickerSelection(): void
@@ -697,7 +699,7 @@ trait WithMediaLibraryPicker
         // restore() clears deleted_at → the row returns to its original folder (folder_id was
         // kept; if that folder was itself deleted the FK already SET NULL it to the root view).
         // With media.delete.own only what this person put in the Trash comes back out.
-        MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('id', $this->pickerSelected))->get()->each->restore();
+        app(TrashMedia::class)->restore(MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('id', $this->pickerSelected))->get());
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_restored'));
     }
@@ -707,7 +709,7 @@ trait WithMediaLibraryPicker
         abort_unless(Gate::allows('media.purge'), 403);
         app(SupportSession::class)->forbid();   // support staff never delete a member's files for good
 
-        Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->forceDelete();
+        app(PurgeMedia::class)->handle(Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get());
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_purged'));
     }
@@ -717,7 +719,7 @@ trait WithMediaLibraryPicker
         abort_unless(Gate::allows('media.purge'), 403);
         app(SupportSession::class)->forbid();   // support staff never delete a member's files for good
 
-        Media::onlyTrashed()->get()->each->forceDelete();
+        app(PurgeMedia::class)->handle(Media::onlyTrashed()->get());
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_emptied'));
     }
