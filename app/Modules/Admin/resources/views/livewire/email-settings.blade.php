@@ -425,14 +425,40 @@
                     </div>
                 </div>
 
-                {{-- The test send (to the member who presses it) --}}
-                <div class="col-span-full mt-1.5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                    <x-bs-admin::button type="button" variant="outline" wire:click="sendTest" wire:loading.attr="disabled" wire:target="sendTest">{{ __('admin.send_test_email') }}</x-bs-admin::button>
-                    @if ($testResult === 'ok')
-                        <span class="text-caption text-success-text">{{ __('admin.test_email_sent') }}</span>
-                    @elseif ($testResult === 'error')
-                        <span class="text-caption text-danger-text">{{ __('admin.test_email_failed') }}</span>
+                {{-- «Gửi thư kiểm tra tới»: one address (empty = the member's own). Typing again hides the
+                     last result until the next send, as on the board; the server checks the address. The
+                     address is no setting: it rides with the next request (no wire:model, so the save bar
+                     never counts it as an unsaved change). --}}
+                {{-- inline @php only below: a block here would swallow the inline ones above it --}}
+                @php($testErr = $errors->first('testTo') ?: ($testResult === 'error' ? __('admin.test_email_failed') : ''))
+                @php($testOk = $testErr === '' && $testResult === 'ok')
+                <div class="col-span-full mt-1.5 border-t border-border pt-4" x-data="{ typed: false, to: @js($testTo) }" data-test-send>
+                    <div class="flex flex-col gap-1.5">
+                        <label for="em-test-to" class="{{ $lab }}">{{ __('admin.em_test_to') }}</label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input id="em-test-to" type="email" name="em_test_to" autocomplete="off" inputmode="email" spellcheck="false" maxlength="254"
+                                   x-model="to" x-on:input="typed = true; $wire.$set('testTo', $el.value, false)" placeholder="{{ __('admin.em_test_ph') }}"
+                                   {{-- Enter sends the test (not the save bar's «Lưu»: this address is no setting) --}}
+                                   x-on:keydown.enter="if ($event.isComposing || $event.keyCode === 229) return; $event.preventDefault(); typed = false; $wire.sendTest()"
+                                   @if ($testErr !== '') aria-invalid="true" x-bind:aria-invalid="typed ? 'false' : 'true'" @endif
+                                   aria-describedby="{{ $testErr !== '' || $testOk ? 'em-test-msg' : 'em-test-idle' }}" @if ($testErr !== '' || $testOk) x-bind:aria-describedby="typed ? 'em-test-idle' : 'em-test-msg'" @endif
+                                   class="field block min-w-[180px] max-w-[340px] flex-1 rounded border border-border-input bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                            <x-bs-admin::button type="button" variant="outline" class="@max-[22.4375rem]:@max-[19.95em]:w-full" wire:click="sendTest" x-on:click="typed = false" wire:loading.attr="disabled" wire:target="sendTest">
+                                <span wire:loading.remove wire:target="sendTest" class="inline-flex items-center gap-2"><x-bs-admin::icon :name="$testOk ? 'ri-refresh' : 'ri-send-plane'" class="size-4 shrink-0" />{{ $testOk ? __('admin.em_test_again') : __('admin.em_test_send') }}</span>
+                                <span wire:loading.inline-flex wire:target="sendTest" class="items-center gap-2"><x-bs-admin::icon name="ri-loader-4" class="size-4 shrink-0 animate-spin motion-reduce:animate-none" />{{ __('admin.em_test_sending') }}</span>
+                            </x-bs-admin::button>
+                        </div>
+                    </div>
+                    @if ($testOk)
+                        <p id="em-test-msg" class="mt-[9px] flex items-center gap-[7px] text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-success-text" x-show="! typed" data-test-ok>
+                            <x-bs-admin::icon name="ri-checkbox-circle" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $testSentNote }}</span>
+                        </p>
+                    @elseif ($testErr !== '')
+                        <x-bs-admin::field-error id="em-test-msg" class="mt-[9px]" x-show="! typed" data-test-err>{{ $testErr }}</x-bs-admin::field-error>
                     @endif
+                    {{-- read out when a test mail has left (the error line above reads itself out) --}}
+                    <x-bs-admin::sr-live>{{ $testOk ? $testSentNote : '' }}</x-bs-admin::sr-live>
+                    <p class="mt-[9px] text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted" id="em-test-idle" @if ($testOk || $testErr !== '') x-show="typed" x-cloak @endif data-test-idle>{{ __('admin.em_test_idle') }}</p>
                 </div>
             </div>
         </form>
