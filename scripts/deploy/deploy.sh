@@ -479,6 +479,10 @@ s3() {
         date '+%F %T' > "$STATE/s3-ok"; return 0
     fi
     if [ -s "$STATE/s3-ok" ]; then echo "Bỏ qua bước 3: đã qua lúc $(cat "$STATE/s3-ok") (bước 4 chạy lại an toàn)."; return 0; fi
+    # the newest migration prod ran BEFORE this release's own, for step 7. Written on every attempt of step 3
+    # (the database may have changed since a failed one) and never later: once step 3 passed, the line above
+    # skips, and step 4 runs no file before that
+    q "SELECT max(migration) FROM migrations" > "$STATE/prev-migration"
     pending; expect "migration của bản cũ còn chờ" "${PENDING:-không}" "không"
     stage "${MIGRATIONS[@]}"
     pending ops_mig --path=/deploy-migrations --realpath
@@ -666,7 +670,15 @@ s7() {
     reload pre
     MIXED=
     pending; expect "migration còn chờ" "${PENDING:-không}" "không"
-    if [ "${#MIGRATIONS[@]}" -gt 0 ]; then expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "${MIGRATIONS[-1]}"
+    if [ "${#MIGRATIONS[@]}" -gt 0 ]; then
+        # the newest name is this release's last file OR the one prod already had, whichever sorts later: a
+        # migration numbered below one that shipped earlier is still a complete release (step 4 counted its
+        # rows). The earlier one must be a file of TARGET: a row without its file is not this code's schema
+        need_state prev-migration 3
+        x=$(printf '%s\n' "$(cat "$STATE/prev-migration")" "${MIGRATIONS[-1]}" | LC_ALL=C sort | tail -n 1)
+        expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$x"
+        git -C "$PROD" cat-file -e "$TARGET:database/migrations/$x.php" 2>/dev/null \
+            || die "migration mới nhất trên prod ($x) không có tệp trong bản $TARGET"
     else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
     if has_class permission; then
         if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
