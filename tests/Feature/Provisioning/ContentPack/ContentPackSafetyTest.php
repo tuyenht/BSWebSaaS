@@ -29,6 +29,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -366,8 +367,10 @@ it('refuses the load when a member saves a redirect to another website at the pa
     $entries = fn (): int => DB::connection('pgsql_admin')->table('entries')->where('site_id', $siteId)->count();
     $before = $entries();
     $raced = false;
-    Redirect::creating(function (Redirect $row) use ($siteId, &$raced): void {
-        if ($raced || $row->from_path !== '/trang-cu') {
+    DB::listen(function (QueryExecuted $query) use ($siteId, &$raced): void {
+        // after the loader looked for a row at the address (none), just before it inserts its own
+        if ($raced || $query->connectionName === 'pgsql_admin' || ! str_contains($query->sql, 'from "redirects"')
+            || ! str_contains($query->sql, 'for update') || ! in_array('/trang-cu', $query->bindings, true)) {
             return;
         }
         $raced = true;
