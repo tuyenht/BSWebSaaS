@@ -2,6 +2,7 @@
     'label',
     'kind' => null,
     'busy' => null,
+    'cardActs' => false,
 ])
 @php
     // The shared record list (stylesheet: resources/css/admin-list.css). It is a size container:
@@ -26,10 +27,13 @@
     // which stays until a request of the list succeeds (the page's own count line listens for the event
     // 'bs-list-failed' and hides while it shows, so it never states counts of rows that are no longer shown). Nothing is redrawn on a failure, so what the
     // member typed stays in its fields; «Thử lại» sends the failed request again.
+    // `card-acts` on a facts list keeps the row buttons on its card (below 768): the status pill at the
+    // card's top right, the buttons and ⋮ on a row of their own at the bottom (boards 15, 22 «Lời mời», 28);
+    // without it a card shows only ⋮ beside the name, the row buttons left to the menu (boards 03, 20).
     // Sizes live in the stylesheet only.
     $busyTargets = $busy === null ? [] : array_values(array_filter(array_map('trim', explode(',', $busy))));
 @endphp
-<div @if (in_array($kind, ['facts', 'catalog', 'posts'], true)) data-kind="{{ $kind }}" @endif {{ $attributes->merge(['class' => 'list-rows'.($busyTargets !== [] ? ' relative' : '')]) }}
+<div @if (in_array($kind, ['facts', 'catalog', 'posts'], true)) data-kind="{{ $kind }}" @endif @if ($cardActs && $kind === 'facts') data-card="acts" @endif {{ $attributes->merge(['class' => 'list-rows'.($busyTargets !== [] ? ' relative' : '')]) }}
     @if ($busyTargets !== []) x-data="bsListState({{ \Illuminate\Support\Js::from($busyTargets) }})" @endif>
     @isset($select)
         <div class="list-selbar">{{ $select }}</div>

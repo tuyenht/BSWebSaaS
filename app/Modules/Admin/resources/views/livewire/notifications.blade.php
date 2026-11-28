@@ -4,9 +4,9 @@
     card with the tabs (one per group, each with its count), the search box (the site's page only:
     the platform console has no notices to search; Escape or "Bỏ tìm" empties it), the 90-day line, and the tab's list
     grouped by the site's day, eight more on "Tải thêm". A row opens where it leads (marked read);
-    "Đã đọc" marks it read; the shared toast offers "Hoàn tác". The Alpine part bsNotifications
-    (resources/js/admin-notifications.js, started by the shared lazy loader) moves between tabs with
-    the arrow keys, opens a row's link on a click anywhere in the row, and inserts the shared error
+    "Đã đọc" marks it read; the shared toast offers "Hoàn tác". The tabs are the shared count-tabs (the
+    arrow keys move between them). The Alpine part bsNotifications (resources/js/admin-notifications.js,
+    started by the shared lazy loader) opens a row's link on a click anywhere in the row, and inserts the shared error
     alert with "Thử lại" when a request is lost. The row column is the card's width (@container).
 --}}
 @php
@@ -42,18 +42,8 @@
     <section class="overflow-hidden rounded-md border border-border bg-surface shadow-card" aria-label="{{ __('admin.ntf.list') }}"
              x-ignore wire:ignore.self data-bs-lazy="bsNotifications" x-data="bsNotifications">
         <div class="flex flex-wrap items-end gap-x-4 gap-y-2 border-b border-border px-4 pt-2">
-            <div role="tablist" aria-label="{{ __('admin.ntf.tabs') }}" x-on:keydown="tabKey($event)"
-                 class="-mb-px flex flex-[1_1_100%] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                @foreach ($tabs as $t)
-                    @php($on = $t['key'] === $tab)
-                    <button type="button" role="tab" id="tb-tab-{{ $t['key'] }}" aria-controls="tb-panel" title="{{ $t['label'] }}"
-                            aria-selected="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on ? 0 : -1 }}"
-                            wire:key="tb-tab-{{ $t['key'] }}" wire:click="show('{{ $t['key'] }}')"
-                            class="group inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong aria-selected:border-primary-text aria-selected:font-semibold aria-selected:text-primary-text any-pointer-coarse:min-h-hit @max-[37.4375rem]/tb:gap-1 @max-[37.4375rem]/tb:px-2">
-                        {{ $t['label'] }}<span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-hover px-1.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text group-aria-selected:bg-[color-mix(in_srgb,var(--color-primary-text)_12%,var(--color-surface))] group-aria-selected:text-primary-text">{{ $t['n'] }}</span>
-                    </button>
-                @endforeach
-            </div>
+            <x-bs-admin::count-tabs :tabs="array_map(fn (array $t): array => ['key' => $t['key'], 'label' => $t['label'], 'count' => $t['n']], $tabs)"
+                                    :active="$tab" action="show" panel="tb-panel" ids="tb-tab" :label="__('admin.ntf.tabs')" class="-mb-px flex-[1_1_100%]" />
             @unless ($platform)
                 <div class="mb-2 min-w-0 flex-[1_1_100%]">
                     <x-bs-admin::search :label="__('admin.ntf.search_label')" :placeholder="__('admin.ntf.search_ph')"

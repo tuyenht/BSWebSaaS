@@ -37,7 +37,7 @@
             <x-bs-admin::button variant="outline" color="secondary" wire:click="$refresh"><x-bs-admin::icon name="ri-refresh" class="size-4" />{{ __('admin.members.retry') }}</x-bs-admin::button>
         </div>
     @else
-        <x-bs-admin::list kind="facts" data-cols="invites" :label="__('admin.members.inv_list_label')">
+        <x-bs-admin::list kind="facts" card-acts data-cols="invites" :label="__('admin.members.inv_list_label')">
             @if ($invRows->isNotEmpty())
                 <x-bs-admin::list.head>
                     <x-bs-admin::list.cell head col="main">{{ __('admin.members.col_email') }}</x-bs-admin::list.cell>
@@ -87,8 +87,8 @@
                         @if ($inv->message !== null && $inv->message !== '')
                             <p class="list-sub m-0 truncate" title="{{ $inv->message }}">{{ __('admin.members.inv_msg_line', ['msg' => $inv->message]) }}</p>
                         @endif
+                        {{-- the card's status is the pill at its top right (the st cell), as board 22 .tv-irow --}}
                         <p class="list-line m-0">
-                            <x-bs-admin::status-pill :status="'invite-'.$k">{{ __('admin.members.ist_'.$k) }}</x-bs-admin::status-pill>
                             @foreach ($meta as $part)
                                 <span>{{ $part }}</span>
                             @endforeach
