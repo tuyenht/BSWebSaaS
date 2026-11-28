@@ -40,7 +40,7 @@
     <x-bs-admin::settings-shell active="redirects" card="tight">
         @if (! $failed)
             <x-slot:aside>
-                <x-bs-admin::button color="primary" id="rd-add" class="shrink-0" wire:click="openAdd" :label="__('admin.rd.add')" :short="__('admin.rd.add_short')"
+                <x-bs-admin::button color="primary" id="rd-add" data-guide="add" class="shrink-0" wire:click="openAdd" :label="__('admin.rd.add')" :short="__('admin.rd.add_short')"
                     :title="__('admin.rd.add_title')">
                     <x-bs-admin::icon name="ri-add" class="size-4" />
                 </x-bs-admin::button>
@@ -124,7 +124,7 @@
             <x-bs-admin::group-row class="px-2" :groups="$groups" :active="$tab" model="tab" :label="__('admin.rd.tabs_label')" />
             <div class="flex flex-wrap items-center gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4">
                 <div class="min-w-0 flex-[1_1_12rem] text-body min-[900px]:max-w-[30em]">
-                    <x-bs-admin::search id="rd-search" :label="__('admin.rd.search_label')" placeholder="/gioi-thieu"
+                    <x-bs-admin::search id="rd-search" data-guide="search" :label="__('admin.rd.search_label')" placeholder="/gioi-thieu"
                         :clear-label="__('admin.rd.search_clear')" clear-action="clearSearch" :clear-on="$q !== ''"
                         maxlength="{{ RedirectDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
                 </div>

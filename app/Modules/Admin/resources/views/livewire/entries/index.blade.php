@@ -159,35 +159,28 @@
          list), the title row (the name, then the (?) guide and the main button as one group at the end of the row),
          then one line on what the list holds. Below 600, or on a short landscape screen, the way back is the menu, so
          the trail gives its room to the list and the line under the name is its short phone wording. --}}
-    <header class="flex flex-col gap-1">
-        <x-bs-admin::breadcrumb data-guide="crumb" class="max-[599.98px]:hidden [@media(max-height:500px)]:hidden" :items="[
+    <x-bs-admin::screen-head :title="$pageTitle" title-id="entries-title" top
+        :crumb="[
             ['label' => $sectionLabel, 'url' => route('admin.entries.index', $sectionKey ? ['section' => $sectionKey] : [])],
             ['label' => __('admin.list')],
-        ]" />
-        <x-bs-admin::title-row :title="$pageTitle" title-id="entries-title">
-            <x-slot:help>
-                <x-bs-admin::guide :guide="$guide" />
-            </x-slot:help>
-            {{-- Only with the right to create; a member limited to some categories gets the page list's button locked,
-                 with the reason (a page has no category). --}}
-            @if ($addLock)
-                <x-bs-admin::button color="primary" class="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" data-guide="add" aria-disabled="true" :title="$addLock"
-                    :aria-label="__('entries.add_'.$type).' — '.$addLock" x-on:click="$bsToast({{ $lockToast($addLock) }})"
-                    :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
-                    <x-bs-admin::icon name="ri-lock" class="size-4" />
-                </x-bs-admin::button>
-            @elseif ($canCreate)
-                <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
-                    :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
-                    <x-bs-admin::icon name="ri-add" class="size-4" />
-                </x-bs-admin::button>
-            @endif
-        </x-bs-admin::title-row>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">
-            <span data-desc="full" class="max-[599.98px]:hidden [@media(max-height:500px)]:hidden">{{ __('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)]) }}</span>
-            <span data-desc="short" class="hidden max-[599.98px]:inline [@media(max-height:500px)]:inline">{{ __('entries.mdesc_'.$type) }}</span>
-        </p>
-    </header>
+        ]"
+        :desc="__('entries.desc_'.$type, ['label' => mb_strtolower(mb_substr($sectionLabel, 0, 1)).mb_substr($sectionLabel, 1)])"
+        :mdesc="__('entries.mdesc_'.$type)" :guide="$guide">
+        {{-- Only with the right to create; a member limited to some categories gets the page list's button locked,
+             with the reason (a page has no category). --}}
+        @if ($addLock)
+            <x-bs-admin::button color="primary" class="shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" data-guide="add" aria-disabled="true" :title="$addLock"
+                :aria-label="__('entries.add_'.$type).' — '.$addLock" x-on:click="$bsToast({{ $lockToast($addLock) }})"
+                :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
+                <x-bs-admin::icon name="ri-lock" class="size-4" />
+            </x-bs-admin::button>
+        @elseif ($canCreate)
+            <x-bs-admin::button color="primary" class="shrink-0" data-guide="add" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])"
+                :label="__('entries.add_'.$type)" :short="__('admin.list.add_short')">
+                <x-bs-admin::icon name="ri-add" class="size-4" />
+            </x-bs-admin::button>
+        @endif
+    </x-bs-admin::screen-head>
 
     {{-- Where the member stands here: their role, how this section publishes (straight, or through its approval
          workflow — then the card takes the accent tint) and what they may do. It stays until they press "Đã hiểu",

@@ -145,8 +145,8 @@ it('renders the sidebar with headings, the current page marked, and no link with
         ->assertSee(__('admin.platform_settings'))
         ->getContent();
 
-    // aria-current sits on the audit link only.
-    expect(substr_count($html, 'aria-current="page"'))->toBe(1)
+    // aria-current sits on the audit link only among the links (the screen head's trail marks its last, unlinked step).
+    expect(preg_match_all('~<a\s[^>]*aria-current="page"~', $html))->toBe(1)
         ->and($html)->toMatch('~<a href="'.preg_quote(route('platform.audit.index'), '~').'"[^>]*aria-current="page"~');
 
     // Screens the design still waits on have no route, so nothing points at them.

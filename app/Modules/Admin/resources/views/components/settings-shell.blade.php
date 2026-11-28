@@ -1,4 +1,4 @@
-@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true, 'invalid' => 0, 'liveErrors' => false, 'firstError' => null, 'firstErrorDetail' => [], 'card' => 'normal'])
+@props(['active' => '', 'unsaved' => null, 'save' => 'save', 'discard' => 'resetChanges', 'hints' => [], 'head' => true, 'invalid' => 0, 'liveErrors' => false, 'firstError' => null, 'firstErrorDetail' => [], 'card' => 'normal', 'guide' => true])
 @php
     // The section's title row: its name, then an (i) button stuck to it (the same button and in-place
     // note as a field's explanation) that opens "Về mục <name>" right under the row, with the full
@@ -9,7 +9,11 @@
     // `head` false keeps only the name (the page's h1) for a page whose own card header still
     // describes the section: no (i) note and no description line.
     // A page may pass a `more` slot: its "⋮" menu, put at the end of the title row on phones only,
-    // and an `aside` slot: what ends the title row at every width (a page's «Hướng dẫn»).
+    // and an `aside` slot: what ends the title row at every width (a page's main button).
+    // The row ends with the section's «Hướng dẫn» (x-bs-admin::guide), keyed by the section
+    // (Support\Guide\ScreenGuide::section: the shared steps, the section's own, its questions), then
+    // the phone "⋮", then the aside — the design's order (?) · ⋮ · main button. A section that brings a
+    // help of its own passes :guide="false".
     // A section that keeps its draft on the server passes its change count (`:unsaved="$changes"`)
     // and, when they are named otherwise, its save and discard methods. The shell then draws the one
     // save bar under the section (<x-bs-admin::save-bar>: "Chưa có thay đổi" · "Bỏ thay đổi" · "Lưu",
@@ -38,6 +42,8 @@
     $learned = array_values(array_filter((array) $hints, static fn (mixed $text, mixed $key): bool => is_string($key) && \App\Modules\Admin\Support\FirstHints::dismissed($key) && is_string($text) && $text !== '', ARRAY_FILTER_USE_BOTH));
     $hasInfo = $full !== '' || $learned !== [];
     $infoGlyph = 'size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))]';
+    $withGuide = $guide !== false && $sectionName !== '';
+    $guideData = $withGuide ? \App\Modules\Admin\Support\Guide\ScreenGuide::printSection($active, $sectionName, $unsaved !== null) : null;
     $cardPads = ['normal' => 'p-[1.375rem]', 'snug' => 'p-4', 'tight' => 'p-3', 'none' => null];
     $cardPad = array_key_exists($card, $cardPads) ? $cardPads[$card] : $cardPads['normal'];
     // A page with this column folds the main menu to its icon rail so the column and the section
@@ -67,20 +73,27 @@
                 </a>
                 <h1 class="min-w-0 py-[max(0rem,calc((var(--spacing-control)-1.4em)/2))] text-[min(1.375rem,calc(1rem+var(--user-text-boost)))] leading-[1.4] font-semibold text-text-strong [overflow-wrap:break-word] [text-wrap:pretty] md:text-[calc(1.375rem+var(--user-text-boost))]"><span class="max-md:[[data-set-list]_&]:hidden">{{ $sectionName }}</span><span class="hidden max-md:[[data-set-list]_&]:inline" data-set-root>{{ $root }}</span></h1>
                 @if ($head && $hasInfo)
-                    <button type="button" x-ref="secInfoBtn" data-set-info
+                    <button type="button" x-ref="secInfoBtn" data-set-info data-guide="set-info"
                             class="max-md:[[data-set-list]_&]:hidden hit-area inline-flex size-control shrink-0 items-center justify-center rounded-md text-text-muted hover:text-primary-text aria-expanded:text-primary-text"
                             x-on:click="secInfo = ! secInfo" aria-expanded="false" x-bind:aria-expanded="secInfo ? 'true' : 'false'" aria-controls="set-info"
                             title="{{ __('admin.set.info_aria', ['name' => $sectionName]) }}" aria-label="{{ __('admin.set.info_aria', ['name' => $sectionName]) }}">
                         <x-bs-admin::icon name="ri-information" :class="$infoGlyph" />
                     </button>
                 @endif
-                @isset($aside)
-                    <div class="ms-auto shrink-0 max-md:[[data-set-list]_&]:hidden">{{ $aside }}</div>
-                @endisset
-                @isset($more)
-                    {{-- The page's own "⋮" (phones only): what the row above the fields offers on a wide screen. --}}
-                    <div class="ms-auto shrink-0 md:hidden max-md:[[data-set-list]_&]:hidden">{{ $more }}</div>
-                @endisset
+                @if ($withGuide || isset($aside) || isset($more))
+                    <div class="ms-auto flex shrink-0 items-center gap-2 md:gap-3 max-md:[[data-set-list]_&]:hidden" data-set-act>
+                        @if ($withGuide)
+                            <x-bs-admin::guide :guide="$guideData" />
+                        @endif
+                        @isset($more)
+                            {{-- The page's own "⋮" (phones only): what the row above the fields offers on a wide screen. --}}
+                            <div class="shrink-0 md:hidden">{{ $more }}</div>
+                        @endisset
+                        @isset($aside)
+                            <div class="shrink-0">{{ $aside }}</div>
+                        @endisset
+                    </div>
+                @endif
             </div>
             @if ($head && $hasInfo)
                 <div id="set-info" role="note" aria-labelledby="set-info-t" x-show="secInfo" x-cloak
@@ -112,7 +125,7 @@
              class="w-[220px] shrink-0 lg:w-[238px] md:sticky md:top-20 md:self-start max-md:hidden max-md:[[data-set-list]_&]:block max-md:[[data-set-list]_&]:w-full">
             <div x-data="bsSetNav" wire:ignore class="rounded-lg border border-border bg-surface p-2 shadow-card md:max-h-[calc(100dvh-6rem)] md:overflow-y-auto md:overscroll-contain">
                 <div class="mx-0.5 mb-2 mt-0.5">
-                    <x-bs-admin::search :label="__('admin.set.search_aria')" :placeholder="__('admin.set.search_ph')" x-ref="find" x-model="q"
+                    <x-bs-admin::search :label="__('admin.set.search_aria')" :placeholder="__('admin.set.search_ph')" x-ref="find" x-model="q" data-guide="set-search"
                                         data-placeholders="{{ __('admin.set.search_ph') }}|{{ __('admin.set.search_ph_2') }}|{{ __('admin.set.search_ph_3') }}" />
                 </div>
                 <p role="status" class="text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted">

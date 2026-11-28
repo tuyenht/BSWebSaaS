@@ -88,17 +88,16 @@
         'names' => $skipped->map(fn ($u): string => __($u->id === $me->id ? 'admin.members.skip_you' : 'admin.members.skip_level', ['name' => $u->name]))->implode('; ')]);
 @endphp
 <div class="flex flex-col gap-4">
-    <header class="flex flex-col gap-1">
-        <x-bs-admin::title-row :title="__('admin.members.title')">
-            @if ($canInvite)
-                <x-bs-admin::button color="primary" id="members-invite" aria-disabled="{{ $inviteWhy !== null ? 'true' : 'false' }}" class="shrink-0 aria-disabled:opacity-60"
-                    :title="$inviteWhy" wire:click="openInvite" :label="__('admin.members.invite')" :short="__('admin.members.invite_short')">
-                    <x-bs-admin::icon name="ri-user-add" class="size-4" />
-                </x-bs-admin::button>
-            @endif
-        </x-bs-admin::title-row>
-        <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.members.desc') }}</p>
-    </header>
+    <x-bs-admin::screen-head :title="__('admin.members.title')" top :crumb="[['label' => __('admin.members.title')]]"
+        :desc="__('admin.members.desc')" :mdesc="__('admin.members.mdesc')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('members', __('admin.members.title'))">
+        @if ($canInvite)
+            <x-bs-admin::button color="primary" id="members-invite" data-guide="add" aria-disabled="{{ $inviteWhy !== null ? 'true' : 'false' }}" class="shrink-0 aria-disabled:opacity-60"
+                :title="$inviteWhy" wire:click="openInvite" :label="__('admin.members.invite')" :short="__('admin.members.invite_short')">
+                <x-bs-admin::icon name="ri-user-add" class="size-4" />
+            </x-bs-admin::button>
+        @endif
+    </x-bs-admin::screen-head>
 
     @if ($support)
         <div role="note" class="flex items-start gap-2 rounded bg-warning-soft px-3.5 py-3 text-warning-text">
@@ -107,7 +106,7 @@
         </div>
     @endif
 
-    <x-bs-admin::kind-tabs :tabs="$tabs" :active="$tab" model="tab" panel="members-view" :label="__('admin.members.tabs_label')" />
+    <x-bs-admin::kind-tabs :tabs="$tabs" :active="$tab" model="tab" panel="members-view" :label="__('admin.members.tabs_label')" data-guide="tabs" />
 
     @if ($canInvite && ! $locked && $sent >= $limit - 10)
         <div role="note" @class(['flex items-start gap-2 rounded-md border px-3.5 py-3 text-body',
@@ -135,7 +134,7 @@
             <div class="min-w-0 flex-[1_1_12rem] text-body min-[900px]:max-w-[30em]">
                 <x-bs-admin::search id="members-search" :label="__($onInvites ? 'admin.members.inv_search_label' : 'admin.members.search_label')" :placeholder="__($onInvites ? 'admin.members.inv_search_hint' : 'admin.members.search_hint')"
                     :clear-label="__('admin.members.search_clear')" clear-action="clearSearch" :clear-on="$q !== ''"
-                    maxlength="{{ MemberDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
+                    maxlength="{{ MemberDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" data-guide="search" />
             </div>
             @if (! $onInvites && ! $failed && $pageUlids !== [])
                 <div class="min-w-0 @min-[48rem]/tv:hidden">
@@ -256,7 +255,7 @@
                             <x-bs-admin::list.cell col="act">
                                 @if ($can)
                                     <x-bs-admin::list.actions :name="$member->name">
-                                        <x-bs-admin::button size="sm" variant="soft" color="primary" data-row-btn id="member-edit-{{ $member->ulid }}"
+                                        <x-bs-admin::button size="sm" variant="soft" color="primary" data-row-btn data-guide="row-edit" id="member-edit-{{ $member->ulid }}"
                                             aria-disabled="{{ $locked ? 'true' : 'false' }}" class="aria-disabled:opacity-60"
                                             :aria-label="__('admin.members.edit_aria', ['name' => $member->name])"
                                             wire:click="openPanel({{ Js::from($member->ulid) }})">

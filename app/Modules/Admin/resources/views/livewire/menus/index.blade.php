@@ -68,17 +68,18 @@
     </svg>
 
     <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-        <x-bs-admin::page-header :title="__('menus.title')" :subtitle="$u('intro')" class="!mb-0">
-            <x-slot:actions>
-                <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener">
-                    <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}
-                </x-bs-admin::button>
-                <x-bs-admin::button disabled x-on:click="save()" x-bind:disabled="!dirty().n || saveBusy || screen !== 'data' || support"
-                    x-bind:title="support ? {{ $j($supWhy) }} : (dirty().n ? dirty().text : {{ $j($u('nothing_to_save')) }})">
-                    <x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : saveLabel">{{ $u('save') }}</span>
-                </x-bs-admin::button>
-            </x-slot:actions>
-        </x-bs-admin::page-header>
+        <x-bs-admin::screen-head :title="__('menus.title')" top :crumb="[['label' => __('menus.title')]]" :desc="$u('intro')"
+            :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('menus', __('menus.title'))">
+            <x-slot:save>
+                <x-bs-admin::head-save dirty="screen === 'data' && dirty().n > 0" busy="saveBusy" save="save()" reset="reset()"
+                    :why="'support ? '.$j($supWhy).' : \'\''" :saving="$u('saving')">
+                    <x-bs-admin::button variant="outline" color="secondary" :href="$siteUrl" :navigate="false" target="_blank" rel="noopener"
+                        data-guide="site" title="{{ $u('open_site_tip') }}">
+                        <x-bs-admin::icon name="ri-external-link" class="size-4" />{{ $u('open_site') }}
+                    </x-bs-admin::button>
+                </x-bs-admin::head-save>
+            </x-slot:save>
+        </x-bs-admin::screen-head>
 
         {{-- Loading: also what shows while the screen's part downloads (admin-lazy.js) --}}
         <x-bs-admin::card flush data-bs-lazy-wait aria-busy="true" aria-label="{{ $u('loading') }}" x-show="screen === 'loading'">
@@ -486,7 +487,7 @@
                         </div>
 
                         {{-- The rows: the shared tree, drawn from the draft --}}
-                        <x-bs-admin::tree id="mn-tree" local move="treeMove" :label="$u('tree_label')" x-bind:data-max-depth="maxDepth" x-init="treeOn++">
+                        <x-bs-admin::tree id="mn-tree" data-guide="rows" local move="treeMove" :label="$u('tree_label')" x-bind:data-max-depth="maxDepth" x-init="treeOn++">
                             <template x-for="r in rows()" :key="r.k">
                                 <x-bs-admin::tree.row row="r" drag-off="support || filtering || sel === r.k" x-bind:class="sel === r.k && '!bg-primary-soft'">
                                     <span class="flex min-w-0 items-center gap-2">
@@ -811,7 +812,7 @@
 
                 {{-- Right column: add to the menu --}}
                 <div class="flex flex-col gap-4 @max-[75.625rem]:col-start-2 @max-[53.75rem]:order-4" x-show="menu">
-                    <x-bs-admin::card flush>
+                    <x-bs-admin::card flush data-guide="add-items">
                         <x-slot:header>
                             <button type="button" class="{{ $head }}" x-on:click="fold2.add = !fold2.add" :aria-expanded="!fold2.add">
                                 <x-bs-admin::icon name="ri-arrow-down-s" class="size-4 shrink-0 text-text-muted transition-transform" x-bind:class="fold2.add && '-rotate-90'" />
@@ -884,8 +885,8 @@
         <span class="shrink-0 text-warning-text"><x-bs-admin::icon name="ri-error-warning" class="size-4" /></span>
         <span class="text-small leading-relaxed text-text" x-text="@js($u('unsaved_bar')).replace(':what', dirty().text)"></span>
         <span class="flex-auto"></span>
-        <x-bs-admin::button variant="outline" color="secondary" x-on:click="reset()" x-bind:disabled="saveBusy" title="{{ $u('reset_tip') }}"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $u('reset') }}</x-bs-admin::button>
-        <x-bs-admin::button x-on:click="save()" x-bind:disabled="saveBusy"><x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : {{ $j($u('save')) }}">{{ $u('save') }}</span></x-bs-admin::button>
+        <x-bs-admin::button variant="outline" color="secondary" x-on:click="reset()" x-bind:disabled="saveBusy" title="{{ $u('reset_tip') }}"><x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ __('admin.head.discard') }}</x-bs-admin::button>
+        <x-bs-admin::button x-on:click="save()" x-bind:disabled="saveBusy" data-guide="save-b"><x-bs-admin::icon name="ri-save-3" class="size-4" /><span x-text="saveBusy ? {{ $j($u('saving')) }} : {{ $j(__('admin.head.save')) }}">{{ __('admin.head.save') }}</span></x-bs-admin::button>
     </div>
 
     {{-- Ask before acting --}}

@@ -398,6 +398,11 @@ export function openPanel(btn, opt = {}) {
             h += '</div></section>';
         });
     }
+    // the screen's common questions (the design's «Hay hỏi ở màn này»), the server's words as plain text
+    const faq = Array.isArray(g.faq) ? g.faq.filter((x) => x && x.q && x.a) : [];
+    if (faq.length) {
+        h += '<h3>' + esc(say('faq')) + '</h3><dl class="bg-faq">' + faq.map((x) => '<dt>' + esc(x.q) + '</dt><dd>' + esc(x.a) + '</dd>').join('') + '</dl>';
+    }
     h += '</div>';
     p.innerHTML = h;
     p.querySelector('.bg-x').onclick = closePanel;
@@ -1380,7 +1385,12 @@ function tryOffer() {
         opener = openBtn();
         offPrev = null;
         hideOffer(true);
-        startTour();
+        // a screen whose steps all point at parts it does not show now (an empty list): the drawer instead
+        if (build().chapters.length) {
+            startTour();
+        } else {
+            openPanel(opener);
+        }
     };
     catchPresses(offCatch);
     // a wheel over the bubble scrolls its own words when they overflow, never the page under it

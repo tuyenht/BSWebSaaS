@@ -116,21 +116,26 @@
     $postsList = fn (array $q = []): string => route('admin.entries.index', array_merge($postsSection !== null ? ['section' => $postsSection] : [], $q));
     $tileTone = ['draft' => '', 'pending' => 'warn', 'scheduled' => 'info', 'published' => 'ok'];
     $tileIcon = ['draft' => 'ri-draft', 'pending' => 'ri-inbox-unarchive', 'scheduled' => 'ri-calendar-schedule', 'published' => 'ri-global'];
+
+    // The guide's steps: the cards this member sees (the help card always), so it never names a hidden one.
+    $guideSteps = array_keys(array_filter([
+        'todo' => $todoItems !== [] || $todoFailed, 'start' => $startShow, 'review' => $review !== null,
+        'mine' => $mine !== null, 'quick' => $quick !== [], 'help' => true,
+    ]));
+
+    // The line under the name: today's picture of the website, its name in bold.
+    $headDesc = $siteName !== '' ? new \Illuminate\Support\HtmlString(__('dash.desc', ['site' => '<strong class="font-semibold text-text">'.e($siteName).'</strong>'])) : null;
 @endphp
 <div class="@container/tq mx-auto flex w-full max-w-[80rem] flex-col gap-4"
      x-data x-on:dash-focus.window="$nextTick(() => (document.getElementById($event.detail.id) ?? document.getElementById('tq-h1'))?.focus())">
-    <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
-        <div class="min-w-0 flex-[1_1_20rem]">
-            <h1 id="tq-h1" tabindex="-1" class="text-title font-semibold leading-[1.4] text-text-strong">{{ __('admin.dashboard') }}</h1>
-            @if ($siteName !== '')
-                <p class="mt-1 text-text-muted [text-wrap:pretty]">{!! __('dash.desc', ['site' => '<strong class="font-semibold text-text">'.e($siteName).'</strong>']) !!}</p>
-            @endif
-        </div>
-    </div>
+    {{-- The shared screen head: the board draws no trail here (the first screen), the name, «Hướng dẫn» and the line about today. --}}
+    <x-bs-admin::screen-head :title="__('admin.dashboard')" title-id="tq-h1" top
+        :desc="$headDesc"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('dashboard', __('admin.dashboard'), $guideSteps)" />
 
     {{-- 1 · Việc cần làm hôm nay --}}
     @if ($todoItems !== [] || $todoFailed)
-        <section class="{{ $card }}" aria-labelledby="tq-h-todo">
+        <section class="{{ $card }}" aria-labelledby="tq-h-todo" data-guide="dash-todo">
             <div class="{{ $ch }}">
                 <h2 id="tq-h-todo" tabindex="-1" class="{{ $h2 }}">{{ __('dash.todo_title') }}</h2>
                 @if ($todoItems !== [])
@@ -161,7 +166,7 @@
 
     {{-- 2 · Bắt đầu với website của bạn --}}
     @if ($startShow)
-        <section class="{{ $card }}" aria-labelledby="tq-h-start">
+        <section class="{{ $card }}" aria-labelledby="tq-h-start" data-guide="dash-start">
             <div class="{{ $ch }}">
                 <h2 id="tq-h-start" tabindex="-1" class="{{ $h2 }}">{{ __('dash.start_title') }}</h2>
                 <div class="ml-auto flex flex-wrap items-center gap-2">
@@ -272,7 +277,7 @@
     {{-- Làm nhanh · Cần giúp? --}}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16.25rem),1fr))] items-start gap-4">
         @if ($quick !== [])
-            <section class="{{ $card }}" aria-labelledby="tq-h-quick">
+            <section class="{{ $card }}" aria-labelledby="tq-h-quick" data-guide="dash-quick">
                 <div class="{{ $ch }}"><h2 id="tq-h-quick" class="{{ $h2 }}">{{ __('dash.quick_title') }}</h2></div>
                 <div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-2 p-4">
                     @foreach ($quick as $q)
@@ -283,7 +288,7 @@
                 </div>
             </section>
         @endif
-        <section class="{{ $card }}" aria-labelledby="tq-h-help">
+        <section class="{{ $card }}" aria-labelledby="tq-h-help" data-guide="dash-help">
             <div class="{{ $ch }}"><h2 id="tq-h-help" class="{{ $h2 }}">{{ __('dash.help_title') }}</h2></div>
             <div class="flex min-w-0 flex-col gap-2 p-4">
                 <p class="{{ $ts }}">{{ __('dash.help_text') }}</p>
@@ -309,7 +314,7 @@
     @if ($review !== null || $mine !== null || $recent !== null)
         <div class="grid grid-cols-1 items-start gap-4 @min-[45rem]/tq:grid-cols-2">
             @if ($review !== null)
-                <section class="{{ $card }}" aria-labelledby="tq-h-rev" x-data="{ tab: 'queue', keys: ['queue', 'mine', 'sched'], go(d) { const i = (this.keys.indexOf(this.tab) + d + this.keys.length) % this.keys.length; this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) }, to(i) { this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) } }">
+                <section class="{{ $card }}" aria-labelledby="tq-h-rev" data-guide="dash-review" x-data="{ tab: 'queue', keys: ['queue', 'mine', 'sched'], go(d) { const i = (this.keys.indexOf(this.tab) + d + this.keys.length) % this.keys.length; this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) }, to(i) { this.tab = this.keys[i]; this.$nextTick(() => document.getElementById('tq-tab-' + this.tab)?.focus()) } }">
                     <div class="{{ $ch }}">
                         <h2 id="tq-h-rev" tabindex="-1" class="{{ $h2 }}">{{ __('dash.rev_title') }}</h2>
                         @if ($rev !== null)
@@ -374,7 +379,7 @@
             @endif
 
             @if ($mine !== null)
-                <section class="{{ $card }}" aria-labelledby="tq-h-wr">
+                <section class="{{ $card }}" aria-labelledby="tq-h-wr" data-guide="dash-mine">
                     <div class="{{ $ch }}"><h2 id="tq-h-wr" tabindex="-1" class="{{ $h2 }}">{{ __('dash.wr_title') }}</h2></div>
                     @if ($wr === null)
                         @include('admin::livewire.dashboard.card-error', ['card' => 'mine', 'label' => __('dash.wr_title')])

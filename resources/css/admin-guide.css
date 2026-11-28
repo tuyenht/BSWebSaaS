@@ -110,6 +110,21 @@
     margin: 0 0 10px;
 }
 
+/* the screen's common questions: the question in the strong text colour, the answer under it */
+.bg-faq {
+    margin: 0 0 12px;
+}
+
+.bg-faq dt {
+    margin-top: 8px;
+    font-weight: 600;
+    color: var(--color-text-strong);
+}
+
+.bg-faq dd {
+    margin: 2px 0 0;
+}
+
 .bg-go {
     display: flex;
     align-items: center;

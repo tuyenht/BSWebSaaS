@@ -113,6 +113,13 @@ it('leaves keyboard focus to the shared focus ring', function (string $markup): 
     'modal' => '<x-bs-admin::modal title="Xác nhận xoá"><p>Chắc chưa?</p></x-bs-admin::modal>',
 ]);
 
+it('paints the screen head trail and line with the muted role, never a faint one', function (): void {
+    expect((string) $this->blade('<x-bs-admin::screen-head title="Thành viên" :crumb="[[\'label\' => \'Thành viên\']]" :guide="false" desc="Người cùng quản trị website." />'))
+        ->toContain('text-text-muted')
+        ->not->toContain('text-body-faint')
+        ->not->toContain('text-text-faint');
+});
+
 it('draws the modal close icon in the muted role, not the placeholder gray', function (): void {
     preg_match('/<button type="button" @click="hide\(\)"[^>]*class="([^"]*)"/', (string) $this->blade('<x-bs-admin::modal title="Xác nhận xoá"><p>Chắc chưa?</p></x-bs-admin::modal>'), $close);
 
@@ -124,6 +131,5 @@ it('paints secondary text a reader needs with the muted role, never the decorati
         ->toContain('text-body-muted')
         ->not->toContain('text-body-faint');
 })->with([
-    'breadcrumb + subtitle' => '<x-bs-admin::page-header title="Người dùng" subtitle="Quản lý thành viên."><x-slot:breadcrumbs>Bảng điều khiển / Người dùng</x-slot:breadcrumbs></x-bs-admin::page-header>',
     'unselected tab' => '<x-bs-admin::tabs :tabs="[\'a\' => \'Một\', \'b\' => \'Hai\']" />',
 ]);

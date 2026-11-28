@@ -58,17 +58,16 @@
     $cell = 'min-w-0 shrink-0 [overflow-wrap:anywhere]';
 @endphp
 <div class="flex flex-col gap-4">
-    <div>
-        <h1 class="m-0 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong">{{ __('admin.platform_audit') }}</h1>
-        <p class="m-0 mt-1 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.audit.intro') }}</p>
-    </div>
+    <x-bs-admin::screen-head :title="__('admin.platform_audit')" top :crumb="[['label' => __('admin.platform_audit')]]"
+        :desc="__('admin.audit.intro')" :mdesc="__('admin.audit.mdesc')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('audit', __('admin.platform_audit'))" />
 
     <div class="flex flex-wrap items-center gap-3">
         <div class="min-w-0 max-w-[26rem] flex-[1_1_16rem]">
-            <x-bs-admin::search :label="__('admin.audit.search_label')" :placeholder="__('admin.audit.search_hint')" wire:model.live.debounce.400ms="q" />
+            <x-bs-admin::search :label="__('admin.audit.search_label')" :placeholder="__('admin.audit.search_hint')" wire:model.live.debounce.400ms="q" data-guide="search" />
         </div>
         <x-bs-admin::filter-panel :sections="$sections" :active="$active" :results="__('admin.audit.show_results')" clear="clearFilters" />
-        <button type="button" wire:click="$toggle('support')" aria-pressed="{{ $support ? 'true' : 'false' }}"
+        <button type="button" data-guide="support" wire:click="$toggle('support')" aria-pressed="{{ $support ? 'true' : 'false' }}"
                 class="hit-area inline-flex min-h-control shrink-0 items-center gap-1.5 rounded border px-3 text-body transition-colors any-pointer-coarse:min-h-hit {{ $support ? 'border-primary-text bg-primary/10 font-semibold text-primary-text' : 'border-border-input bg-surface text-text-strong hover:bg-surface-hover' }}">
             <x-bs-admin::icon name="ri-user-shared" class="size-4 shrink-0" />
             <span>{{ __('admin.audit.support_only') }}</span>

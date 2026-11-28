@@ -55,7 +55,7 @@
                 destroy() { this.sheet && this.lock(false) } }"
             x-on:click.outside="open = false; sheet && lock(false)" x-on:keydown.escape.prevent.stop="close(true)"
             x-on:resize.window="sheet && $refs.menu && getComputedStyle($refs.menu).getPropertyValue('--list-sheet').trim() !== '1' && lock(false)">
-            <x-bs-admin::button :size="$head ? 'md' : 'sm'" :variant="$head ? 'outline' : 'ghost'" :color="$head ? 'neutral' : 'primary'" icon x-ref="more" data-guide="row-more"
+            <x-bs-admin::button :size="$head ? 'md' : 'sm'" :variant="$head ? 'outline' : 'ghost'" :color="$head ? 'neutral' : 'primary'" icon x-ref="more" data-guide="{{ $head ? 'more' : 'row-more' }}"
                 aria-label="{{ $label ?? __('admin.list.more_for', ['name' => $name]) }}" title="{{ $label ?? __('admin.list.more') }}"
                 {{ $attributes->only([])->merge($boundLabel ? ['x-bind:aria-label' => $boundLabel] : []) }}
                 aria-haspopup="menu" ::aria-expanded="open.toString()"

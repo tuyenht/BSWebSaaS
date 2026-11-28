@@ -70,7 +70,7 @@
     <div wire:ignore data-bs-lazy-wait class="ms-auto flex flex-wrap items-center justify-end gap-2.5">
         <x-bs-admin::button variant="outline" color="neutral" data-sb-discard aria-describedby="{{ $stat }}"
                             :disabled="$clean" x-bind:disabled="! dirty || busy !== ''" x-on:click="discard()">{{ __('admin.savebar.discard') }}</x-bs-admin::button>
-        <x-bs-admin::button color="primary" data-sb-save aria-describedby="{{ $stat }}"
+        <x-bs-admin::button color="primary" data-sb-save data-guide="save" aria-describedby="{{ $stat }}"
                             aria-disabled="{{ $blocked ? 'true' : 'false' }}" x-bind:aria-disabled="blocked ? 'true' : 'false'"
                             aria-busy="false" x-bind:aria-busy="busy === 'save' ? 'true' : 'false'" x-on:click="go()"
                             class="aria-busy:cursor-progress aria-disabled:cursor-not-allowed aria-disabled:bg-track aria-disabled:text-text-muted aria-disabled:shadow-none aria-disabled:hover:brightness-100">

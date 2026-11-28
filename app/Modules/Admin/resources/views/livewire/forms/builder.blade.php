@@ -38,22 +38,15 @@
     $summary = __('form_builder.match_of', ['n' => $num($matched), 'm' => $num($total)]);
 @endphp
 <div class="flex flex-col gap-4" x-data="{ pick: false }">
-    <header class="flex flex-col gap-1">
-        <x-bs-admin::title-row :title="__('form_builder.title')">
-            <x-bs-admin::button color="primary" class="shrink-0" x-on:click="pick = true" aria-haspopup="dialog"
-                :label="__('form_builder.add')" :short="__('admin.list.add_short')">
-                <x-bs-admin::icon name="ri-add" class="size-4" />
-            </x-bs-admin::button>
-        </x-bs-admin::title-row>
-        <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">
-            <span class="max-[599.98px]:hidden">{{ __('form_builder.desc') }}</span><span class="min-[600px]:hidden">{{ __('form_builder.desc_short') }}</span>
-            @can('forms.view')
-                <a href="{{ route('admin.forms.index') }}" wire:navigate class="hit-area inline-flex items-center gap-1 font-medium text-primary-text underline-offset-2 hover:underline">
-                    <x-bs-admin::icon name="ri-mail" class="size-4" />{{ __('admin.contacts') }}
-                </a>
-            @endcan
-        </p>
-    </header>
+    <x-bs-admin::screen-head :title="__('form_builder.title')" top :crumb="[['label' => __('form_builder.title')]]"
+        :desc="__('form_builder.desc')" :mdesc="__('form_builder.desc_short')"
+        :desc-link="auth()->user()?->can('forms.view') ? ['label' => __('admin.contacts'), 'url' => route('admin.forms.index'), 'icon' => 'ri-mail'] : null"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('forms', __('form_builder.title'))">
+        <x-bs-admin::button color="primary" class="shrink-0" x-on:click="pick = true" aria-haspopup="dialog" data-guide="add"
+            :label="__('form_builder.add')" :short="__('admin.list.add_short')">
+            <x-bs-admin::icon name="ri-add" class="size-4" />
+        </x-bs-admin::button>
+    </x-bs-admin::screen-head>
 
     @if ($failed)
         <x-bs-admin::card flush role="alert" data-state="error" class="min-w-0 p-6 text-center">
@@ -66,12 +59,12 @@
         </x-bs-admin::card>
     @else
         <section aria-label="{{ __('form_builder.list_label') }}" class="@container/bm min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:shadow-card">
-            <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('form_builder.groups_label')" />
+            <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('form_builder.groups_label')" data-guide="tabs" />
 
             <div class="flex flex-wrap items-center gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3">
                 <div class="min-w-0 flex-[1_1_12rem] text-body min-[900px]:max-w-[30em]">
                     <x-bs-admin::search id="forms-search" :label="__('form_builder.search_label')" :placeholder="__('form_builder.search_placeholder')"
-                        maxlength="100" wire:model.live.debounce.300ms="search" />
+                        maxlength="100" wire:model.live.debounce.300ms="search" data-guide="search" />
                 </div>
                 <x-bs-admin::filter-panel class="shrink-0 flex-nowrap min-[900px]:ms-auto" :sections="$sections" :label="__('admin.list.filter')"
                     :active="count($has)" :active-narrow="count($has) + ($tab !== 'all' ? 1 : 0)"
@@ -105,7 +98,7 @@
                         <x-bs-admin::list.row wire:key="bm-{{ $row['ulid'] }}">
                             <x-bs-admin::list.cell col="main">
                                 <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-                                    <x-bs-admin::list.name :href="$href">{{ $row['name'] }}</x-bs-admin::list.name>
+                                    <x-bs-admin::list.name :href="$href" data-guide="row-open">{{ $row['name'] }}</x-bs-admin::list.name>
                                     @if ($row['system'])
                                         <span class="inline-flex min-h-5.5 max-w-full items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-caption font-semibold leading-snug text-text [overflow-wrap:anywhere]"
                                               title="{{ __('form_builder.system_tip') }}">
@@ -117,7 +110,7 @@
                                     <span>{{ $leads ?? trans_choice('form_builder.leads_n', 0, ['n' => 0]) }}</span>
                                     <span @class(['text-warning-text' => $mail === null])>{{ $mail ?? __('form_builder.mail_none') }}</span>
                                 </p>
-                                <button type="button" role="switch" class="switch-row" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
+                                <button type="button" role="switch" class="switch-row" data-guide="row-switch" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
                                     aria-label="{{ __('form_builder.switch_aria', ['name' => $row['name']]) }}"
                                     wire:click="setActive({{ Js::from($row['ulid']) }}, {{ $row['active'] ? 'false' : 'true' }})" wire:loading.attr="disabled" wire:target="setActive">
                                     {{ $row['active'] ? __('form_builder.on') : __('form_builder.off') }}
