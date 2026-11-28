@@ -6,7 +6,10 @@ use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Models\MailDaily;
+use App\Modules\Admin\Support\Mail\MailDnsCheck;
+use App\Modules\Admin\Support\Mail\MailDnsProviders;
 use App\Modules\Admin\Support\Mail\MailQuotaGate;
+use App\Modules\Admin\Support\Mail\MailSendContext;
 use App\Modules\Admin\Support\MailBrand;
 use App\Modules\Admin\Support\MailHostGuard;
 use App\Modules\Admin\Support\MailNotifyTo;
@@ -16,6 +19,7 @@ use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Forms\Support\FormDraft;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -26,7 +30,9 @@ use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\Site;
+use Carbon\CarbonInterface;
 use Closure;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Mail\Markdown;
 use Illuminate\Mail\Message;
@@ -81,11 +87,14 @@ final class EmailSettings extends Component
     /** Test sends a member may start per minute on one website («Kiểm tra & lưu kết nối» and «Gửi thử» together). */
     private const int TEST_SENDS_PER_MINUTE = 5;
 
+    /** Test mails one website may send through its own outbox in one of its days, to any address. */
+    public const int TEST_SENDS_PER_DAY = 20;
+
     /** The tabs of a website's page, in the board's order («Mẫu thư» comes with the mail templates). */
     public const array TABS = ['send', 'sign'];
 
     /** The mailbox providers whose address cannot carry a website's own «info@…» (no suggestion from them). */
-    private const array PUBLIC_MAILBOXES = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.vn', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com'];
+    private const array PUBLIC_MAILBOXES = MailRelay::PUBLIC_MAILBOXES;
 
     /** The parts before @ «Gửi thông báo tới» suggests on the website's domain, in the board's order. */
     private const array NOTIFY_PREFIXES = ['info', 'contact'];
@@ -184,6 +193,16 @@ final class EmailSettings extends Component
 
     public ?string $testResult = null;
 
+    /**
+     * «Gửi thư kiểm tra tới»: the one address a test mail goes to ('' = the member's own). Typed in
+     * the browser, so sendTest() checks it again on every send before anything leaves.
+     */
+    public string $testTo = '';
+
+    /** The line under «Gửi thư kiểm tra tới» after a test mail left (who to, and when). */
+    #[Locked]
+    public string $testSentNote = '';
+
     /** The tab shown (?tab=sign opens on it); the browser switches at once and tells the server with its next request. */
     public string $tab = 'send';
 
@@ -222,6 +241,8 @@ final class EmailSettings extends Component
         $this->tab = is_string($tab) && in_array($tab, self::TABS, true) ? $tab : 'send';
         $this->loadConfig($scope);
         $this->rememberSaved();
+        // the board fills the field with the member's own address
+        $this->testTo = $this->scope === 'site' ? Cast::string(auth()->user()?->email) : '';
     }
 
     /** Back to the saved setup (the save bar's "Bỏ thay đổi"); a secret typed but not saved is dropped. */
@@ -230,6 +251,7 @@ final class EmailSettings extends Component
         $this->reset(...self::TRACKED, ...self::BRAND_TRACKED);
         $this->resetErrorBag();
         $this->testResult = null;
+        $this->testSentNote = '';
         $this->loadConfig($this->scope);
         $this->rememberSaved();
         $this->sendSignatureToEditor();
@@ -416,6 +438,14 @@ final class EmailSettings extends Component
         if ($this->testSendThrottled()) {
             return;
         }
+        // and while the website's test mails of the day are used up: nothing could be checked
+        if ($this->testDayFull()) {
+            $full = $this->testDayFullMessage();
+            $this->addError('relay', $full);
+            $this->notify($full, 'error');
+
+            return;
+        }
         $this->relayChecked = false;
         try {
             $saved = $this->save();
@@ -428,19 +458,42 @@ final class EmailSettings extends Component
             return;
         }
 
-        $this->sendTest();
+        // the check mails the member who pressed it, whatever «Gửi thư kiểm tra tới» holds
+        $refused = $this->deliverTest(Cast::string(auth()->user()?->email), 'relay');
         $repo = $this->configRepo();
         $cfg = Cast::arr($repo->get('email'));
+        if ($refused) {
+            // nothing was tested: an earlier check stands (reached when the day's count fills
+            // between the check before saving and this send)
+            $this->relayChecked = $this->ownReady && isset($cfg['checked_at']);
+
+            return;
+        }
         unset($cfg['checked_at']);
         if ($this->testResult === 'ok') {
             $cfg['checked_at'] = now()->utc()->toIso8601String();
         }
         $repo->put('email', 'config', $cfg);
+        $this->startDnsCheck();
         $this->relayChecked = $this->testResult === 'ok';
         if (! $this->relayChecked) {
             return;
         }
         $this->notify(__('admin.em_rl_ok_toast'));
+    }
+
+    /**
+     * Checks the SPF / DKIM / DMARC records of the setup just saved and checked (MailDnsCheck), and
+     * tells «Nâng cao — các dòng xác thực tên miền»: started, or refused by the website's press limit.
+     */
+    private function startDnsCheck(): void
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            return;
+        }
+        $wait = app(MailDnsCheck::class)->start($current->id());
+        $this->dispatch($wait === null ? 'em-dns-started' : 'em-dns-refused');
     }
 
     /** True once written (a form that fails its checks stops at validation). */
@@ -836,13 +889,58 @@ final class EmailSettings extends Component
         session()->flash('status', __('admin.em_disconnected'));
     }
 
+    /**
+     * «Gửi thư kiểm tra»: a test mail to the address typed in (empty = the member's own; the system's
+     * page always mails the member). One address only, and through the shared outbox only to a
+     * verified email of a member of this website.
+     */
     public function sendTest(): void
     {
         $this->testResult = null;
-        $to = auth()->user()?->email;
-
-        if (! $to || $this->testSendThrottled()) {
+        $this->testSentNote = '';
+        $this->resetErrorBag('testTo');
+        $own = Cast::string(auth()->user()?->email);
+        if ($own === '') {
             return;
+        }
+        $typed = $this->scope === 'site' ? trim($this->testTo) : '';
+        $to = $typed === '' ? $own : $typed;
+
+        $problem = $this->testAddressProblem($to);
+        if ($problem !== null) {
+            $this->addError('testTo', $problem);
+            $this->js("document.getElementById('em-test-to')?.focus()");
+
+            return;
+        }
+
+        $this->deliverTest($to, 'testTo');
+    }
+
+    /** Why a typed address cannot take a test mail (null = it can): one well-formed address, nothing else. */
+    private function testAddressProblem(string $to): ?string
+    {
+        // a list (or a line break with another header after it) is never one address
+        if (mb_check_encoding($to, 'UTF-8') && preg_match('/[,;\s]/u', $to) === 1 && substr_count($to, '@') > 1) {
+            return Cast::string(__('admin.em_test_one'));
+        }
+
+        return mb_check_encoding($to, 'UTF-8') && FormDraft::isEmail($to) ? null : Cast::string(__('admin.em_test_bad'));
+    }
+
+    /**
+     * Sends the test mail to $to through the outbox the website picked (never another one), with the
+     * checks of that outbox; a refusal is shown under $field. Not a notification, so like before it is
+     * neither logged in «Thư gần đây» nor counted on the shared outbox's day (RecordTenantMail).
+     * True when one of those checks refused it (nothing was tried).
+     */
+    private function deliverTest(string $to, string $field): bool
+    {
+        $this->testResult = null;
+        $this->testSentNote = '';
+
+        if ($to === '' || $this->testSendThrottled()) {
+            return true;
         }
         // each test opens a connection to a server the member typed in or picked: a few a minute at most
         RateLimiter::hit($this->testLimitKey(), 60);
@@ -850,7 +948,21 @@ final class EmailSettings extends Component
         if (! app(TenantMailer::class)->apply(fallback: false)) {
             $this->testResult = 'error';
 
-            return;
+            return false;
+        }
+
+        if ($this->scope === 'site') {
+            $refusal = app(MailSendContext::class)->via === 'own'
+                ? ($this->testDayUsedUp() ? $this->testDayFullMessage() : null)
+                : ($this->memberMayReceive($to) ? null : Cast::string(__('admin.em_test_platform_only')));
+            if ($refusal !== null) {
+                $this->addError($field, $refusal);
+                if ($field === 'relay') {
+                    $this->notify($refusal, 'error');
+                }
+
+                return true;
+            }
         }
 
         try {
@@ -864,10 +976,68 @@ final class EmailSettings extends Component
                 $message->to($to)->subject(__('admin.test_email_subject'));
             });
             $this->testResult = 'ok';
+            $this->testSentNote = Cast::string(__('admin.em_test_sent_to', ['to' => $to, 'time' => app(SiteTime::class)->now()->format('H:i')]));
         } catch (Throwable $e) {
             report($e);
             $this->testResult = 'error';
         }
+
+        return false;
+    }
+
+    /**
+     * Takes one of the website's test mails of its day through its own outbox (its own time zone);
+     * true when the day's ones are used up. Counted on attempt: each one opens a connection.
+     */
+    private function testDayUsedUp(): bool
+    {
+        $now = app(SiteTime::class)->now();
+        $untilTomorrow = (int) ceil(abs($now->diffInSeconds($now->addDay()->startOfDay())));
+
+        return RateLimiter::hit($this->testDayKey($now), $untilTomorrow + 3600) > self::TEST_SENDS_PER_DAY;
+    }
+
+    /** Whether the website's test mails of its day are used up already (reads the count, takes none). */
+    private function testDayFull(): bool
+    {
+        return RateLimiter::attempts($this->testDayKey(app(SiteTime::class)->now())) >= self::TEST_SENDS_PER_DAY;
+    }
+
+    /** The website's count of test mails for the day of $now (its own time zone); the same instant names the key and its expiry. */
+    private function testDayKey(CarbonInterface $now): string
+    {
+        return 'mail-test-day:'.app(CurrentSite::class)->id().':'.$now->toDateString();
+    }
+
+    private function testDayFullMessage(): string
+    {
+        return Cast::string(__('admin.em_test_day_full', ['count' => self::TEST_SENDS_PER_DAY]));
+    }
+
+    /**
+     * Whether the shared outbox may carry a test mail to $to: the member's own address (as before), or
+     * a verified email of a member of this website, so the platform never mails a stranger in its name.
+     */
+    private function memberMayReceive(string $to): bool
+    {
+        $current = app(CurrentSite::class);
+        // ASCII case only: a Unicode look-alike (K → k) is no match for the member's own address
+        if (strtolower($to) === strtolower(Cast::string(auth()->user()?->email))) {
+            return true;
+        }
+        if (! $current->hasId()) {
+            return false;
+        }
+        $siteId = $current->id();
+
+        // users.email is citext: the address matches whatever its case
+        return User::query()->where('email', $to)->whereNotNull('email_verified_at')
+            ->whereExists(fn (QueryBuilder $m): QueryBuilder => $m->selectRaw('1')
+                ->from('model_has_roles')
+                ->whereColumn('model_has_roles.model_id', 'users.id')
+                ->where('model_has_roles.model_type', User::class)
+                ->where('model_has_roles.site_id', $siteId))
+            ->exists();
     }
 
     /** One count per member and website, shared by «Kiểm tra & lưu kết nối» and «Gửi thử». */
@@ -1428,6 +1598,8 @@ final class EmailSettings extends Component
             'keySaved' => ! $platform && $this->keySaved(),
             'quota' => $platform ? null : $this->platformQuota(),
             'sender' => $platform ? null : $this->senderView($siteName, $platformFrom),
+            // what «Nâng cao — các dòng xác thực tên miền» shows the check of: the setup on screen
+            'dns' => ['domain' => $this->provider === 'other' ? $this->fromDomain() : '', 'provider' => MailDnsProviders::of($this->relay, $this->smtpHost)],
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));

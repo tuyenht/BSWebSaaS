@@ -6,8 +6,11 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 /**
  * Force-purge cleanup for a media master (design.md §16, D3). Soft-delete (Thùng rác) keeps the R2
@@ -19,6 +22,14 @@ use Illuminate\Support\Facades\Storage;
  * its rows back into the Trash with their files still there. A worker killed between the commit and
  * the delete leaves an object no row names (a leak, never a row without its file). RLS scopes the
  * attachment cleanup to the master's site.
+ *
+ * Between the commit and the delete the key is free again: an upload of the same bytes under the same
+ * name gets the same key (MediaKey::unique looks at rows only) and stores its object there. So right
+ * before deleting, the website's rows are looked at once more, in the website's context, and a key a
+ * row names by then (trashed or not) is kept; when that look fails the objects are kept too (a leak,
+ * never a row without its file). What is left is an upload whose object is stored and whose row is
+ * not committed yet at that look: its object can still go, and a re-upload of the same bytes puts it
+ * back (UploadMedia's self-heal).
  *
  * A row media:rekey-site moved still has its old object at `meta.moved_from` (kept so addresses
  * already shared keep working); a purge removes that one too, so a file deleted for good is gone
@@ -60,12 +71,23 @@ final class MediaObserver
             return;
         }
 
-        // no query in here: after the commit the website's context is gone
+        // after the commit the website's context is gone: the last look enters it again
+        $siteId = Cast::int($media->site_id);
         $disk = $media->disk;
-        $media->getConnection()->afterCommit(static function () use ($disk, $keys): void {
+        $media->getConnection()->afterCommit(static function () use ($siteId, $disk, $keys): void {
+            try {
+                $named = app(Tenancy::class)->enter($siteId, fn (): array => Media::query()->withTrashed()
+                    ->whereIn('storage_key', $keys)->pluck('storage_key')->all());
+            } catch (Throwable $e) {
+                report($e);
+
+                return;
+            }
             $store = Storage::disk($disk);
             foreach ($keys as $key) {
-                $store->delete($key);
+                if (! in_array($key, $named, true)) {
+                    $store->delete($key);
+                }
             }
         });
     }
