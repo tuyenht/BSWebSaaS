@@ -95,12 +95,20 @@ final readonly class Tenancy
      * transaction PostgreSQL aborted refuses even `select 1`. A failure the work recovered through a
      * savepoint answers normally, and the transaction commits as usual. Runs after CurrentSite is
      * cleared, so the outside-a-transaction guard has nothing to check; it reads no table.
+     *
+     * Only PostgreSQL's "transaction is aborted" answer (SQLSTATE 25P02) means that; any other failure
+     * (a lost connection, say) is rethrown, so it stays as loud as an ordinary failed COMMIT.
+     * QueryException always carries the driver's code, and pdo_pgsql's code is the SQLSTATE string.
      */
     private function throwIfAborted(Connection $connection, mixed $result): void
     {
         try {
             $connection->select('select 1');
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            if ((string) $e->getCode() !== CountsFailedStatements::IN_FAILED_TRANSACTION) {
+                throw $e;
+            }
+
             throw new TenantTransactionAborted(
                 $result,
                 $connection instanceof CountsFailedStatements ? $connection->lastFailureState() : null,

@@ -257,3 +257,55 @@ it('keeps a failure that escapes the work on Laravel\'s usual path: rolled back,
         ->and(DB::transactionLevel())->toBe(0);
     Log::shouldNotHaveReceived('warning');
 });
+
+it('rethrows a probe failure that is not the aborted-transaction answer instead of returning quietly', function (): void {
+    Log::spy();
+    $rolledBack = false;
+    $armed = false;
+
+    // The probe meets a lost connection (SQLSTATE 08006) instead of PostgreSQL's 25P02 answer. The hook
+    // runs before Laravel sends the statement, so the real transaction is only rolled back afterwards.
+    DB::beforeExecuting(function (string $query) use (&$armed): void {
+        if ($armed && $query === 'select 1') {
+            $armed = false;
+            // PDO puts the SQLSTATE string in the code and in errorInfo; its constructor takes an int code only.
+            $cause = new class('SQLSTATE[08006]: Connection failure: the server went away') extends PDOException
+            {
+                public function __construct(string $message)
+                {
+                    parent::__construct($message);
+                    $this->code = '08006';
+                    $this->errorInfo = ['08006', 7, 'the server went away'];
+                }
+            };
+
+            throw new QueryException('pgsql', $query, [], $cause);
+        }
+    });
+
+    $thrown = null;
+    try {
+        app(Tenancy::class)->enter(1, function () use (&$rolledBack, &$armed): string {
+            TenantProbe::create(['value' => 'lost']);
+            DB::afterRollBack(function () use (&$rolledBack): void {
+                $rolledBack = true;
+            });
+            abortedTxSwallowFailure();
+            $armed = true;
+
+            return 'the answer';
+        });
+    } catch (QueryException $e) {
+        $thrown = $e;
+    } finally {
+        $armed = false;
+    }
+
+    expect($thrown)->toBeInstanceOf(QueryException::class)
+        ->and($thrown?->getCode())->toBe('08006')
+        ->and($rolledBack)->toBeTrue()
+        ->and(abortedTxStoredProbes())->toBe([])
+        ->and(DB::transactionLevel())->toBe(0)
+        ->and(app(CurrentSite::class)->hasId())->toBeFalse();
+    Log::shouldNotHaveReceived('warning');
+});

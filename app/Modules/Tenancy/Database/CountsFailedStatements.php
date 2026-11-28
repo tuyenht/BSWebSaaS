@@ -11,6 +11,9 @@ namespace App\Modules\Tenancy\Database;
  */
 interface CountsFailedStatements
 {
+    /** SQLSTATE in_failed_sql_transaction: PostgreSQL's answer to every statement after the transaction aborted. */
+    public const string IN_FAILED_TRANSACTION = '25P02';
+
     /** How many statements failed on this connection since it was made. Only ever grows. */
     public function failedStatements(): int;
 

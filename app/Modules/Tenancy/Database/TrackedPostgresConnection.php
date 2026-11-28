@@ -22,9 +22,6 @@ use Illuminate\Database\QueryException;
  */
 final class TrackedPostgresConnection extends PostgresConnection implements CountsFailedStatements
 {
-    /** SQLSTATE in_failed_sql_transaction: the echo of an earlier failure, never its cause. */
-    private const string IN_FAILED_TRANSACTION = '25P02';
-
     private int $failedStatements = 0;
 
     private ?string $lastFailureState = null;
@@ -51,7 +48,8 @@ final class TrackedPostgresConnection extends PostgresConnection implements Coun
         } catch (QueryException $e) {
             $this->failedStatements++;
 
-            // PDO's code is the SQLSTATE string, whatever the parent class declares.
+            // PDO's code is the SQLSTATE string, whatever the parent class declares. 25P02 is the
+            // echo of an earlier failure, never its cause.
             $state = (string) $e->getCode();
             if ($state !== self::IN_FAILED_TRANSACTION) {
                 $this->lastFailureState = $state;
