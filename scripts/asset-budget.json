@@ -202,6 +202,10 @@
       "js": 2188,
       "css": 0
     },
+    "resources/js/admin-email-template.js": {
+      "js": 3312,
+      "css": 0
+    },
     "resources/js/admin-media-drawer.js": {
       "js": 1128,
       "css": 0
