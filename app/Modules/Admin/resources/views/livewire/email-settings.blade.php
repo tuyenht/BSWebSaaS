@@ -18,19 +18,26 @@
     @endif
 
     @if ($scope !== 'platform')
-        {{-- A website's page has two tabs (the board's strip; «Mẫu thư» joins them with the mail
-             templates). Switching shows the other at once; the server learns the tab with the next
-             request, so a redraw keeps it, and the address keeps it for a reload. --}}
+        {{-- A website's page has three tabs (the board's strip). Switching shows the other at once;
+             the server learns the tab with the next request, so a redraw keeps it, and the address
+             keeps it for a reload. «Mẫu thư» counts the mails with a switch (the board's list), and
+             the strip steps aside while a template is open in its editor. --}}
         @php
+            $tplCount = count(array_filter(
+                \App\Modules\Admin\Support\Mail\MailTemplateCatalog::visible(app(\App\Modules\Tenancy\Entitlement\Entitlement::class)->entitledModuleKeys()),
+                static fn (string $k): bool => \App\Modules\Admin\Support\Mail\MailTemplateCatalog::switchable($k),
+            ));
             $tabs = [
                 'send' => ['icon' => 'ri-send-plane', 'label' => __('admin.em_tab_send'), 'short' => __('admin.em_tab_send')],
+                'tpl' => ['icon' => 'ri-mail', 'label' => __('admin.em_tab_tpl'), 'short' => __('admin.em_tab_tpl'), 'count' => $tplCount],
                 'sign' => ['icon' => 'ri-quill-pen', 'label' => __('admin.em_tab_sign'), 'short' => __('admin.em_tab_sign_short')],
             ];
         @endphp
         <div class="@container flex flex-col gap-6"
-             x-data="{ tab: @js($tab), go(t) { if (this.tab === t) return; this.tab = t; $wire.$set('tab', t, false); try { const u = new URL(location.href); t === 'send' ? u.searchParams.delete('tab') : u.searchParams.set('tab', t); history.replaceState(history.state, '', u) } catch (e) {} } }"
+             x-on:email-tpl-editing.window="tplEditing = !! $event.detail.on"
+             x-data="{ tplEditing: false, tab: @js($tab), go(t) { if (this.tab === t) return; this.tab = t; $wire.$set('tab', t, false); try { const u = new URL(location.href); t === 'send' ? u.searchParams.delete('tab') : u.searchParams.set('tab', t); history.replaceState(history.state, '', u) } catch (e) {} } }"
              x-on:email-tab.window="go($event.detail.tab)">
-            <div role="tablist" aria-label="{{ __('admin.em_tabs_label') }}"
+            <div role="tablist" aria-label="{{ __('admin.em_tabs_label') }}" x-show="! tplEditing"
                  class="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border-strong [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
                  x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=tab]')]; const n = r[(r.indexOf(el) + by + r.length) % r.length]; n.focus(); n.click() } }">
                 @foreach ($tabs as $k => $t)
@@ -42,6 +49,10 @@
                             class="-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-[7px] border-b-2 border-transparent px-4 pt-[11px] pb-[13px] text-[calc(0.84375rem+var(--user-text-boost))] font-medium whitespace-nowrap text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text aria-selected:border-primary-text aria-selected:font-semibold aria-selected:text-primary-text @max-[37.5rem]:px-2.5">
                         <x-bs-admin::icon :name="$t['icon']" class="size-[min(1.25rem,calc(1rem+var(--user-text-boost)))] shrink-0 @max-[25rem]:hidden" />
                         <span class="@max-[37.5rem]:hidden">{{ $t['label'] }}</span><span class="hidden @max-[37.5rem]:inline">{{ $t['short'] }}</span>
+                        @isset($t['count'])
+                            <span class="rounded-[20px] bg-surface-muted px-[7px] py-px text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted" x-bind:class="tab === @js($k) && 'bg-primary-soft text-primary-text'"
+                                  @if ($tab === $k) data-on @endif aria-label="{{ __('admin.mt_tab_count', ['n' => $t['count']]) }}">{{ $t['count'] }}</span>
+                        @endisset
                     </button>
                 @endforeach
             </div>
@@ -467,6 +478,11 @@
     @if ($scope !== 'platform')
                 <livewire:admin.email-recent-mail wire:key="em-recent-mail" />
             </div>{{-- #em-panel-send --}}
+
+            <div id="em-panel-tpl" role="tabpanel" aria-labelledby="em-tab-tpl" class="flex flex-col gap-[18px]"
+                 @if ($tab !== 'tpl') hidden @endif x-bind:hidden="tab !== 'tpl'">
+                <livewire:admin.email-templates wire:key="em-templates" :from-name="$sender['name'] ?? ''" :from-address="$sender['address'] ?? ''" />
+            </div>
 
             <div id="em-panel-sign" role="tabpanel" aria-labelledby="em-tab-sign" class="flex flex-col gap-[18px]"
                  @if ($tab !== 'sign') hidden @endif x-bind:hidden="tab !== 'sign'">

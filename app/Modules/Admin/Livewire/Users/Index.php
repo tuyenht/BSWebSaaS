@@ -9,6 +9,7 @@ use App\Modules\Admin\Livewire\Users\Concerns\ManagesInvitations;
 use App\Modules\Admin\Livewire\Users\Concerns\SelectsMembers;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Admin\Support\FirstHints;
+use App\Modules\Admin\Support\Mail\MailTemplates;
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
 use App\Modules\Admin\Support\Members\RoleAbilities;
@@ -558,6 +559,12 @@ final class Index extends Component
         // an axis the block does not show is left as an open invitation has it (none on a new one)
         $postIds = $scope['axes'][CategoryScopes::POSTS]['ids'] ?? [];
         $productIds = isset($scope['axes'][CategoryScopes::PRODUCTS]) ? $scope['axes'][CategoryScopes::PRODUCTS]['ids'] : null;
+        // the invitation's link exists only in its mail: with «Lời mời thành viên» off, no invitation is made
+        if (app(MailTemplates::class)->isOff('team_invite')) {
+            $this->addError('inviteEmail', __('admin.members.inv_mail_off'));
+
+            return;
+        }
         // what the site may still mail today, said up front: the action would refuse the addresses past it one by one
         $siteId = app(CurrentSite::class)->id();
         $left = max(0, InviteMember::DAILY_LIMIT - app(InviteMember::class)->sentToday($siteId));

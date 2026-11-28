@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Notifications;
 
 use App\Modules\Admin\Notifications\Concerns\QueuesTenantMail;
+use App\Modules\Admin\Support\Mail\MailTemplateMail;
+use App\Modules\Admin\Support\Mail\MailTemplates;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\MailText;
@@ -67,12 +69,30 @@ final class MemberInvitationNotification extends Notification implements ShouldQ
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        // «Lời mời thành viên» turned off on the website's «Mẫu thư» tab: no mail (read where it is sent, in the website's request).
+        return app(MailTemplates::class)->isOff('team_invite') ? [] : ['mail'];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyTenantMailer();
+
+        $roles = implode(', ', array_map(
+            static fn (array $role): string => RoleLabel::forName($role['name'], $role['system']),
+            $this->roles,
+        ));
+        // The website's (or the platform's) wording of «Lời mời thành viên» when it has one.
+        $templated = app(MailTemplateMail::class)->message('team_invite', [
+            '{inviter_name}' => $this->inviterName,
+            '{site_name}' => $this->siteName,
+            '{roles}' => $roles,
+            '{invite_message}' => $this->personalMessage ?? '',
+            '{accept_url}' => $this->acceptUrl,
+            '{expires_at}' => $this->expiresOn,
+        ]);
+        if ($templated !== null) {
+            return $templated;
+        }
 
         $mail = (new MailMessage)
             ->subject(__('rbac.invitation.mail_subject', ['site' => $this->siteName]))

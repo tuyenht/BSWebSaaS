@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\EmailTemplates;
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\Forms\FormEditor;
@@ -41,6 +42,7 @@ use App\Modules\Admin\Livewire\Settings\Permalinks as PermalinkSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\Mail\MailTemplateStore;
 use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -527,6 +529,37 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         expect($html)->toContain('data-dns-box')->toContain(e(__('admin.em_dns_state_'.['email-dns-ok' => 'ok', 'email-dns-pending' => 'pending', 'email-dns-failed' => 'failed'][$shot])))->not->toContain('preview-only');
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
+    // «Email» → «Mẫu thư»: the list with one template edited and one turned off; the editor open on the
+    // password-changed notice the website reworded; a «Hệ thống» template, which the website only reads
+    app(Tenancy::class)->enter(1, function (): void {
+        app(MailTemplateStore::class)->put('pwchanged', 'vi', 'Mật khẩu tại {site_name} vừa được đổi', '<p>Chào {customer_name},</p><p>Mật khẩu của bạn vừa được đổi lúc {change_time}, từ địa chỉ {change_ip}.</p><p>Nếu không phải bạn, hãy gọi {hotline} hoặc viết tới {contact_email} ngay.</p>');
+        app(MailTemplateStore::class)->setOff('welcome', true);
+    });
+    $tplPage = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email?tab=tpl')->assertOk()->getContent();
+    expect($tplPage)->toContain(e(__('admin.mt_n_pwchanged')))->toContain(e(__('admin.mt_b_edited')));
+    file_put_contents($dir.'/email-tpl.html', $tplPage);
+    foreach (['email-tpl-edit' => 'pwchanged', 'email-tpl-system' => 'ntf_contact'] as $shot => $key) {
+        $lw = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(EmailTemplates::class, ['fromName' => 'Công ty Demo', 'fromAddress' => 'hop@congtydemo.vn'])
+            ->call('open', $key)->assertSet('editing', $key));
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($lw);
+        $root = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $lw->html(), 1);
+        expect($root)->toContain('wire:snapshot=')->toContain('data-bs-lazy="bsEmailTpl"');
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*admin\.email-templates/', $tplPage, $found, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $found[0][1];
+        preg_match_all('~<div\b|</div>~', $tplPage, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
+        }
+        expect($to)->not->toBeNull();
+        file_put_contents($dir.'/'.$shot.'.html', substr($tplPage, 0, $from).$root.substr($tplPage, (int) $to));
+    }
+    DB::connection('pgsql_admin')->table('mail_templates')->delete();
     DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
     DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();
     $this->flushSession();
@@ -1930,5 +1963,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 175);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 178);
 });

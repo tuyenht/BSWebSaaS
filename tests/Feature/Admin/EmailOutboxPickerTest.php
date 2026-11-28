@@ -135,8 +135,8 @@ it('draws the four outboxes as one radio group, the shared one first and marked 
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $html = Livewire::actingAs($admin)->test(EmailSettings::class)->html();
-        // The outbox group only (the signature tab's colours are a radio group of their own).
-        $group = (string) strstr((string) strstr($html, 'aria-labelledby="em-outbox-title"'), 'id="em-panel-sign"', true);
+        // The outbox group only (the templates' switches and the signature tab's colours come after it).
+        $group = (string) strstr((string) strstr($html, 'aria-labelledby="em-outbox-title"'), 'id="em-panel-tpl"', true);
 
         expect(substr_count($group, 'role="radio"'))->toBe(4)
             ->and(substr_count($group, 'aria-checked="true"'))->toBe(1)
