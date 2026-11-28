@@ -6,6 +6,7 @@ namespace Tests;
 
 use App\Modules\Shared\Http\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\ConfigurationUrlParser;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportDisablingBackButtonCache\SupportDisablingBackButtonCache;
@@ -19,14 +20,44 @@ abstract class TestCase extends BaseTestCase
     /** Inherited by child processes (mutation/parallel workers): the parent already holds the lock. */
     private const string LOCK_HELD_ENV = 'BSWEB_TEST_DB_LOCK_HELD';
 
+    /**
+     * Set only by plans/tools/pest-scratch.sh, to the name of its private compose project. Closing the
+     * pooler's server connections is allowed only then, and only when both database hosts are that
+     * project's own containers: on the shared dev database the same pool serves dev Octane and Horizon.
+     */
+    public const string SCRATCH_STACK_ENV = 'BSWEB_TEST_SCRATCH_STACK';
+
+    /** Hosts of the shared dev stack (compose service and container names): never closed from a test. */
+    private const array SHARED_DEV_HOSTS = ['pgbouncer', 'postgres', 'bsweb_dev_pgbouncer', 'bsweb_dev_pg'];
+
     /** The connection holding the suite lock — kept for the life of the process, released on exit. */
     private static ?PDO $suiteLock = null;
+
+    /**
+     * Direct pgsql_admin handle that watches the column catalog, or null when the app connection
+     * reaches PostgreSQL directly (CI) and there is nothing to watch.
+     */
+    private static ?PDO $catalogWatch = null;
+
+    /** The address PostgreSQL sees for the pooler's server connections, and the role they log in as. */
+    private static string $poolerAddress = '';
+
+    private static string $appUser = '';
+
+    /** Fingerprint of every column of the public relations, taken after the last test. */
+    private static string $columnsPrint = '';
+
+    private static bool $poolerChecked = false;
+
+    /** Whether the app connection reaches PostgreSQL through a pooler (known after the first setUp). */
+    private static bool $behindPooler = false;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         self::holdSharedDatabaseLock();
+        self::watchPooledStatements();
 
         // Livewire turns this static flag on whenever a component boots and turns it off only when an
         // HTTP response passes its middleware. A test that ends after Livewire::test leaves it on, and
@@ -57,6 +88,172 @@ abstract class TestCase extends BaseTestCase
                 DB::disconnect($name);
             }
         });
+        // Registered after the disconnect above, so it runs once this test's clients are gone.
+        $this->beforeApplicationDestroyed(static function (): void {
+            self::forgetPooledStatementsAfterColumnChange();
+        });
+    }
+
+    /**
+     * Local runs reach PostgreSQL through PgBouncer in transaction mode, which keeps every prepared
+     * statement on its pooled server connections and hands it to any later client that prepares the
+     * same text. A test that changes a table's columns (a migration's down() and up()) leaves each
+     * `select *` prepared before it answering "cached plan must not change result type" for every
+     * later test, until those server connections close. Find out once per process whether the app
+     * connection goes through a pooler: PostgreSQL then sees it come from another address than the
+     * direct admin connection. CI talks to PostgreSQL directly, where a statement dies with its
+     * connection, so the watch stays off there. It also stays off unless this is a private scratch
+     * stack (mayClosePooledConnections): a plain run on the shared dev database keeps the old risk
+     * and should go through plans/tools/pest-scratch.sh instead.
+     */
+    private static function watchPooledStatements(): void
+    {
+        if (self::$poolerChecked) {
+            return;
+        }
+        self::$poolerChecked = true;
+
+        $admin = self::connect('pgsql_admin');
+        $app = self::connect('pgsql');
+        $seenFromApp = $app->query('select inet_client_addr()::text');
+        $seenFromAdmin = $admin->query('select inet_client_addr()::text');
+        $poolerAddress = $seenFromApp === false ? null : $seenFromApp->fetchColumn();
+        $adminAddress = $seenFromAdmin === false ? null : $seenFromAdmin->fetchColumn();
+        $app = null;
+
+        if (! is_string($poolerAddress) || $poolerAddress === $adminAddress) {
+            return;
+        }
+        self::$behindPooler = true;
+
+        if (! self::mayClosePooledConnections()) {
+            return;
+        }
+
+        self::$catalogWatch = $admin;
+        self::$poolerAddress = $poolerAddress;
+        self::$appUser = self::connectionConfig('pgsql')['username'];
+        self::$columnsPrint = self::columnsPrint($admin);
+    }
+
+    /**
+     * True when the app connection goes through a pooler but this run may not close its server
+     * connections (a plain run on the shared dev database): a test that needs that cleanup skips then.
+     */
+    public static function poolerWithoutStatementCleanup(): bool
+    {
+        return self::$behindPooler && self::$catalogWatch === null;
+    }
+
+    /**
+     * After a test that changed any column of a public table or view, close the pooler's idle server
+     * connections of the app role, so PgBouncer opens fresh ones that hold no statement prepared for
+     * the old columns. Costs one catalog read per test, and only behind a pooler.
+     */
+    private static function forgetPooledStatementsAfterColumnChange(): void
+    {
+        $admin = self::$catalogWatch;
+        if ($admin === null || ! self::mayClosePooledConnections()) {
+            return;
+        }
+
+        $print = self::columnsPrint($admin);
+        if ($print === self::$columnsPrint) {
+            return;
+        }
+        self::$columnsPrint = $print;
+
+        $terminate = $admin->prepare(
+            // Materialized, so the filter is applied before any backend is signalled.
+            'with idle as materialized (select pid from pg_stat_activity'
+            ." where usename = ? and client_addr = ?::inet and datname = current_database() and state = 'idle')"
+            .' select pid from idle where pg_terminate_backend(pid)'
+        );
+        $terminate->execute([self::$appUser, self::$poolerAddress]);
+        $pids = array_map(intval(...), $terminate->fetchAll(PDO::FETCH_COLUMN));
+        if ($pids === []) {
+            return;
+        }
+
+        // Wait (at most 2 s) for those backends to exit, so the next test never borrows a dying one.
+        $alive = $admin->prepare('select count(*) from pg_stat_activity where pid = any(?::int[])');
+        for ($tries = 0; $tries < 80; $tries++) {
+            $alive->execute(['{'.implode(',', $pids).'}']);
+            if ((int) $alive->fetchColumn() === 0) {
+                break;
+            }
+            usleep(25_000);
+        }
+    }
+
+    /** What `select *` returns, for every public table and view: names, types and order of the columns. */
+    private static function columnsPrint(PDO $admin): string
+    {
+        $print = $admin->query(
+            "select md5(coalesce(string_agg(a.attrelid::text||'.'||a.attnum||'.'||a.attname||'.'||a.atttypid||'.'||a.atttypmod, ',' order by a.attrelid, a.attnum), ''))
+             from pg_attribute a join pg_class c on c.oid = a.attrelid
+             where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p', 'v', 'm', 'f')
+               and a.attnum > 0 and not a.attisdropped"
+        );
+
+        return $print === false ? '' : (string) $print->fetchColumn();
+    }
+
+    /**
+     * Whether this run may close the pooler's idle server connections: only when pest-scratch.sh named
+     * its private stack and both database hosts are that stack's containers, never a shared dev host.
+     * Read again before every close, so a test can take the opt-in away.
+     */
+    private static function mayClosePooledConnections(): bool
+    {
+        $stack = getenv(self::SCRATCH_STACK_ENV);
+        if (! is_string($stack) || preg_match('/^bsweb-pest-\d{6}-\d{6}-\d+$/', $stack) !== 1) {
+            return false;
+        }
+
+        foreach (['pgsql', 'pgsql_admin'] as $connection) {
+            $host = strtolower(self::connectionConfig($connection)['host']);
+            if (in_array($host, self::SHARED_DEV_HOSTS, true) || ! str_starts_with($host, $stack.'-')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * A connection's settings as Laravel resolves them, DB_URL / DB_ADMIN_URL included (the url's
+     * parts win over host, port and database, as in Laravel's own connection manager).
+     *
+     * @return array{host: string, port: string, database: string, username: string, password: string}
+     */
+    private static function connectionConfig(string $connection): array
+    {
+        $raw = config('database.connections.'.$connection);
+        /** @var array<string, mixed> $config */
+        $config = (new ConfigurationUrlParser)->parseConfiguration(is_array($raw) ? $raw : []);
+        $text = static fn (string $key): string => is_scalar($config[$key] ?? null) ? (string) $config[$key] : '';
+
+        return [
+            'host' => $text('host'),
+            'port' => $text('port'),
+            'database' => $text('database'),
+            'username' => $text('username'),
+            'password' => $text('password'),
+        ];
+    }
+
+    /** A PDO of its own on one of the configured connections, outside Laravel's connection manager. */
+    private static function connect(string $connection): PDO
+    {
+        $config = self::connectionConfig($connection);
+
+        return new PDO(
+            sprintf('pgsql:host=%s;port=%s;dbname=%s', $config['host'], $config['port'], $config['database']),
+            $config['username'],
+            $config['password'],
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
+        );
     }
 
     /**
@@ -74,14 +271,7 @@ abstract class TestCase extends BaseTestCase
             return;
         }
 
-        /** @var array{host: string, port: string|int, database: string, username: string, password: string} $config */
-        $config = config('database.connections.pgsql_admin');
-        $pdo = new PDO(
-            sprintf('pgsql:host=%s;port=%s;dbname=%s', $config['host'], $config['port'], $config['database']),
-            $config['username'],
-            $config['password'],
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
-        );
+        $pdo = self::connect('pgsql_admin');
 
         $acquired = $pdo->query(sprintf('select pg_try_advisory_lock(%d)::int', self::SUITE_LOCK_KEY));
         if ($acquired === false || (int) $acquired->fetchColumn() !== 1) {
