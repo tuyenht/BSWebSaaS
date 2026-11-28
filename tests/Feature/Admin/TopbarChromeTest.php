@@ -163,7 +163,7 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
     // With a sidebar, the topbar logo is the phone/tablet way home; the sidebar carries it from 1024px.
     $home = platformShellOne($dom, 'header > a[href="'.route('platform.tenants.index').'"]');
     expect(platformShellClasses($home))->toContain('lg:hidden')
-        ->and($aside->querySelector('a[href="'.route('platform.tenants.index').'"]'))->toBeInstanceOf(Element::class);
+        ->and($aside->querySelector('a.sidebar-brand-link[href="'.route('platform.tenants.index').'"]'))->toBeInstanceOf(Element::class);
 });
 
 it('keeps the logo and a way home in the topbar at every width when the operator may see no console screen', function (): void {
