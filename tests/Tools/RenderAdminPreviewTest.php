@@ -502,6 +502,31 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         expect($html)->toContain($shot === 'email-google' ? 'data-from-locked' : e(__('admin.em_prov_title')))->not->toContain('preview-only');
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
+    // «Nâng cao — các dòng xác thực tên miền» as a check left it: all verified (SendGrid); waiting
+    // for the domain, re-checking (Mailgun: SPF without its include, DKIM not checkable, no DMARC);
+    // stopped after the day with records still missing (Resend)
+    $key = ['host' => '', 'port' => 587, 'encryption' => 'tls', 'password' => SecretCipher::encrypt('preview-only')];
+    $now = now()->utc();
+    foreach ([
+        'email-dns-ok' => [['relay' => 'sendgrid', 'smtp' => ['host' => 'smtp.sendgrid.net', 'username' => 'apikey'] + $key],
+            ['spf' => ['code' => 'ok', 'host' => 'congtydemo.vn'], 'dkim' => ['code' => 'ok', 'host' => 's1._domainkey.congtydemo.vn'], 'dmarc' => ['code' => 'ok', 'host' => '_dmarc.congtydemo.vn']], null],
+        'email-dns-pending' => [['relay' => 'mailgun', 'relay_region' => 'us', 'smtp' => ['host' => 'smtp.mailgun.org', 'username' => 'postmaster@congtydemo.vn'] + $key],
+            ['spf' => ['code' => 'not_allowed', 'host' => 'congtydemo.vn'], 'dkim' => ['code' => 'unchecked', 'why' => 'unknown_selector'], 'dmarc' => ['code' => 'missing', 'host' => '_dmarc.congtydemo.vn']], $now->addMinutes(4)],
+        'email-dns-failed' => [['relay' => 'resend', 'smtp' => ['host' => 'smtp.resend.com', 'username' => 'resend'] + $key],
+            ['spf' => ['code' => 'missing', 'host' => 'send.congtydemo.vn'], 'dkim' => ['code' => 'ok', 'host' => 'resend._domainkey.congtydemo.vn'], 'dmarc' => ['code' => 'missing', 'host' => '_dmarc.congtydemo.vn']], null],
+    ] as $shot => [$relay, $rows, $next]) {
+        app(Tenancy::class)->enter(1, function () use ($relay, $rows, $next, $now): void {
+            app(SettingsRepository::class)->put('email', 'config', ['provider' => 'other', 'method' => 'smtp_password', 'send_domain' => 'congtydemo.vn',
+                'checked_at' => $now->toIso8601String(), 'from_address' => 'lienhe@congtydemo.vn', ...$relay]);
+            app(SettingsRepository::class)->put('email', 'dns', ['token' => 'PREVIEW', 'domain' => 'congtydemo.vn', 'provider' => $relay['relay'],
+                'started_at' => $now->subHours(2)->toIso8601String(), 'until' => $now->addHours(22)->toIso8601String(), 'running' => false,
+                'checked_at' => $now->subMinute()->toIso8601String(), 'next_at' => $next?->toIso8601String(), 'rows' => $rows]);
+        });
+        $this->flushSession();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
+        expect($html)->toContain('data-dns-box')->toContain(e(__('admin.em_dns_state_'.['email-dns-ok' => 'ok', 'email-dns-pending' => 'pending', 'email-dns-failed' => 'failed'][$shot])))->not->toContain('preview-only');
+        file_put_contents($dir.'/'.$shot.'.html', $html);
+    }
     DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
     DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();
     $this->flushSession();
@@ -1905,5 +1930,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 172);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 175);
 });

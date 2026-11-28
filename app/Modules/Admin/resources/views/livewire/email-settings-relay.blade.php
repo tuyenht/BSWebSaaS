@@ -165,4 +165,7 @@
     @if (! $relayChecked && $testResult === 'error')
         <x-bs-admin::field-error class="mt-2.5">{{ __('admin.test_email_failed') }}</x-bs-admin::field-error>
     @endif
+
+    {{-- the SPF / DKIM / DMARC rows of the sending domain: their own component, polling on its own --}}
+    <livewire:admin.email-dns-status :domain="$dns['domain']" :provider="$dns['provider']" wire:key="em-dns-status" />
 </div>
