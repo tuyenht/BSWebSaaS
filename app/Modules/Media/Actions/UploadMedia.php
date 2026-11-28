@@ -150,9 +150,12 @@ final readonly class UploadMedia
             return $media;
         };
 
-        // With the storage switch on, a refusal rolls the new row back (a savepoint), which drops the
-        // copy just stored; while it is off (or for content that is never refused) no savepoint is spent.
-        $media = $mayRefuse && MediaStorage::enforcing() ? DB::transaction($create) : $create();
+        // In a savepoint of its own, whether the storage switch is on or not: a refusal, or any failed
+        // statement (the totals' row held past SiteCounters::LOCK_WAIT, say), really rolls the new row
+        // back, which drops the copy just stored. Without it the failure would only abort the request's
+        // transaction, and a web request that answers with an error still ends it with a COMMIT that
+        // PostgreSQL turns into a rollback while Laravel runs no rollback callback: the copy would stay.
+        $media = DB::transaction($create);
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)

@@ -8,6 +8,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Deletes files in the Trash for good — the only place a media row is force-deleted (an arch test
@@ -21,7 +22,11 @@ use Illuminate\Database\Eloquent\Collection;
  * signed in for a member); their sizes come off both totals as the last write. The stored files are
  * deleted only after the caller's transaction commits (MediaObserver): when anything fails first —
  * the totals' row held past SiteCounters::LOCK_WAIT, say — the rows go back into the Trash and their
- * files are still there. Who may delete for good is the caller's question (the media.purge right).
+ * files are still there. The work runs in a savepoint of its own, so a failed statement really rolls
+ * it back, with the deletes it queued, even when the caller goes on and commits: a web request turns
+ * the error into an error page inside its tenant transaction, which then ends with a COMMIT that
+ * PostgreSQL treats as a rollback, and Laravel would still run the queued deletes. Who may delete for
+ * good is the caller's question (the media.purge right).
  */
 final readonly class PurgeMedia
 {
@@ -46,22 +51,24 @@ final readonly class PurgeMedia
             return ['files' => 0, 'bytes' => 0];
         }
 
-        // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
-        $state = Media::onlyTrashed()->whereKey($rows->modelKeys())->orderBy('id')->lockForUpdate()
-            ->toBase()->get(['id', 'size'])->keyBy('id');
-        $gone = 0;
-        $bytes = 0;
-        foreach ($rows as $media) {
-            $row = $state->get($media->id);
-            if ($row === null) {
-                continue; // deleted or taken out of the Trash meanwhile
+        return DB::transaction(function () use ($rows): array {
+            // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
+            $state = Media::onlyTrashed()->whereKey($rows->modelKeys())->orderBy('id')->lockForUpdate()
+                ->toBase()->get(['id', 'size'])->keyBy('id');
+            $gone = 0;
+            $bytes = 0;
+            foreach ($rows as $media) {
+                $row = $state->get($media->id);
+                if ($row === null) {
+                    continue; // deleted or taken out of the Trash meanwhile
+                }
+                $media->forceDelete();
+                $bytes += max(0, Cast::int($row->size));
+                $gone++;
             }
-            $media->forceDelete();
-            $bytes += max(0, Cast::int($row->size));
-            $gone++;
-        }
-        $this->storage->purged($bytes);
+            $this->storage->purged($bytes);
 
-        return ['files' => $gone, 'bytes' => $bytes];
+            return ['files' => $gone, 'bytes' => $bytes];
+        });
     }
 }

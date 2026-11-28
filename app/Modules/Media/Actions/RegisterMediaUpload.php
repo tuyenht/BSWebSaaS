@@ -156,9 +156,9 @@ final readonly class RegisterMediaUpload
             return $media;
         };
 
-        // With the storage switch on, a refusal rolls the new row back (a savepoint), which drops the
-        // copy; while it is off nothing is refused, so no savepoint is spent.
-        $media = MediaStorage::enforcing() ? DB::transaction($create) : $create();
+        // In a savepoint of its own, whether the storage switch is on or not: a refusal, or any failed
+        // statement, really rolls the new row back, which drops the copy (UploadMedia says why).
+        $media = DB::transaction($create);
 
         // a new PDF gets its pages counted once the upload has committed (a file already here keeps
         // whatever count it has; media:pdf-pages fills older ones)
