@@ -321,6 +321,45 @@ it('keeps the invitation\'s link in plain sight: no style around it can hide it'
     });
 });
 
+it('keeps the invitation\'s link in plain sight from inside it too, and in the preview', function (): void {
+    mailTplModules('users');
+    $admin = mailTplAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        $hidden = '<p>Mời bạn. <a href="{accept_url}"><span style="font-size:1px;color:#ffffff">x</span><sub><sub>y</sub></sub></a></p>'
+            .'<p><a href="https://a.test/khac">Nhận lời mời</a></p>';
+        $c = Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'team_invite');
+        $out = [];
+        $c->call('preview', 'Mời', $hidden)->assertReturned(function (mixed $value) use (&$out): bool {
+            $out = is_array($value) ? $value : [];
+
+            return true;
+        });
+        expect((string) ($out['html'] ?? ''))->toContain('>x')->not->toContain('font-size:1px')->not->toContain('<sub>');   // as the mail will go
+
+        $c->call('save', 'Mời', $hidden)->assertHasNoErrors();
+        expect(MailTemplate::query()->sole()->body)
+            ->toContain('<a href="{accept_url}"><span>x</span>y</a>')
+            ->not->toContain('font-size')->not->toContain('<sub>');
+
+        // a filler that draws nothing is not link words
+        Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'team_invite')
+            ->call('save', 'Mời', "<p>Chào</p><p><a href=\"{accept_url}\">\u{3164}</a></p>")
+            ->assertHasErrors(['tplBody']);
+    });
+});
+
+it('takes braces around a number or a name in other words as plain text', function (): void {
+    mailTplModules('users');
+    $admin = mailTplAdmin();
+
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
+        Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'team_invite')
+            ->call('save', 'Chọn {1} hoặc {2}', '<p>Bước {1}, {giá}</p>'.MAIL_TPL_INVITE_BODY)
+            ->assertHasNoErrors();
+    });
+});
+
 it('refuses a variable the template does not have, and a link in the subject, naming it', function (): void {
     mailTplModules('users');
     $admin = mailTplAdmin();

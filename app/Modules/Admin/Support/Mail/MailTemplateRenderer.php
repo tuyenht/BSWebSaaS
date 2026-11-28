@@ -140,7 +140,7 @@ final class MailTemplateRenderer
         foreach ($dom->getElementsByTagName('a') as $a) {
             $href = strtolower(preg_replace('/%7B([a-z_]+)%7D/i', '{$1}', trim($a->getAttribute('href'))) ?? '');
             // the words without their variables (a name or a message can be empty when sent)
-            $words = preg_replace('/\{[a-z_]+\}/', '', $a->textContent) ?? '';
+            $words = preg_replace('/\{[a-z_]+\}|[\x{115F}\x{1160}\x{3164}\x{FFA0}]/u', '', $a->textContent) ?? '';
             if ($href === $token && preg_match('/[\p{L}\p{N}]/u', $words) === 1) {
                 return true;
             }
@@ -180,6 +180,22 @@ final class MailTemplateRenderer
             if ($a->hasAttribute('style')) {
                 $a->removeAttribute('style');
                 $changed = true;
+            }
+            // inside the link: no style at all, and sub/sup give way to their contents
+            foreach (self::nodes(new DOMXPath($dom), './/*', $a) as $inner) {
+                if (! $inner instanceof DOMElement) {
+                    continue;
+                }
+                if (in_array(strtolower($inner->tagName), ['sub', 'sup'], true)) {
+                    while ($inner->firstChild !== null) {
+                        $inner->parentNode?->insertBefore($inner->firstChild, $inner);
+                    }
+                    $inner->parentNode?->removeChild($inner);
+                    $changed = true;
+                } elseif ($inner->hasAttribute('style')) {
+                    $inner->removeAttribute('style');
+                    $changed = true;
+                }
             }
             $node = $a->parentNode;
             while ($node instanceof DOMElement && ! $node->isSameNode($root)) {

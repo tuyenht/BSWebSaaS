@@ -455,7 +455,7 @@ final class EmailTemplates extends Component
      */
     private static function unknownVar(string $text, array $vars): ?string
     {
-        preg_match_all('/\{[a-z0-9_]+\}/i', preg_replace('/%7B([a-z0-9_]+)%7D/i', '{$1}', $text) ?? $text, $found);
+        preg_match_all('/\{[a-z][a-z0-9_]*\}/i', preg_replace('/%7B([a-z][a-z0-9_]*)%7D/i', '{$1}', $text) ?? $text, $found);
         foreach ($found[0] as $token) {
             if (! in_array($token, $vars, true)) {
                 return $token;
@@ -528,7 +528,7 @@ final class EmailTemplates extends Component
 
         return [
             'subject' => $renderer->subject($subject, $values),
-            'html' => $renderer->html($body, $values, $look['color'] ?? MailBrand::FALLBACK_COLOR, $look['text'] ?? '#ffffff'),
+            'html' => $renderer->html(MailTemplateRenderer::exposeLinks($renderer->clean($body), array_filter(MailTemplateCatalog::TEMPLATES[$key]['required'] ?? [], MailTemplateCatalog::isLinkVar(...))), $values, $look['color'] ?? MailBrand::FALLBACK_COLOR, $look['text'] ?? '#ffffff'),
         ];
     }
 
