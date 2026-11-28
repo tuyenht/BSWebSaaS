@@ -9,6 +9,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Observers\MediaObserver;
 use App\Modules\Media\Policies\MediaPolicy;
 use App\Modules\Media\Support\MediaStorageReconciler;
+use App\Modules\Media\Support\PurgedObjects;
 use App\Modules\Shared\Contracts\CounterReconciler;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +27,7 @@ final class MediaServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->tag([MediaStorageReconciler::class], CounterReconciler::TAG);
+        $this->app->scoped(PurgedObjects::class); // a purge's open batch, never shared across requests
     }
 
     public function boot(): void
