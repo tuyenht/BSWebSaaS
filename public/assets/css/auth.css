@@ -128,6 +128,17 @@
   pointer-events: none;
 }
 
+/* Someone who asked their device for less motion gets a still background (sign-in pages and the
+   console front page alike). */
+@media (prefers-reduced-motion: reduce) {
+
+  .auth-bg,
+  .auth-orb-1,
+  .auth-orb-2 {
+    animation: none;
+  }
+}
+
 /* ============================================================================
    MAIN CONTENT CONTAINER
    ============================================================================ */
@@ -823,16 +834,6 @@
    the background from becoming a scroll box of its own. */
 .intro-bg {
   overflow: clip;
-}
-
-/* Someone who asked their device for less motion gets a still background. */
-@media (prefers-reduced-motion: reduce) {
-
-  .intro-bg,
-  .intro-bg .auth-orb-1,
-  .intro-bg .auth-orb-2 {
-    animation: none;
-  }
 }
 
 .intro-main {
