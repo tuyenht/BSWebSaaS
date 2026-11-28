@@ -219,6 +219,7 @@ final class LanguageSettings extends Component
             $this->notify(match ($e->reason) {
                 'limit_reached' => __('admin.lng.err_limit', ['max' => $max]),
                 'default_locked' => __('admin.lng.err_default'),
+                'prefix_in_use' => __('admin.lng.err_prefix', ['section' => $e->section]),
                 default => __('admin.lng.err_invalid'),
             }, 'error');
 

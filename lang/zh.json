@@ -8427,6 +8427,7 @@
     "admin.lng.err_limit": "网站已用完 :max 种语言——请关闭一种语言后再保存。",
     "admin.lng.err_default": "默认语言始终打开并向访客显示——请先更改默认语言。",
     "admin.lng.err_invalid": "有一种语言无法使用。请重新加载页面后重试。",
+    "admin.lng.err_prefix": "栏目“:section”已把此语言代码用作网址前缀，因此无法向访客显示该语言。请先在设置的固定链接中修改该栏目的前缀，然后再次保存。",
     "admin.audit.act.settings.locales.changed": "更改了网站的语言",
     "admin.audit.act.settings.locales.default_changed": "更改了网站的默认语言",
     "admin.adv.title": "安全与高级",

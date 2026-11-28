@@ -8427,6 +8427,7 @@
     "admin.lng.err_limit": "Website đã dùng đủ :max ngôn ngữ — tắt bớt một ngôn ngữ rồi bấm Lưu lại.",
     "admin.lng.err_default": "Ngôn ngữ mặc định luôn bật và hiện cho khách — đổi ngôn ngữ mặc định trước.",
     "admin.lng.err_invalid": "Có một ngôn ngữ không dùng được. Tải lại trang rồi thử lại.",
+    "admin.lng.err_prefix": "Mục «:section» đang dùng đúng mã ngôn ngữ này làm tiền tố đường dẫn nên chưa thể hiện ngôn ngữ cho khách. Hãy đổi tiền tố của mục đó trong Cài đặt, Đường dẫn, rồi bấm Lưu lại.",
     "admin.audit.act.settings.locales.changed": "Đổi ngôn ngữ của website",
     "admin.audit.act.settings.locales.default_changed": "Đổi ngôn ngữ mặc định của website",
     "admin.adv.title": "Bảo mật & Nâng cao",

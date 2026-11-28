@@ -2,6 +2,7 @@
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Tenancy\Actions\ChangeDefaultSiteLocale;
 use App\Modules\Tenancy\Actions\ConfigureSiteLocale;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -9,6 +10,7 @@ use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -183,4 +185,38 @@ it('keeps a language switched off before is_public existed hidden from visitors'
             'site_locales_default_visible_check' => true,
             'site_locales_public_requires_enabled_check' => true,
         ]);
+});
+
+it('refuses to show a language to visitors while a permalink section uses its code as the prefix', function (): void {
+    app(Tenancy::class)->enter(localeSite(), function (): void {
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 3]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'projects', 'value' => ['pattern' => 'base', 'base' => 'da']]);
+
+        $exception = null;
+        try {
+            app(ConfigureSiteLocale::class)->handle('da', true, true);
+        } catch (SiteLocaleChangeRejectedException $e) {
+            $exception = $e;
+        }
+
+        expect($exception?->reason)->toBe('prefix_in_use')
+            ->and($exception?->section)->toBe('projects')
+            ->and(SiteLocale::query()->where('locale', 'da')->exists())->toBeFalse();
+
+        // Hidden from visitors it resolves as the default language, so editors may still prepare it.
+        expect(localeChangeRefusal('da', enabled: true, public: false))->toBeNull()
+            ->and(localeChangeRefusal('da', enabled: true, public: true))->toBe('prefix_in_use')
+            ->and(localeChangeRefusal('en', enabled: true, public: true))->toBeNull();
+    });
+});
+
+it('refuses a new default language whose code a permalink section uses as the prefix', function (): void {
+    app(Tenancy::class)->enter(localeSite(), function (): void {
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 3]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'projects', 'value' => ['pattern' => 'base', 'base' => 'ms']]);
+
+        expect(fn () => app(ChangeDefaultSiteLocale::class)->handle('ms'))
+            ->toThrow(SiteLocaleChangeRejectedException::class);
+        expect(SiteLocale::query()->firstWhere('is_default', true)->locale)->toBe('vi');
+    });
 });

@@ -7,6 +7,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -114,3 +115,17 @@ it('refuses an unknown host, a limit below one and contradictory flags', functio
     'public and hide' => [['host' => 'grant.platform.test', 'locale' => 'en', '--public' => true, '--hide' => true]],
     'flag without a language' => [['host' => 'grant.platform.test', '--public' => true]],
 ]);
+
+it('refuses to make a language public while a permalink section uses its code as the prefix', function (): void {
+    $siteId = grantSite();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', '--limit' => '3'])->assertSuccessful();
+    app(Tenancy::class)->enter($siteId, fn () => SiteSetting::query()->create([
+        'group_name' => 'permalinks', 'key' => 'projects', 'value' => ['pattern' => 'base', 'base' => 'da'],
+    ]));
+
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'da', '--public' => true])
+        ->expectsOutputToContain("prefix_in_use — the section 'projects'")
+        ->assertFailed();
+
+    expect(grantSiteLocales($siteId))->not->toHaveKey('da');
+});

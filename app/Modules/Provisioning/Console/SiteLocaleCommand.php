@@ -116,6 +116,7 @@ final class SiteLocaleCommand extends Command
             $this->error(match ($e->reason) {
                 'limit_reached' => 'limit_reached — the site already uses every language it was granted; add --limit to grant more.',
                 'default_locked' => 'default_locked — the default language always stays on and public.',
+                'prefix_in_use' => "prefix_in_use — the section '{$e->section}' already uses /{$locale}/ as its address prefix; change that section's base in Settings > Permalinks first.",
                 default => "{$e->reason} — use a lower-case language code such as en, ja or pt-br.",
             });
 
