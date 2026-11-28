@@ -183,7 +183,7 @@
                         <span class="rounded bg-surface-muted px-[9px] py-0.5 text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted">{{ __('admin.mt_you_edited') }}</span>
                     @endif
                     @if ($editor['kind'] === \App\Modules\Admin\Support\Mail\MailTemplateCatalog::REQUIRED)
-                        <span class="switch opacity-60" role="switch" aria-checked="true" aria-disabled="true" aria-label="{{ __('admin.mt_lock_ed_aria') }}" title="{{ __('admin.mt_lock_tip') }}"></span>
+                        <button type="button" class="switch hit-area" role="switch" aria-checked="true" disabled aria-label="{{ __('admin.mt_lock_ed_aria') }}" title="{{ __('admin.mt_lock_tip') }}"></button>
                     @elseif ($editor['kind'] === \App\Modules\Admin\Support\Mail\MailTemplateCatalog::SWITCH)
                         <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $editor['on'] ? 'true' : 'false' }}" wire:click="toggle(@js($editor['key']))"
                                 aria-label="{{ __('admin.mt_toggle_aria') }}" title="{{ __('admin.mt_toggle_tip') }}"></button>
