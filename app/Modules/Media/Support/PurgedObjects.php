@@ -69,15 +69,18 @@ final class PurgedObjects
     }
 
     /**
-     * The objects one deleted file frees: its stored key and, when it was moved, its old address.
+     * The objects one deleted file frees: its stored key and, when it was moved, its old address. A
+     * row made in this request without a disk has none in memory (the column's default filled it in
+     * the database): its objects are on the default disk.
      *
      * @param  list<string>  $keys
      */
-    public function add(Connection $connection, int $siteId, string $disk, array $keys, ?string $movedFrom): void
+    public function add(Connection $connection, int $siteId, ?string $disk, array $keys, ?string $movedFrom): void
     {
         if ($keys === []) {
             return;
         }
+        $disk ??= Storage::getDefaultDriver();
         if ($this->batch === null) {
             self::queue($connection, $siteId, [$disk => array_fill_keys($keys, true)], $movedFrom === null ? [] : [$movedFrom]);
 
