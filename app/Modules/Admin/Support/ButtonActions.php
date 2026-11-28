@@ -126,24 +126,27 @@ final class ButtonActions
         $ulids = [];
         $legacyPaths = [];
         $keys = [];
+        $fileUlids = [];
         foreach (array_keys($paths) as $path) {
             $buttons[$path] = self::current($blocks, $path);
             $value = $buttons[$path]['value'];
             $ulid = $value['k'] === 'page' ? Cast::string($value['page'] ?? '') : '';
             $legacy = $value['k'] === 'page' ? Cast::string($value['path'] ?? '') : '';
-            $key = $value['k'] === 'file' ? Cast::string($value['file'] ?? '') : '';
+            $file = $value['k'] === 'file' ? ButtonLink::fileRef($value) : null;
             if ($ulid !== '') {
                 $ulids[] = $ulid;
             } elseif ($legacy !== '') {
                 $legacyPaths[] = $legacy;
             }
-            if ($key !== '') {
-                $keys[] = $key;
+            if (isset($file['media'])) {
+                $fileUlids[] = $file['media'];
+            } elseif (isset($file['file'])) {
+                $keys[] = $file['file'];
             }
         }
 
         $pages = $this->pages(array_values(array_unique($ulids)), array_values(array_unique($legacyPaths)), $locale);
-        $files = $this->files(array_values(array_unique($keys)));
+        $files = $this->files(array_values(array_unique($fileUlids)), array_values(array_unique($keys)));
         $anchors = $this->anchors($blocks, $schemas);
         $searches = [];
 
@@ -186,9 +189,13 @@ final class ButtonActions
                 $view['siteSame'] = $siteDigits !== '' && $digits === $siteDigits;
             }
             if ($kind === 'file') {
-                $key = Cast::string($value['file'] ?? '');
-                $view['file'] = $key !== '' ? ($files[$key] ?? null) : null;
-                $view['fileGone'] = $key !== '' && $view['file'] === null;
+                $ref = ButtonLink::fileRef($value);
+                $view['file'] = match (true) {
+                    isset($ref['media']) => $files['u:'.strtoupper($ref['media'])] ?? null,
+                    isset($ref['file']) => $files['k:'.$ref['file']] ?? null,
+                    default => null,
+                };
+                $view['fileGone'] = $ref !== null && $view['file'] === null;
             }
 
             $problem = $this->problem($view, $anchors);
@@ -200,15 +207,16 @@ final class ButtonActions
     }
 
     /**
-     * Documents of the library for the "Chọn tệp cho khách tải" dialog, newest first.
+     * Documents of the library for the "Chọn tệp cho khách tải" dialog, newest first. Each is picked by
+     * its row ulid; `key` only marks the current one of a button saved before files were named by row.
      *
-     * @return list<array{key: string, name: string, meta: string, icon: string}>
+     * @return list<array{ulid: string, key: string, name: string, meta: string, icon: string}>
      */
     public function documents(int $limit = 60): array
     {
         $docs = [];
         $rows = Media::query()->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->orderByDesc('created_at')->orderByDesc('id')
-            ->limit($limit)->get(['storage_key', 'original_filename', 'mime', 'size', 'created_at']);
+            ->limit($limit)->get(['ulid', 'storage_key', 'original_filename', 'mime', 'size', 'created_at']);
         foreach ($rows as $media) {
             $docs[] = $this->document($media);
         }
@@ -393,31 +401,43 @@ final class ButtonActions
     }
 
     /**
+     * The documents the buttons name, by row ulid ("u:<ULID>") and by an older body's storage key
+     * ("k:<key>"): one query for both. Files in the Trash, of another site or not documents are left
+     * out (gone).
+     *
+     * @param  list<string>  $ulids
      * @param  list<string>  $keys
-     * @return array<string, array{key: string, name: string, meta: string, icon: string}>
+     * @return array<string, array{ulid: string, key: string, name: string, meta: string, icon: string}>
      */
-    private function files(array $keys): array
+    private function files(array $ulids, array $keys): array
     {
-        if ($keys === []) {
+        $ulids = array_values(array_unique(array_map(strtoupper(...), array_filter($ulids, static fn (string $ulid): bool => preg_match(ButtonLink::ULID_PATTERN, $ulid) === 1))));
+        if ($ulids === [] && $keys === []) {
             return [];
         }
 
         $found = [];
-        foreach (Media::query()->whereIn('storage_key', $keys)->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->get(['storage_key', 'original_filename', 'mime', 'size', 'created_at']) as $media) {
-            $found[$media->storage_key] = $this->document($media);
+        $rows = Media::query()->whereIn('mime', ButtonLink::DOCUMENT_MIMES)
+            ->where(fn (Builder $query) => $query->whereIn('ulid', $ulids)->orWhereIn('storage_key', $keys))
+            ->get(['ulid', 'storage_key', 'original_filename', 'mime', 'size', 'created_at']);
+        foreach ($rows as $media) {
+            $document = $this->document($media);
+            $found['u:'.strtoupper($media->ulid)] = $document;
+            $found['k:'.$media->storage_key] = $document;
         }
 
         return $found;
     }
 
     /**
-     * @return array{key: string, name: string, meta: string, icon: string}
+     * @return array{ulid: string, key: string, name: string, meta: string, icon: string}
      */
     private function document(Media $media): array
     {
         $date = $media->created_at?->format('d/m/Y');
 
         return [
+            'ulid' => $media->ulid,
             'key' => $media->storage_key,
             'name' => $media->original_filename ?? basename($media->storage_key),
             'meta' => Media::typeAndSize($media->mime, $media->size).($date !== null ? ' · '.__('entries.btn_file_uploaded', ['date' => $date]) : ''),

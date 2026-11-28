@@ -51,9 +51,18 @@ final class FeatureRegistry
             // still waiting for an answer (SiteHeadcount). Checked when someone is invited and when an
             // invitation is accepted, so a website already above its limit keeps everyone it has.
             'users.max' => ['name' => 'Số người dùng tối đa / website', 'kind' => 'limit', 'default' => 10, 'scope' => 'site'],
+            // Mails a website may send in one of its days through the platform's shared outbox before
+            // its managers are told to connect their own (at 80% and 100%). Mails of the ordinary kinds
+            // (invitations, domain notices) are held back to the next day only past ten times this
+            // (config mail.quota.abuse_multiplier); security mails and contact-form notices are never
+            // held, and mail through the website's own outbox is counted, never limited (MailQuotaGate).
+            'mail.platform_daily' => ['name' => 'Số thư qua hộp thư chung mỗi ngày', 'kind' => 'limit', 'default' => 30, 'scope' => 'site'],
             // Whether the website's «Chuyển hướng» may send a visitor to another website (an https
             // address). Off: the screen does not offer it and the storefront ignores such rows.
             'redirects.external' => ['name' => 'Chuyển hướng sang website khác', 'kind' => 'boolean', 'default' => false, 'scope' => 'site', 'plans' => false],
+            // Whether the website may choose how its pages, posts and products get their addresses
+            // («Đường dẫn»). Gates only CHANGING the format: what a website stored keeps serving off.
+            'permalinks.custom' => ['name' => 'Tự chọn kiểu đường dẫn', 'kind' => 'boolean', 'default' => true, 'scope' => 'site'],
         ];
     }
 

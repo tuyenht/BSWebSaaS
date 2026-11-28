@@ -14,7 +14,11 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -44,8 +48,9 @@ use Livewire\Attributes\Locked;
  * @property string $excerpt
  * @property string $seoTitle
  * @property string $seoDescription
- * @property string $coverImageKey
+ * @property string $coverUlid
  * @property string $coverAlt
+ * @property string $focusKeyword
  */
 trait ShowsEntryRevisions
 {
@@ -368,24 +373,29 @@ trait ShowsEntryRevisions
     {
         $snap = $version['snapshot'];
         $str = static fn (mixed $value): string => is_string($value) ? $value : '';
-        $cover = data_get($snap, 'meta.image_url');
+        // the version's cover: the file its cover_media_id names (read only when it names one; none when it
+        // names no live file), else, with no id, the meta's key
+        $cover = EntryCover::resolve($snap['cover_media_id'] ?? null, $snap['meta'] ?? null, MediaRefs::rows([$snap['cover_media_id'] ?? null]));
         $noCover = Cast::string(__('entries.rev.no_cover'));
-        $coverNow = $this->coverImageKey !== '' ? $this->revisionCoverName($this->coverImageKey) : $noCover;
-        $coverThen = is_string($cover) && $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
+        $coverNow = $this->coverUlid !== '' ? $this->revisionCoverName($this->coverKey()) : $noCover;
+        $coverThen = $cover !== '' ? $this->revisionCoverName($cover) : $noCover;
 
         $fields = [];
         foreach (array_filter([
             ['entries.rev.f_title', $str($snap['title'] ?? null), $this->title, false],
             ['entries.rev.f_slug', $str($snap['slug'] ?? null), $this->slug, false],
             ['entries.rev.f_excerpt', $str($snap['excerpt'] ?? null), $this->excerpt, false],
+            // the words the page should be found by, when the version holds them (one saved before they existed leaves them as they are)
+            array_key_exists('focus_keyword', $snap) ? ['entries.ed.keyword_label', $str($snap['focus_keyword']), $this->focusKeyword, false] : null,
             ['entries.rev.f_seo_title', $str($snap['seo_title'] ?? null), $this->seoTitle, false],
             ['entries.rev.f_seo_desc', $str($snap['seo_description'] ?? null), $this->seoDescription, false],
             ['entries.rev.f_cover', $coverThen, $coverNow, true],
             // the picture's words, when the version holds them (one saved before they existed leaves them as they are)
             array_key_exists('cover_alt', $snap) ? ['entries.ed.cover_alt_label', $str($snap['cover_alt']), $this->coverAlt, false] : null,
             ['entries.rev.f_tpl', $this->revisionTemplate($snap['template_override'] ?? null), $this->revisionTemplate($this->formTemplate($entry->template_override)), true],
-            // a post's shown publish day (empty in a version: the real day)
-            $entry->type === 'post' ? ['entries.ed.pd_label', $this->revisionDay(DisplayDate::of($snap['meta'] ?? null)), $this->revisionDay($this->displayDate), true] : null,
+            // a post's shown publish day (empty in a version: the real day), set in the website's default
+            // language only: another language's version leaves it as it is (JobFacts::restored)
+            $entry->type === 'post' && ! $this->sharedLocked() ? ['entries.ed.pd_label', $this->revisionDay(DisplayDate::of($snap['meta'] ?? null)), $this->revisionDay($this->displayDate), true] : null,
         ]) as [$label, $then, $now, $shared]) {
             $fields[] = ['label' => Cast::string(__($label, ['doc' => $this->docNoun()])), 'value' => $then, 'now' => $now, 'differs' => $then !== $now, 'shared' => $shared];
         }
@@ -438,7 +448,12 @@ trait ShowsEntryRevisions
         $missing = 0;
         $shared = false;
         if ($content !== null) {
-            [$content, $missing] = $writer->withoutMissingMedia($content);
+            [$content, $missing] = $writer->withoutMissingMedia($content, lock: false);
+            // the job card as the restore writes it: this language's words onto the card as it is (in the
+            // pending change, when there is one: a restore held back goes there)
+            $held = EntryDraft::query()->where('entry_id', $entry->id)->first()?->content['shared'] ?? null;
+            $current = is_array($held) && is_array($held['meta'] ?? null) ? $held['meta'] : $entry->meta;
+            $content['meta'] = JobFacts::restored($current, $content['meta'], $this->locale, app(SiteLocale::class)->default());
             $shared = $writer->changesShared($entry, $content);
         }
         $status = $entry->status;

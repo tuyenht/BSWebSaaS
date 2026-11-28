@@ -18,8 +18,11 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Support\EntryCover;
+use App\Modules\Cms\Support\EntryShareImage;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Cms\Taxonomy\CategoryTemplates;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -175,7 +178,7 @@ final readonly class StorefrontController
         $locale = $request->query('locale', $default);
         abort_unless(is_string($locale) && $this->locale->isEnabled($locale), 404);
 
-        $entry = Entry::query()->where('ulid', $ulid)->first();
+        $entry = Entry::query()->where('ulid', $ulid)->addSelect([EntryCover::KEY => EntryCover::keySubquery()])->first();
         // not allowed answers like a missing entry (as the product preview does): a ulid probe learns nothing
         abort_unless($entry !== null && Gate::allows('preview', $entry), 404);
         $translation = $entry->translationFor($locale);
@@ -306,6 +309,11 @@ final readonly class StorefrontController
 
         $categoryTemplate = null;
         $extra = $chrome;
+        // The shared blocks the body (and, for a post, its slots) place are put in before anything
+        // reads the blocks (ReusableBlockExpander: one query for the page). Resolved per request: it
+        // keeps what it read for this request only.
+        $expander = app(ReusableBlockExpander::class);
+        $body = $content->translation->body;
         // The page view is counted by the visitor's browser (sf-view.js → RecordEntryView), never
         // here: a page the edge serves never reaches this code, and counting both would double it.
         $extra['viewBeacon'] = route('storefront.views.record', ['entry' => $entry->ulid], false);
@@ -313,12 +321,24 @@ final readonly class StorefrontController
         $extra['canonical'] = $canonical;
         $extra['ogType'] = $entry->type === 'post' ? 'article' : 'website';
 
-        // Featured image for og:image — posts carry meta['image_url'] as a raw R2 key.
+        // Featured image for og:image: the key of the file the entry's cover_media_id names (read
+        // with the entry, EntryCover::KEY), else the raw R2 key in meta['image_url'].
         // Resolve at 1280 (whitelisted width; Cloudflare Worker serves it via cf.image).
         // Pages without a featured image omit $extra['ogImage'] so head.blade.php
         // falls back to the site-wide brand og_image automatically.
-        $metaImageKey = data_get($entry->meta, 'image_url');
-        if (is_string($metaImageKey) && $metaImageKey !== '') {
+        // An old cover value may also be a glyph name (no picture: the brand image stands in) or an
+        // outside web address (kept as it is, like the cover the post itself draws); an address of
+        // any other scheme names no share image.
+        // The share picture the editor picked for this language comes first (EntryShareImage), then the cover.
+        $shareKey = EntryShareImage::key($content->translation);
+        $metaImageKey = $shareKey !== null && str_contains($shareKey, '/') ? $shareKey : EntryCover::value($entry);
+        // Whether the page itself draws a cover from the media host (the share image is never drawn): the renderer
+        // connects to that host early only then.
+        $coverKey = EntryCover::value($entry);
+        $extra['coverDrawn'] = str_contains($coverKey, '/') && ! str_contains($coverKey, '://');
+        if (preg_match('~^https?://~i', $metaImageKey) === 1) {
+            $extra['ogImage'] = $metaImageKey;
+        } elseif (str_contains($metaImageKey, '/') && ! str_contains($metaImageKey, '://')) {
             $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
         }
 
@@ -364,7 +384,7 @@ final readonly class StorefrontController
 
             // The blocks of the side column and of the band below the post; the newest posts of the
             // post's own category are read with the related posts only when a block asks for them.
-            $slotBlocks = $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category);
+            ['body' => $body, 'slots' => $slotBlocks] = $expander->expand($body, $this->slots->blocks(SlotContext::POST_SLOTS, $locale, $category), $locale);
             $extra['slotBlocks'] = $slotBlocks;
             $withRecent = SlotContext::has($slotBlocks, 'recent_posts');
             $brandData = is_array($brand) ? $brand : null;
@@ -388,9 +408,12 @@ final readonly class StorefrontController
             }
             $extra['slotContext'] = $this->slots->context($slotBlocks, $category, $locale, $brandData, is_array($extra['recent'] ?? null) ? $extra['recent'] : [], $entry->id);
             unset($extra['recent']);
-        } elseif ($path !== '/') {
-            $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
-            $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
+        } else {
+            $body = $expander->expand($body, [], $locale)['body'];
+            if ($path !== '/') {
+                $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$this->crumbs->parentPages($entry, $locale), $self];
+                $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
+            }
         }
 
         // A page on the layout with a table of contents shows the day it took effect (and the day it
@@ -424,7 +447,7 @@ final readonly class StorefrontController
             $entry->type,
             $entry->template_override,
             $content->translation->title,
-            $content->translation->body,
+            $body,
             self::entrySeo($content->translation) + ['home' => $path === '/'] + $this->pageTitleSeo($entry, $content->translation, $locale, $extra),
             $categoryTemplate,
             $extra,
@@ -472,6 +495,8 @@ final readonly class StorefrontController
             // Posts whose PRIMARY category (pivot position 0) is this one or any below it.
             $query = Entry::query()
                 ->select('entries.*', 'entry_taxonomies.taxonomy_id as primary_taxonomy_id')
+                // the cover's file named by id, in this query (EntryCover)
+                ->addSelect([EntryCover::KEY => EntryCover::keySubquery()])
                 ->join('entry_taxonomies', fn (JoinClause $join) => $join->on('entry_taxonomies.entry_id', '=', 'entries.id')->where('entry_taxonomies.position', 0))
                 ->whereIn('entry_taxonomies.taxonomy_id', $this->lists->subtree($taxonomy));
         } else {
@@ -545,7 +570,7 @@ final readonly class StorefrontController
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'));
-        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->with(['translations', 'routes']), Entry::class, $position);
+        ['rows' => $rows, 'more' => $more] = $this->lists->window($live->select('entries.*')->addSelect([EntryCover::KEY => EntryCover::keySubquery()])->with(['translations', 'routes']), Entry::class, $position);
         $first = $position['after'] === null && $position['page'] === 1;
         $site = trim(Cast::string(data_get($chrome, 'brand.name')));
 
@@ -654,7 +679,8 @@ final readonly class StorefrontController
         $extra['breadcrumb'] = [$this->crumbs->home($locale), ...$trail];
         $extra['crumbsShown'] = $this->crumbs->visible($extra['breadcrumb'], false);
         // The band below the list (the list's own category speaks first, then the site's default).
-        $extra['slotBlocks'] = $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy);
+        // The shared blocks they place are put in first (one query for the page, none without any).
+        $extra['slotBlocks'] = app(ReusableBlockExpander::class)->expand([], $this->slots->blocks(SlotContext::LIST_SLOTS, $locale, $resolved->taxonomy), $locale)['slots'];
         $extra['slotContext'] = $this->slots->context($extra['slotBlocks'], $resolved->taxonomy, $locale, is_array($extra['brand'] ?? null) ? $extra['brand'] : null);
 
         $links = $this->lists->links(request()->url(), $position, $more, $lastUlid);

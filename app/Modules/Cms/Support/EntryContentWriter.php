@@ -6,14 +6,20 @@ namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaRefs;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use App\Modules\Theme\Rendering\TemplateCatalog;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -24,12 +30,13 @@ use Illuminate\Support\Facades\Validator;
  * content back onto an entry — a revision restore today — writes through here, so they cannot drift.
  *
  * Three steps, called in order: read() checks a snapshot can be written today, withoutMissingMedia()
- * drops references to media that has left the library, write() stores it. The status is never
+ * drops references to media that has left the library, write() stores it. A snapshot taken earlier
+ * (a revision) first passes withoutMissingBlocks(), which drops the places of shared blocks deleted since. The status is never
  * touched and no revision is recorded: which revision kind (and for which languages) is the caller's
  * decision, made from what write() returns. write() runs in the caller's transaction and takes no
  * lock of its own.
  *
- * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, cover_alt?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+ * @phpstan-type EntryContent array{title: string, slug: string, blocks: list<array{type: string, props: array<array-key, mixed>}>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name?: string|null, cover_alt?: string|null, focus_keyword?: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
  */
 final readonly class EntryContentWriter
 {
@@ -53,12 +60,15 @@ final readonly class EntryContentWriter
      * an editor save passes (title/slug ≤ 200). A layout the entry already stores is accepted as it is
      * ($keptTemplate): the editor offers only the post variants, so refusing an older stored layout
      * would block every save.
-     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot).
+     * With $dropMisfit a layout that does not fit is read as null (a restore of an old snapshot). A
+     * shared block the entry stores now ($keptRefs, EntryContentRules::storedRefs) is accepted once it
+     * is gone, as the editor accepts it.
      *
      * @param  array<array-key, mixed>  $snapshot
+     * @param  list<string>|Closure(): list<string>  $keptRefs
      * @return EntryContent|null
      */
-    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false): ?array
+    public function read(array $snapshot, string $entryType, ?string $keptTemplate = null, bool $dropMisfit = false, array|Closure $keptRefs = []): ?array
     {
         $body = $snapshot['body'] ?? null;
         $blocks = is_array($body) ? ($body['blocks'] ?? []) : null;
@@ -120,13 +130,25 @@ final readonly class EntryContentWriter
             $alt['cover_alt'] = $value;
         }
 
+        // The focus keyword, the same way: a snapshot written before it existed leaves this
+        // language's keyword as it is (EntryContentRules::focusKeyword).
+        $keyword = [];
+        if (array_key_exists('focus_keyword', $snapshot)) {
+            $value = $snapshot['focus_keyword'];
+            $value = is_string($value) ? EntryContentRules::focusKeyword($value) : ($value === null ? null : false);
+            if ($value === false) {
+                return null;
+            }
+            $keyword['focus_keyword'] = $value;
+        }
+
         if (($snapshot['v'] ?? null) !== RecordEntryRevision::FORMAT
             || ! is_string($title) || ! is_string($slug) || ! is_array($blocks) || ! is_array($meta)
             || $this->rules->metaErrors($meta) !== []
             || Validator::make([
                 'title' => $title, 'slug' => $slug, 'blocks' => $blocks,
                 'excerpt' => $strings['excerpt'], 'seo_title' => $strings['seo_title'], 'seo_description' => $strings['seo_description'],
-            ], $this->rules->rules())->fails()) {
+            ], $this->rules->rules($keptRefs))->fails()) {
             return null;
         }
 
@@ -149,15 +171,7 @@ final readonly class EntryContentWriter
             'template_override' => $strings['template_override'],
             'cover_media_id' => $ids['cover_media_id'],
             'meta' => $meta,
-        ] + $author + $alt;
-    }
-
-    /** The featured picture every language's page shows: its key in meta (as Entry::saved reads a cover change). */
-    private static function coverOf(Entry $entry): mixed
-    {
-        $meta = $entry->getAttribute('meta');
-
-        return is_array($meta) ? ($meta['image_url'] ?? null) : null;
+        ] + $author + $alt + $keyword;
     }
 
     /**
@@ -170,15 +184,55 @@ final readonly class EntryContentWriter
     }
 
     /**
+     * Drop every place in a snapshot's body that shows a shared block this site no longer has (deleted
+     * since the snapshot was taken), as withoutMissingMedia drops a missing picture: the storefront
+     * would draw nothing there, and refusing it would make the version impossible to restore. Called
+     * before read(). Returns the snapshot and how many places were dropped. One site-scoped query
+     * (BelongsToSite + RLS), only when the body places any; a draft block counts as present.
+     *
+     * @param  array<array-key, mixed>  $snapshot
+     * @return array{0: array<array-key, mixed>, 1: int}
+     */
+    public function withoutMissingBlocks(array $snapshot): array
+    {
+        $body = $snapshot['body'] ?? null;
+        $blocks = is_array($body) ? ($body['blocks'] ?? null) : null;
+        if (! is_array($blocks)) {
+            return [$snapshot, 0];
+        }
+        $ulids = BlockReference::ulids($blocks);
+        if ($ulids === []) {
+            return [$snapshot, 0];
+        }
+        $found = array_map(static fn (mixed $ulid): string => strtoupper(Cast::string($ulid)), ContentBlock::query()->whereIn('ulid', $ulids)->pluck('ulid')->all());
+        $missing = array_diff($ulids, $found);
+        if ($missing === []) {
+            return [$snapshot, 0];
+        }
+
+        $kept = array_values(array_filter($blocks, static fn (mixed $block): bool => ! in_array(BlockReference::ulid($block), $missing, true)));
+        $body['blocks'] = $kept;
+        $snapshot['body'] = $body;
+
+        return [$snapshot, count($blocks) - count($kept)];
+    }
+
+    /**
      * Drop every reference to media no longer in this site's library (RLS-scoped, Trash excluded —
-     * the same test the editor's pickers apply): the OG image and the cover id become null, the
-     * cover key in meta is removed, block image props are cleared (the block and its text stay).
+     * the same test the editor's pickers apply): the OG image and the cover id become null, an old
+     * cover key in meta becomes its file's id (or goes when no file has it), block image props are
+     * cleared (the block and its text stay).
      * Returns the content and how many references were dropped. Two queries at most.
+     *
+     * The files kept are read FOR KEY SHARE (with $lock, every writer: call it inside the transaction
+     * that writes the content), so a purge of one of them waits for that write to commit and then finds
+     * the entry through its usage row; it never leaves an id naming a file that is gone. A preview of
+     * what a restore would do writes nothing and passes false.
      *
      * @param  EntryContent  $content
      * @return array{0: EntryContent, 1: int}
      */
-    public function withoutMissingMedia(array $content): array
+    public function withoutMissingMedia(array $content, bool $lock = true): array
     {
         $blockIds = [];
         foreach ($content['blocks'] as $i => $block) {
@@ -195,7 +249,7 @@ final readonly class EntryContentWriter
 
         $existing = [];
         if ($referenced !== []) {
-            foreach (Media::query()->whereIn('id', $referenced)->pluck('id') as $id) {
+            foreach (Media::query()->whereIn('id', $referenced)->when($lock, fn (Builder $query) => $query->lock('for key share'))->pluck('id') as $id) {
                 if (is_numeric($id)) {
                     $existing[] = (int) $id;
                 }
@@ -203,6 +257,7 @@ final readonly class EntryContentWriter
         }
 
         $dropped = 0;
+        $named = $content['cover_media_id'] !== null;
 
         foreach ($content['blocks'] as $i => $block) {
             $missing = array_diff($blockIds[$i], $existing);
@@ -219,11 +274,22 @@ final readonly class EntryContentWriter
             }
         }
 
-        // The cover the storefront shows is the media's storage key in meta.image_url.
+        // The cover is written as its row (EntryCover::stored): a version that named it by id drops the old
+        // key beside it (the id decided alone, also when it names no file any more); one that named it by its
+        // key in meta.image_url takes that file's id while it is in the library, else loses the key.
         $coverKey = $content['meta']['image_url'] ?? null;
-        if ($coverKey !== null && (! is_string($coverKey) || ! Media::query()->where('storage_key', $coverKey)->exists())) {
+        if ($named) {
             unset($content['meta']['image_url']);
-            $dropped++;
+        } elseif ($coverKey !== null) {
+            $coverId = is_string($coverKey) && MediaRefs::looksLikeKey($coverKey)
+                ? MediaRefs::id(Media::query()->where('storage_key', $coverKey)->when($lock, fn (Builder $query) => $query->lock('for key share'))->value('id'))
+                : null;
+            unset($content['meta']['image_url']);
+            if ($coverId !== null) {
+                $content['cover_media_id'] = $coverId;
+            } else {
+                $dropped++;
+            }
         }
 
         return [$content, $dropped];
@@ -262,14 +328,15 @@ final readonly class EntryContentWriter
      */
     public function write(Entry $entry, string $locale, array $content): array
     {
-        $coverBefore = self::coverOf($entry);
+        $coverBefore = [$entry->getAttribute('cover_media_id'), $entry->getAttribute('meta')];
         $entry->fill([
             'template_override' => $content['template_override'],
             'cover_media_id' => $content['cover_media_id'],
             'meta' => $content['meta'],
         ]);
         $sharedChanged = $entry->isDirty();
-        $coverChanged = self::coverOf($entry) !== $coverBefore;
+        // the same picture moved from its key to its row is no new picture: its words stay
+        $coverChanged = ! EntryCover::same($coverBefore[0], $coverBefore[1], $entry->getAttribute('cover_media_id'), $entry->getAttribute('meta'));
         $entry->save();
 
         $translation = $entry->translations()->firstOrNew(['locale' => $locale]);
@@ -286,7 +353,9 @@ final readonly class EntryContentWriter
         ] + (array_key_exists('author_name', $content) ? ['author_name' => $content['author_name']] : [])
             // words for the picture: the content's own; a version saved before they existed keeps this
             // language's while the picture stays, and drops them with a picture it changes
-            + (array_key_exists('cover_alt', $content) ? ['cover_alt' => $content['cover_alt']] : ($coverChanged ? ['cover_alt' => null] : [])));
+            + (array_key_exists('cover_alt', $content) ? ['cover_alt' => $content['cover_alt']] : ($coverChanged ? ['cover_alt' => null] : []))
+            // the focus keyword: the content's own; a version saved before it existed keeps this language's
+            + (array_key_exists('focus_keyword', $content) ? ['focus_keyword' => $content['focus_keyword']] : []));
         if (! $translation->exists) {
             // A language the entry lost since: it comes back in the entry's status, as an editor save
             // creates it — within the states a translation can hold (no scheduled/private there).

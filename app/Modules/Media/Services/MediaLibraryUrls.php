@@ -4,6 +4,7 @@ namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Batch-resolves a set of media ids to their public URLs in ONE query (site-scoped by
@@ -92,28 +93,42 @@ final readonly class MediaLibraryUrls
     }
 
     /**
-     * Storage key => the file's own address, for the keys that name a file of this site (not in the
-     * Trash) whose type is one of $mimes — what a "Tải tệp" block button links to. One query; an
-     * unknown, foreign or trashed key resolves to nothing.
+     * The addresses of the library files a page's "Tải tệp" buttons (or the heading mask) name, by row ulid and,
+     * for a body saved before files were named by row, by storage key: only this site's files outside
+     * the Trash whose type is one of $mimes. ONE query for both shapes, none when nothing is named; an
+     * unknown, foreign, trashed or malformed value resolves to nothing.
      *
+     * @param  list<string>  $ulids
      * @param  list<string>  $keys
      * @param  list<string>  $mimes
-     * @return array<string, string>
+     * @return array{media: array<string, string>, files: array<string, string>} upper-case ulid => address, storage key => address
      */
-    public function fileUrls(array $keys, array $mimes): array
+    public function fileRefUrls(array $ulids, array $keys, array $mimes): array
     {
-        if ($keys === []) {
-            return [];
+        $ulids = array_values(array_unique(array_map(strtoupper(...), array_filter($ulids, static fn (string $ulid): bool => preg_match('/\A[0-9A-HJKMNP-TV-Z]{26}\z/i', $ulid) === 1))));
+        if ($ulids === [] && $keys === []) {
+            return ['media' => [], 'files' => []];
         }
 
-        $urls = [];
-        foreach (Media::query()->whereIn('storage_key', $keys)->whereIn('mime', $mimes)->pluck('storage_key') as $key) {
-            if (is_string($key)) {
-                $urls[$key] = $this->resolver->fileUrl($key);
-            }
+        $found = ['media' => [], 'files' => []];
+        $rows = Media::query()
+            ->whereIn('mime', $mimes)
+            ->where(function (Builder $query) use ($ulids, $keys): void {
+                if ($ulids !== []) {
+                    $query->orWhereIn('ulid', $ulids);
+                }
+                if ($keys !== []) {
+                    $query->orWhereIn('storage_key', $keys);
+                }
+            })
+            ->get(['ulid', 'storage_key']);
+        foreach ($rows as $media) {
+            $url = $this->resolver->fileUrl($media->storage_key);
+            $found['media'][strtoupper($media->ulid)] = $url;
+            $found['files'][$media->storage_key] = $url;
         }
 
-        return $urls;
+        return $found;
     }
 
     /**

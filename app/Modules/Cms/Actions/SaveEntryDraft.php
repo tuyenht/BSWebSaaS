@@ -8,9 +8,11 @@ use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryDraftApplier;
 use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -106,25 +108,31 @@ final readonly class SaveEntryDraft
             $content = $change !== null ? $change->content : ['v' => RecordEntryRevision::FORMAT, 'locales' => []];
             $sharedBefore = $content['shared'] ?? $this->liveShared($entry);
             $sharedNow = array_replace($sharedBefore, array_intersect_key($shared, array_flip(EntryDraft::SHARED_FIELDS)));
+            // a cover named by its row decides alone: no old key is kept beside it (EntryCover)
+            if (EntryCover::named($sharedNow['cover_media_id'] ?? null) && is_array($sharedNow['meta'] ?? null)) {
+                unset($sharedNow['meta']['image_url']);
+            }
             $held = $content['locales'][$locale] ?? null;
             $textNow = array_replace(
                 is_array($held) ? $held : $this->liveText($entry, $locale),
                 array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
             );
-            // The featured picture (meta.image_url, what every language's page shows) is every
-            // language's: words written for another picture are not carried over to the one this
-            // change shows (as the editor's direct save does). This language's — from the change, or
-            // live words when the change holds none of its text yet — unless words were sent with it;
-            // and every other language's the change holds. A change brought back to the live picture
-            // takes the live words back: they describe it.
-            $picture = static fn (mixed $meta): mixed => is_array($meta) ? ($meta['image_url'] ?? null) : null;
-            $live = $picture($entry->getAttribute('meta'));
-            $now = $picture($sharedNow['meta'] ?? null);
-            $wordsFor = static fn (string $in): mixed => $now === $live ? $entry->translationFor($in)?->cover_alt : null;
-            if (! array_key_exists('cover_alt', $text) && (is_array($held) ? $picture($sharedBefore['meta'] ?? null) : $live) !== $now) {
+            // The featured picture (cover_media_id, or an old key in meta.image_url: what every
+            // language's page shows) is every language's: words written for another picture are not
+            // carried over to the one this change shows (as the editor's direct save does). This
+            // language's — from the change, or live words when the change holds none of its text yet —
+            // unless words were sent with it; and every other language's the change holds. A change
+            // brought back to the live picture takes the live words back: they describe it. The same
+            // picture moved from its key to its row is the same picture (EntryCover::same).
+            $same = static fn (array $a, array $b): bool => EntryCover::same($a['cover_media_id'] ?? null, $a['meta'] ?? null, $b['cover_media_id'] ?? null, $b['meta'] ?? null);
+            $live = ['cover_media_id' => $entry->getAttribute('cover_media_id'), 'meta' => $entry->getAttribute('meta')];
+            $nowIsLive = $same($sharedNow, $live);
+            $beforeIsNow = $same($sharedBefore, $sharedNow);
+            $wordsFor = static fn (string $in): mixed => $nowIsLive ? $entry->translationFor($in)?->cover_alt : null;
+            if (! array_key_exists('cover_alt', $text) && ! (is_array($held) ? $beforeIsNow : $nowIsLive)) {
                 $textNow['cover_alt'] = $wordsFor($locale);
             }
-            if ($picture($sharedBefore['meta'] ?? null) !== $now) {
+            if (! $beforeIsNow) {
                 foreach (array_keys($content['locales']) as $other) {
                     if ((string) $other !== $locale) {
                         $content['locales'][$other]['cover_alt'] = $wordsFor((string) $other);
@@ -137,7 +145,7 @@ final readonly class SaveEntryDraft
             // the open change or the live post (a restore can leave the old value behind) is dropped to
             // none, or no later save or publish of that post could ever succeed.
             $sentLayout = array_key_exists('template_override', $shared);
-            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry), ! $sentLayout)
+            $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow, $entry->type, $this->storedTemplate($entry), ! $sentLayout, EntryContentRules::storedRefs($entry->ulid))
                 ?? throw new EntryDraftRejectedException('content_invalid');
             if (! $sentLayout) {
                 $sharedNow['template_override'] = $readable['template_override'];
@@ -252,6 +260,7 @@ final readonly class SaveEntryDraft
             return [
                 'title' => '', 'slug' => '', 'body' => ['blocks' => []], 'excerpt' => null,
                 'seo_title' => null, 'seo_description' => null, 'og_image_id' => null, 'author_name' => null,
+                'focus_keyword' => null,
             ];
         }
 

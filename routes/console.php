@@ -78,6 +78,11 @@ Schedule::command('cms:reconcile-category-counts')->dailyAt('20:15')->timezone('
 // the admin totals' re-count, before the product search words (20:45).
 Schedule::command('cms:reconcile-category-public-counts')->dailyAt('20:30')->timezone('UTC')->withoutOverlapping();
 
+// Recount every website's running totals (site_counters: the media library's stored and Trash
+// bytes) and correct a drifted one (logged per drift). 20:20 UTC is 03:20 in Vietnam: after the
+// purges (00:00 UTC), between the category re-counts.
+Schedule::command('counters:reconcile')->dailyAt('20:20')->timezone('UTC')->withoutOverlapping();
+
 // Check the search words of the 500 products each site edited last, and of the next 10,000 by id after
 // where the last night stopped (so every product is checked in turn), against their names and SKU, and
 // write again the ones that differ (one warning per site that had any: a write path missed them).
@@ -147,6 +152,11 @@ Schedule::command('audit:months')->dailyAt('03:00')->timezone('UTC')->withoutOve
 // Retention of the audit log: on the 1st of each month, remove the months older than the running
 // month and the 24 full months before it, with an audit row saying so.
 Schedule::command('audit:prune')->monthlyOn(1, '03:30')->timezone('UTC')->withoutOverlapping();
+
+// The mail log is one table per month (UTC), kept 90 days: make sure the coming months exist (the
+// command fails when fewer than two lie ahead), then drop the months and day counts past 90 days.
+Schedule::command('mail:months')->dailyAt('03:05')->timezone('UTC')->withoutOverlapping();
+Schedule::command('mail:prune')->dailyAt('03:35')->timezone('UTC')->withoutOverlapping();
 
 // Error notices: the morning summary of the counting day that just closed, at a local time set
 // explicitly (the app clock stays UTC). Mails only when there is something to say.

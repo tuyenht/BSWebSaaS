@@ -18,6 +18,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -351,9 +352,11 @@ it('shows nothing for a profile image that names another site\'s picture', funct
     $mine = brandMedia(1, 'logo');
     $theirs = brandMedia(2, 'theirs');
     app(Tenancy::class)->enter(1, fn () => SiteProfile::query()->create(['brand_name' => 'Ở xưởng Bảo Hà']));
-    // The FK cannot tell sites apart: an id written past the settings screen may name any media row.
-    DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)
-        ->update(['logo_media_id' => $theirs->id, 'favicon_media_id' => $mine->id]);
+    // The database refuses another site's picture even past the settings screen (the same-site key);
+    // the reader still shows nothing for an id handed to it that names no picture of this site.
+    expect(fn () => DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->update(['logo_media_id' => $theirs->id]))
+        ->toThrow(QueryException::class, 'site_profiles_logo_media_id_same_site_foreign');
+    DB::connection('pgsql_admin')->table('site_profiles')->where('site_id', 1)->update(['favicon_media_id' => $mine->id]);
 
     $images = app(Tenancy::class)->enter(1, fn () => app(BrandImages::class)->for(['media_ids' => ['logo' => $theirs->id, 'favicon' => $mine->id]]));
     expect($images['logo'])->toBeNull()
@@ -412,4 +415,21 @@ it('locks the site row first and the brand row before reading it, in every save 
         expect($undo['brand'])->toBe(['favicon' => 'https://old.test/fav.png']);   // so undo writes the row back too
         $locksFirst(settingsRowQueries(fn () => app(ResetSettingsSection::class)->undo($undo)));
     });
+});
+
+it('removes the older address of the logo on a dark background when that logo is saved, so the saved one shows', function (): void {
+    $dark = brandMedia(1, 'logo-dark');
+    $admin = brandAdmin();
+    brandSetting(1, ['name' => 'An Vinh', 'logo' => 'https://old.test/logo.png', 'logo_dark' => 'https://old.test/logo-dark.png']);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'footer', 'value' => []]));
+    expect(brandHome())->toContain('sf-footer__logo" src="https://old.test/logo-dark.png"');
+
+    $this->actingAs($admin);
+    app(Tenancy::class)->enter(1, fn () => app(SetBrandImages::class)->handle(['logo_dark' => $dark->storage_key]));
+    auth()->logout();
+
+    $brand = app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->value('value'));
+    expect($brand)->toEqual(['name' => 'An Vinh', 'logo' => 'https://old.test/logo.png'])   // a slot the save does not name keeps its address
+        ->and(brandProfile()['logo_dark_media_id'])->toBe($dark->id)
+        ->and(brandHome())->toContain('sf-footer__logo" src="https://files.test/'.$dark->storage_key.'"');
 });

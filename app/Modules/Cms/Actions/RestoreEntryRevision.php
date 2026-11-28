@@ -10,8 +10,11 @@ use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
 use App\Modules\Cms\Exceptions\RevisionRestoreRejectedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Support\EntryContentWriter;
+use App\Modules\Cms\Support\JobFacts;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -35,7 +38,12 @@ use Illuminate\Support\Facades\Gate;
  * Media that has left the library since the revision was taken is dropped rather than refused: a
  * missing cover / OG image becomes none, and a block image prop is cleared (the block and its text
  * stay, as when the editor's "remove image" is used). The count of dropped references is returned
- * so the screen can say so.
+ * so the screen can say so. A place that shows a shared block deleted since is dropped the same way
+ * (EntryContentWriter::withoutMissingBlocks; the audit line counts them): the storefront draws nothing there.
+ *
+ * The job card in `meta` (facts, badge) holds every language's words: only the restored language's
+ * come back from the version, onto the card as it is now (JobFacts::restored), so the other languages'
+ * words, and the card's shape outside the default language, stay as they are.
  */
 final readonly class RestoreEntryRevision
 {
@@ -71,13 +79,14 @@ final readonly class RestoreEntryRevision
             throw new RevisionRestoreRejectedException('locale_disabled');
         }
 
-        $content = $this->writer->read($revision->snapshot, $entry->type, null, true)
+        [$snapshot, $droppedBlocks] = $this->writer->withoutMissingBlocks($revision->snapshot);
+        $content = $this->writer->read($snapshot, $entry->type, null, true, EntryContentRules::storedRefs($entry->ulid))
             ?? throw new RevisionRestoreRejectedException('snapshot_incompatible');
-        [$content, $dropped] = $this->writer->withoutMissingMedia($content);
+        $dropped = 0;
 
         try {
             /** @var bool $held */
-            $held = DB::transaction(function () use ($entry, $revision, $content, $actor): bool {
+            $held = DB::transaction(function () use ($entry, $revision, $content, $actor, &$dropped): bool {
                 // The entry row first, as every entry action takes it, before its translation is
                 // written back (a check of the search words running meanwhile waits for it).
                 // A trash committed while this waited still refuses the restore.
@@ -90,6 +99,9 @@ final readonly class RestoreEntryRevision
                     throw new RevisionRestoreRejectedException('approved_later');
                 }
                 $entry->setRawAttributes($locked->getAttributes(), true);
+                // The pictures the version names, checked in this transaction: the files kept stay
+                // FOR KEY SHARE until it commits, so a purge meanwhile cannot leave an id naming nothing.
+                [$content, $dropped] = $this->writer->withoutMissingMedia($content);
 
                 // Live content this member's save would hold back goes into the pending change, as their save does.
                 if ($this->changes->holdsBack($entry, $actor)) {
@@ -98,6 +110,7 @@ final readonly class RestoreEntryRevision
                     return true;
                 }
 
+                $content['meta'] = JobFacts::restored($entry->meta, $content['meta'], $revision->locale, $this->locales->default());
                 $written = $this->writer->write($entry, $revision->locale, $content);
 
                 // The shared fields (template, cover, meta) belong to every language's page: when the
@@ -114,7 +127,7 @@ final readonly class RestoreEntryRevision
             });
         } catch (RouteConflictException $e) {
             throw $e->subPageOf($entry->id)
-                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->path)
+                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->address($revision->locale))
                 : new RevisionRestoreRejectedException('slug_taken');
         }
 
@@ -130,6 +143,7 @@ final readonly class RestoreEntryRevision
                 'status' => $entry->status,
                 'workflow_state' => $entry->workflow_state,
                 'dropped_media' => $dropped,
+                'dropped_blocks' => $droppedBlocks,
                 'into_change' => $held,
             ],
         ]);
@@ -148,8 +162,13 @@ final readonly class RestoreEntryRevision
      */
     private function intoChange(Entry $entry, string $locale, array $content, User $actor): void
     {
+        // the job card onto the card as the change holds it (or the website shows it): read under the
+        // entry's row lock, which every writer of the change takes first
+        $held = EntryDraft::query()->where('entry_id', $entry->id)->first()?->content['shared'] ?? null;
+        $current = is_array($held) && is_array($held['meta'] ?? null) ? $held['meta'] : $entry->meta;
+        $content['meta'] = JobFacts::restored($current, is_array($content['meta'] ?? null) ? $content['meta'] : [], $locale, $this->locales->default());
         $text = ['body' => ['blocks' => $content['blocks'] ?? []]]
-            + array_intersect_key($content, array_flip(['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt']));
+            + array_intersect_key($content, array_flip(['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt', 'focus_keyword']));
         $shared = array_intersect_key($content, array_flip(['template_override', 'cover_media_id', 'meta']));
 
         try {

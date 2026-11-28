@@ -31,6 +31,7 @@
         'dirty' => $dirty,
         'dirtyDraft' => __('entries.ed.sv_dirty_draft'),
         'dirtyLive' => __('entries.ed.sv_dirty_live'),
+        'dirtyShort' => __('catalog.ed.sv_dirty_short'),
         'saving' => __('catalog.ed.sv_saving'),
         'autosaving' => __('entries.ed.sv_autosaving'),
         'offline' => __('catalog.ed.sv_offline'),
@@ -331,14 +332,16 @@
                     @endif
                 </section>
 
-                <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo" />
+                <x-bs-admin::seo-fields excerpt="excerpt" part="card" :kind="$type" :address="$address" :locale="$locale" :multi-locale="$multiLocale" id="entry-seo"
+                                       keyword-model="focusKeyword" :keyword-note="__('entries.ed.keyword_note')" />
             </div>
 
             {{-- A page's «Thuộc tính trang» and a post's «Thuộc tính bài» wait behind «Thêm tùy chọn» (design 07), open or
                  closed per browser as in the product editor (localStorage 'bs-editor'); a refused value opens it, and so does
-                 a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day), so it shows. --}}
+                 a value already set (a page's parent, preset by «Thêm trang con» too; a post's own look or shown day, its job
+                 details), so it shows. --}}
             <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-4"
-                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $tags !== []))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
+                 @if ($isPage || $type === 'post') @if (($isPage && $parentUlid !== null) || (! $isPage && ($templateKey !== '' || $tags !== [] || ($jobCard['set'] ?? false)))) data-more-open @endif x-data="{ more: false, init() { if ('moreOpen' in this.$el.dataset) { this.more = true; return } try { this.more = JSON.parse(localStorage.getItem('bs-editor') || '{}').more === true } catch (e) {} }, setMore(on) { this.more = on; try { const o = JSON.parse(localStorage.getItem('bs-editor') || '{}') || {}; o.more = on; localStorage.setItem('bs-editor', JSON.stringify(o)) } catch (e) {} } }" @endif>
                 <section class="{{ $card }}" aria-labelledby="entry-pub-h">
                     <div class="flex items-center justify-between gap-2.5 border-b border-border px-4 py-3">
                         <h2 id="entry-pub-h" class="{{ $cardTitle }}">{{ __('entries.ed.card_publish') }}</h2>
@@ -544,9 +547,15 @@
                                 <x-bs-admin::cover-remove wire:click="clearCover" :title="__('entries.ed.cover_remove_title', ['unit' => $unit])">{{ __('entries.cover_remove') }}</x-bs-admin::cover-remove>
                             @endif
                         @elseif ($mayPick)
-                            <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover">
+                            {{-- A member who may add files can also drop pictures here (Editor::dropCover): the browser
+                                 keeps the files for the picker's device upload, which opens with them. Not in another
+                                 language (the cover is changed in the source), and the kept files are let go when the
+                                 server says no, so no later device upload picks them up. --}}
+                            @php($mayDrop = ! $sharedLock && (auth()->user()?->can('media.upload') ?? false))
+                            <button type="button" data-cover-pick wire:click="openCoverPicker" class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text transition-colors hover:bg-surface-hover"
+                                    @if ($mayDrop) x-data x-on:dragover.prevent x-on:drop.prevent="if (window.bsStagePickerFiles($event.dataTransfer?.files, 'image/')) { $wire.dropCover().then((ok) => ok || (window.__pendingPickerFiles = null), () => (window.__pendingPickerFiles = null)); }" @endif>
                                 <x-bs-admin::icon name="ri-image-add" class="size-6 text-primary-text" />
-                                <span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>
+                                <span><span class="font-semibold text-primary-text">{{ __('entries.ed.cover_choose') }}</span>@if ($mayDrop)<br>{{ __('entries.ed.cover_drop') }}@endif</span>
                             </button>
                         @else
                             <span class="flex size-full flex-col items-center justify-center gap-1.5 px-3 text-center text-[calc(0.8125rem+var(--user-text-boost))] leading-normal text-text-muted">
@@ -683,7 +692,7 @@
                             <span class="ped-ms-s" x-text="more ? @js(__('catalog.ed.less_sub_s')) : @js(__('entries.ed.more_sub_post_s'))">{{ __('entries.ed.more_sub_post_s') }}</span>
                         </span>
                     </button>
-                    @if ($errors->has('templateKey') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*')) <span hidden x-init="more = true"></span> @endif
+                    @if ($errors->has('templateKey') || $errors->has('tagDraft') || $errors->has('tags') || $errors->has('tags.*') || $errors->has('job*')) <span hidden x-init="more = true"></span> @endif
                     {{-- «Thẻ» (design 07): the post's tags in this language, each with «Bỏ thẻ»; a name typed and added
                          with Enter (or «Thêm», several split at commas) joins them, and makes a tag on save when none has
                          it. Written to the website at once, so it stays as it is while this member's saves wait for
@@ -748,6 +757,9 @@
                             </div>
                         </div>
                     </section>
+                    @if ($jobCard !== null)
+                        @include('admin::livewire.entries.partials.job-card')
+                    @endif
                 @endif
             </div>
         </div>
@@ -820,6 +832,10 @@
         @include('admin::livewire.entries.partials.revision-dialogs')
     @endif
 
+    @if ($frame['preview']['url'] ?? null)
+        <x-bs-admin::preview-dialog :url="$frame['preview']['url']" :unit="$unit" />
+    @endif
+
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$frame['title']" :save="$leave['method']" discard="discardChanges" :body="$leave['body']" :save-label="$leave['save']" :discard-label="$leave['discard']" />
 
     @if ($stale !== null)
@@ -881,6 +897,59 @@
                 </x-slot:footer>
             </x-bs-admin::modal>
         </div>
+    @endif
+
+    @if ($refusal !== null)
+        {{-- «Chưa làm được» (design 07, the refused change): a save, a send, «Cập nhật website» /
+             «Duyệt đăng» or «Bỏ thay đổi» of the pending change refused (EditsPendingChange::changeRefused).
+             The move as its title, the reason in plain words; «Đóng» takes the focus and closes it, like
+             Escape and the backdrop, keeping what was typed. When the change moved on elsewhere,
+             «Tải lại» loads it into the form (asking first when edits would be replaced). --}}
+        <div wire:key="entry-refusal-{{ md5(json_encode($refusal)) }}" data-entry-refusal
+             x-data="{ shut: false, {{ \App\Modules\Admin\Livewire\Entries\Editor::REFUSAL_REFOCUS }} }">
+            {{-- `shut` hides it at once on «Đóng», Escape or the backdrop; the server then drops it --}}
+            <x-bs-admin::modal state="! shut" close="shut = true; $wire.closeRefusal()" size="narrow" compact alert describedby="entry-refusal-d" :close-label="__('admin.dismiss')">
+                <x-slot:heading>
+                    <span class="flex items-center gap-2.5">
+                        <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-danger-text)_10%,var(--color-surface))] text-danger-text" aria-hidden="true">
+                            <x-bs-admin::icon name="ri-close-circle" class="size-[min(1.5rem,calc(1.125rem+var(--user-text-boost)))]" />
+                        </span>
+                        <span>{{ $refusal['title'] }}</span>
+                    </span>
+                </x-slot:heading>
+                <x-bs-admin::alert color="danger" icon="ri-close-circle" id="entry-refusal-d">{{ $refusal['text'] }}</x-bs-admin::alert>
+                <x-slot:footer>
+                    @if ($refusal['reload'])
+                        <x-bs-admin::button variant="outline" color="secondary" size="sm" autofocus x-on:click="hide()" data-refusal-close>
+                            <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('admin.close') }}
+                        </x-bs-admin::button>
+                        <x-bs-admin::button color="primary" size="sm" wire:click="reloadChange" wire:loading.attr="disabled" wire:target="reloadChange" data-refusal-reload>
+                            <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('entries.refuse.reload') }}
+                        </x-bs-admin::button>
+                    @else
+                        <x-bs-admin::button color="primary" size="sm" autofocus x-on:click="hide()" data-refusal-close>
+                            <x-bs-admin::icon name="ri-close" :class="$glyph" /> {{ __('admin.close') }}
+                        </x-bs-admin::button>
+                    @endif
+                </x-slot:footer>
+            </x-bs-admin::modal>
+        </div>
+    @endif
+    @if ($reloadReplaces !== null)
+        {{-- «Tải bản mới nhất?»: «Tải lại» with edits still in the form. Keeping them over the newer change would
+             save over another member's edits, so the question names the fields replaced; «Ở lại» (the focus first,
+             Escape, the backdrop) keeps the typed text and loads nothing. --}}
+        <div wire:key="entry-reload-ask" data-entry-reload-ask x-data="{ {{ \App\Modules\Admin\Livewire\Entries\Editor::REFUSAL_REFOCUS }} }">
+            <x-bs-admin::confirm-dialog model="changeReloadAsk" :title="__('entries.refuse.reload_title')" icon="ri-refresh" danger
+                                        :ok="__('entries.refuse.reload_ok')" ok-icon="ri-refresh" :cancel-label="__('entries.refuse.reload_stay')"
+                                        confirm="confirmReloadChange" cancel="keepTypedText">
+                <x-bs-admin::confirm-line>{{ __('entries.refuse.reload_line', ['fields' => $reloadReplaces]) }}</x-bs-admin::confirm-line>
+            </x-bs-admin::confirm-dialog>
+        </div>
+    @endif
+
+    @if ($sharedPicker)
+        @include('admin::livewire.entries.partials.shared-block-picker')
     @endif
 
     @can('media.view')

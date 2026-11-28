@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { buildDraft, descMaxOf, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
+import { areaEmptyOf, buildDraft, descMaxOf, goneKeysOf, goneSpanOf, iconGroupsOf, autoIconOf, suggestIconOf, treeRowsOf } from '../../resources/js/admin-menus.js';
 
 const opts = (more = {}) => ({ hidden: false, new_tab: false, icon: null, description: {}, cta: false, mega: null, badge: null, device: 'all', ...more });
 const row = (key, parent, labels, more = {}) => ({ key, parent, link: { type: 'url', url: '/' + key }, labels, options: opts(more) });
@@ -55,6 +55,18 @@ test('only what changed is sent for a saved row, and a moved row only through th
     const d = buildDraft([A, hidden, A2, A21, moved], savedOf(all), 'v1');
     assert.deepEqual(d.updates, [{ key: '01A1', options: hidden.options }]);
     assert.deepEqual(d.tree.at(-1), { key: '01B', parent: '01A' });
+});
+
+test('a large panel switched to a shared block is sent with the block it shows, or none chosen yet', () => {
+    const picked = { ...A, options: opts({ mega: { type: 'block', block: '01JABCDEFGHJKMNPQRSTVWXYZ0' } }) };
+    const none = { ...B, options: opts({ mega: { type: 'block', block: null } }) };
+    const d = buildDraft([picked, A1, A2, A21, none], savedOf(all), 'v1');
+    assert.deepEqual(d.updates, [
+        { key: '01A', options: picked.options },
+        { key: '01B', options: none.options },
+    ]);
+    // nothing changed once saved as the server hands it back
+    assert.deepEqual(buildDraft([picked], savedOf([picked]), 'v2').updates, []);
 });
 
 test('a row not saved yet keeps its new: key, in the tree and as a create', () => {
@@ -221,4 +233,29 @@ test('the description of a top-level item may run to 200 letters before the scre
     assert.equal(descMaxOf(1), 90);
     assert.equal(descMaxOf(3), 90);
     assert.equal(descMaxOf(undefined), 90);
+});
+
+test('an area is marked empty only when the website shows no menu there in the main language', () => {
+    const area = (key, shows) => ({ key, shows: { vi: shows } });
+    const primary = area('primary', { menu: 'M1' });
+    const handheld = area('handheld', {});
+    const footer = area('footer', {});
+    const follows = area('footer', { follows: 'primary' });
+    assert.equal(areaEmptyOf([primary, handheld, footer], primary, 'vi'), false);
+    // the phone menu shows the main menu while it has none of its own
+    assert.equal(areaEmptyOf([primary, handheld, footer], handheld, 'vi'), false);
+    assert.equal(areaEmptyOf([area('primary', {}), handheld], handheld, 'vi'), true);
+    assert.equal(areaEmptyOf([primary, handheld, footer], footer, 'vi'), true);
+    // following an area shows that area's menu, or nothing when it has none
+    assert.equal(areaEmptyOf([primary, follows], follows, 'vi'), false);
+    assert.equal(areaEmptyOf([area('primary', {}), follows], follows, 'vi'), true);
+    // one hop only, like the website: following an area that itself follows another shows nothing
+    const mid = area('handheld', { follows: 'primary' });
+    const twoHops = area('footer', { follows: 'handheld' });
+    assert.equal(areaEmptyOf([primary, mid, twoHops], twoHops, 'vi'), true);
+    // the phone fallback also takes one hop: a main menu that only follows another area shows nothing
+    const chain = [area('primary', { follows: 'footer' }), area('handheld', {}), area('footer', { follows: 'x' }), area('x', { menu: 'M9' })];
+    assert.equal(areaEmptyOf(chain, chain[1], 'vi'), true);
+    // another language's choice does not count for the main one
+    assert.equal(areaEmptyOf([{ key: 'footer', shows: { en: { menu: 'M2' } } }], { key: 'footer', shows: { en: { menu: 'M2' } } }, 'vi'), true);
 });

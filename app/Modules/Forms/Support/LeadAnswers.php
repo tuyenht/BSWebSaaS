@@ -11,7 +11,8 @@ use App\Modules\Shared\Support\Cast;
 /**
  * A lead's answers as people read them: under the label of the field they answer, in the form's
  * order, a picked choice by its label. A ticked box shows the sentence stored with the lead (what
- * the visitor agreed to when they sent it), never the box's current wording. An answer whose field
+ * the visitor agreed to when they sent it), never the box's current wording; a day reads the
+ * Vietnamese way (24/12/2026), as every date in the admin does. An answer whose field
  * was removed later still shows, under its key — nothing the visitor sent is hidden. With
  * $withEmpty a field the visitor left empty is listed too, with an empty value (the inbox writes
  * "Khách không điền" there); an unticked box is never listed. A file field is not an answer: its
@@ -26,7 +27,7 @@ final class LeadAnswers
      * @param  array<mixed>  $data  the submission's data
      * @return list<array{key: string, label: string, value: string, ticked: bool, wide: bool}>
      */
-    public static function for(?Form $form, array $data, string $locale, bool $withEmpty = false): array
+    public static function for(?Form $form, array $data, string $locale, bool $withEmpty = false, ?string $default = null): array
     {
         $answers = [];
         $seen = [];
@@ -38,7 +39,7 @@ final class LeadAnswers
                 continue;
             }
             $seen[$field->key] = true;
-            $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty);
+            $answer = self::answer($field, $data[$field->key] ?? null, $locale, $withEmpty, $default);
             if ($answer !== null) {
                 $answers[] = $answer;
             }
@@ -58,7 +59,7 @@ final class LeadAnswers
     }
 
     /** @return array{key: string, label: string, value: string, ticked: bool, wide: bool}|null */
-    private static function answer(FormField $field, mixed $value, string $locale, bool $withEmpty): ?array
+    private static function answer(FormField $field, mixed $value, string $locale, bool $withEmpty, ?string $default): ?array
     {
         if ($field->type === 'checkbox') {
             if ($value === null || $value === false || $value === '' || $value === '0') {
@@ -70,29 +71,31 @@ final class LeadAnswers
         }
 
         if (FormFieldTypes::isChoice($field->type)) {
-            $labels = FormFieldTypes::choiceLabels($field, $locale);
+            $labels = FormFieldTypes::choiceLabels($field, $locale, $default);
             $picked = is_array($value) ? $value : [$value];
             $value = array_map(static fn (mixed $one): string => $labels[self::plain($one)] ?? self::plain($one), $picked);
         }
 
         $text = self::plain($value);
+        if ($field->type === 'date' && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $day) === 1) {
+            $text = $day[3].'/'.$day[2].'/'.$day[1];
+        }
         if ($text === '' && ! $withEmpty) {
             return null;
         }
 
         return [
             'key' => $field->key,
-            'label' => self::label($field, $locale),
+            'label' => self::label($field, $locale, $default),
             'value' => $text,
             'ticked' => false,
             'wide' => $field->type === 'textarea',
         ];
     }
 
-    private static function label(FormField $field, string $locale): string
+    private static function label(FormField $field, string $locale, ?string $default): string
     {
-        $labels = Cast::arr($field->label);
-        $label = Cast::string($labels[$locale] ?? $labels['vi'] ?? null);
+        $label = FormDraft::text($field->label, $locale, $default);
 
         return $label !== '' ? $label : $field->key;
     }

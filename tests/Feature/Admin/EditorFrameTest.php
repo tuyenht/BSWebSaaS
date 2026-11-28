@@ -12,6 +12,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -64,7 +65,11 @@ function frameMember(array $permissions): User
     return $user->fresh() ?? $user;
 }
 
-/** The phone's one bar (a child screen): the name in the bar, the second (?), Xem trước and Cỡ chữ in the ⋮. */
+/**
+ * The phone's one bar (a child screen): the name in the bar, the second (?), Xem trước and Cỡ chữ in the ⋮,
+ * the browser's save state with its short line beside the long one (the short one hidden from screen
+ * readers, the long one what they read; admin-editor.css shows the short one there only), and «Thử lại».
+ */
 function assertChildBar(mixed $component): void
 {
     $component->assertSeeHtml('class="ped-h1 m-0"')
@@ -72,7 +77,27 @@ function assertChildBar(mixed $component): void
         ->assertSeeHtml('class="list-mi ped-child-mi"')
         ->assertSeeHtml('class="ped-fs"')
         ->assertSee('Cỡ chữ')
-        ->assertSeeHtml('role="menuitemradio"');
+        ->assertSeeHtml('role="menuitemradio"')
+        ->assertSeeHtml('<span class="bs-save-state-l" x-text="text()"></span><span class="bs-save-state-s" aria-hidden="true" x-text="short()"></span>')
+        // «Thử lại» keeps its word as its name and title when the one bar shows its icon alone
+        ->assertSeeHtml('title="Thử lại"')
+        ->assertSeeHtml('<span class="ped-retry-t">Thử lại</span>');
+}
+
+/**
+ * The server's save state: the long line shown off the phone's one bar, the short line shown on it (both
+ * hidden from screen readers), the full sentence read out, and the tooltip.
+ */
+function assertSaveNote(mixed $component, string $long, string $short, string $full, string $tip): void
+{
+    $component->assertSeeHtml('title="'.e($tip).'">')
+        ->assertSeeHtml('<span class="bs-save-state-l" aria-hidden="true">'.e($long).'</span><span class="bs-save-state-s" aria-hidden="true">'.e($short).'</span><span class="sr-only">'.e($full).'</span>');
+}
+
+/** The site's clock as the save state writes it. */
+function frameClock(): string
+{
+    return app(SiteTime::class)->now()->format('H:i');
 }
 
 describe('posts and pages', function (): void {
@@ -121,11 +146,53 @@ describe('posts and pages', function (): void {
             $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
             $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])
                 ->assertSeeHtmlInOrder(['aria-current="page">Sửa</span>', 'Sửa tin tức</h1>', 'Sửa nội dung, ảnh, đường dẫn và cách hiện trên Google — mở từ dòng trong danh sách.'])
-                ->assertSeeHtml('href="'.route('admin.entries.preview', ['ulid' => $post->ulid]).'"')
                 ->assertSeeHtml('"id":"preview"')
                 ->assertSeeHtml('wire:click="trash"')
                 ->assertSee('Chuyển vào thùng rác');
             assertChildBar($c);
+        });
+    });
+
+    it('opens «Xem trước» on the screen: the saved version in «Xem trước trên website», never a new tab', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
+            $url = route('admin.entries.preview', ['ulid' => $post->ulid]);
+            $html = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid])->html();
+
+            // the bar's button and the phone's ⋮ item both open the dialog, neither is a link away
+            expect(substr_count($html, "\$dispatch('bs-site-preview')"))->toBe(2)
+                ->and($html)->not->toContain('href="'.$url.'"')
+                ->not->toContain(__('admin.editor.preview_tip'))
+                // the dialog: its name, the two widths (computer pressed first), «Đóng» named with Esc, the
+                // frame of the saved version read from the root, and the board's line under it
+                ->toContain('data-site-preview data-url="'.$url.'"')
+                ->toContain('<h2 id="site-pv-t"')
+                ->toContain('Xem trước trên website')
+                ->toMatch('/<span role="group" aria-label="Thiết bị xem trước"/')
+                ->toContain('Máy tính')
+                ->toContain('Điện thoại')
+                ->toContain("x-on:click=\"dev = 'd'\"")
+                ->toContain("x-on:click=\"dev = 'm'\"")
+                ->toContain('aria-label="Đóng xem trước (Esc)"')
+                ->toContain('x-bind:src="$root.dataset.url" tabindex="0" x-on:load="frameKeys($el)" title="Bản đã lưu của tin tức trên website"')
+                ->toContain('<div x-ignore wire:ignore.self data-bs-lazy="bsSitePreview" x-data="bsSitePreview" data-bs-modal')
+                ->toContain('Chỉ người trong website thấy bản xem trước này. Khách chưa thấy gì cho tới khi tin tức được đăng.');
+        });
+    });
+
+    it('draws no «Xem trước trên website» while the post is not saved yet: the button stays locked with its reason', function (): void {
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            $html = Livewire::actingAs($member)->test(EntryEditor::class, ['section' => 'posts'])->html();
+
+            expect($html)->not->toContain('data-site-preview')
+                ->not->toContain("\$dispatch('bs-site-preview')")
+                ->toContain(e(__('admin.editor.preview_new')));
         });
     });
 
@@ -140,7 +207,8 @@ describe('posts and pages', function (): void {
                 ->assertSeeHtml('data-guide-ctx')
                 ->assertSeeHtml('"id":"more"')
                 ->assertDontSeeHtml('data-guide="preview"')
-                ->assertDontSeeHtml('"id":"preview"');
+                ->assertDontSeeHtml('"id":"preview"')
+                ->assertDontSeeHtml('data-site-preview');
         });
     });
 
@@ -299,6 +367,25 @@ describe('posts and pages', function (): void {
         });
     });
 
+    it('gives every server state of a post a short line for the phone\'s one bar: new, saved, a field to fix', function (): void {
+        $this->freezeTime(); // the saved time is read once, so a minute turning over cannot split it
+        $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            frameSection();
+            assertSaveNote(Livewire::actingAs($member)->test(EntryEditor::class, ['section' => 'posts']),
+                'Tin tức mới — chưa lưu', 'Chưa lưu', 'Tin tức mới — chưa lưu', 'Tin tức mới — chưa lưu');
+
+            $post = frameEntry('post', $member, 'Khai trương xưởng mới', 'khai-truong');
+            $at = frameClock();
+            $c = Livewire::actingAs($member)->test(EntryEditor::class, ['ulid' => $post->ulid]);
+            assertSaveNote($c, 'Đã lưu '.$at, 'Đã lưu '.$at, 'Đã lưu lúc '.$at.' hôm nay', 'Đã lưu lúc '.$at.' hôm nay — giờ theo múi giờ website');
+
+            $c->set('title', '')->call('save');
+            assertSaveNote($c, 'Chưa lưu — còn ô cần sửa', 'Chưa lưu', 'Chưa lưu — còn ô cần sửa', 'Chưa lưu — còn ô cần sửa');
+        });
+    });
+
     it('draws a page being edited with the same frame', function (): void {
         $member = frameMember(['entries.view', 'entries.create', 'entries.edit.any', 'entries.delete.any', 'entries.publish']);
 
@@ -336,6 +423,25 @@ describe('products', function (): void {
                 ->assertSeeHtml('ped-child-mi')
                 ->assertDontSee('Chuyển vào thùng rác');
             assertChildBar($c);
+        });
+    });
+
+    it('gives every server state of a product a short line for the phone\'s one bar: never saved, saved by itself, a field to fix', function (): void {
+        $this->freezeTime(); // the saved time is read once, so a minute turning over cannot split it
+        $member = frameMember(['catalog.view', 'catalog.manage']);
+
+        app(Tenancy::class)->enter(1, function () use ($member): void {
+            assertSaveNote(Livewire::actingAs($member)->test(ProductEditor::class), 'Chưa lưu lần nào', 'Chưa lưu', 'Chưa lưu lần nào', 'Chưa lưu lần nào');
+
+            $product = Product::query()->create(['status' => 'draft', 'sku' => 'DG-01', 'price' => 12500000]);
+            $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá hàn', 'slug' => 'do-ga-han']);
+            $c = Livewire::actingAs($member)->test(ProductEditor::class, ['ulid' => $product->ulid])
+                ->set('name', 'Đồ gá hàn khung')->call('autosave');
+            $at = frameClock();
+            assertSaveNote($c, 'Đã tự lưu nháp lúc '.$at, 'Đã lưu '.$at, 'Đã lưu lúc '.$at.' hôm nay', 'Đã lưu lúc '.$at.' hôm nay — giờ theo múi giờ website');
+
+            $c->set('salePrice', '13.500.000')->call('save');
+            assertSaveNote($c, 'Chưa lưu — còn ô cần sửa', 'Chưa lưu', 'Chưa lưu — còn ô cần sửa', 'Chưa lưu — còn ô cần sửa');
         });
     });
 

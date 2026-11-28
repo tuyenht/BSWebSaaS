@@ -26,11 +26,13 @@ use App\Modules\Cms\Queries\PendingEntryDrafts;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -75,6 +77,11 @@ final class Planner
 {
     private const int FACET_BASE = 1000;
 
+    /** The brand setting, and the images in it that the site profile now holds (as the settings screen's SetBrandImages moves them). */
+    public const string BRAND_ITEM = 'setting:general.brand';
+
+    public const array BRAND_IMAGES = ['logo', 'logo_dark', 'favicon', 'og_image'];
+
     private string $locale = '';
 
     /** @var list<string> */
@@ -103,6 +110,9 @@ final class Planner
 
     /** @var array<string, true> slots that name a file in the pack */
     private array $slotFiles = [];
+
+    /** @var array<string, string> each media address the plan wrote into a setting → the storage key it names */
+    private array $minted = [];
 
     /** @var list<string> */
     private array $warnings = [];
@@ -307,6 +317,7 @@ final class Planner
         $this->slots = [];
         $this->packed = 0;
         $this->slotFiles = [];
+        $this->minted = [];
         $this->warnings = [];
         $this->matched = [];
         $this->carried = [];
@@ -537,7 +548,7 @@ final class Planner
         $skip = null;
         if ($draftPending) {
             $skip = [PlanItem::SKIP_DRAFT, 'a staff draft is waiting; overwriting would make it stale'];
-        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current, $ledger), true)) {
+        } elseif ($ledger !== null && ! in_array($ledger['hash'], self::ledgerHashes($current, $ledger, $desired), true)) {
             $skip = [PlanItem::SKIP_EDITED, 'edited by staff since the last load'];
         } elseif ($ledger === null && $evidence !== null) {
             $skip = [PlanItem::SKIP_EDITED, $evidence];
@@ -566,13 +577,42 @@ final class Planner
      * parents were managed), or one whose recorded parent is still the live one: a page staff moved
      * since the last load is never taken for the loader's own write.
      *
+     * Each also with every download button whose file left the library for good (a `media` ulid no
+     * row holds, so filesByKey could not give its key back) read as the button the plan writes at
+     * the same place: the file is gone, so the button is no member's edit, and the item is planned
+     * as an update that writes the pack's button again, never as skipped.
+     *
      * @param  array<string, mixed>  $current
      * @param  array{hash: string, ref: string, parent?: string|null, created?: bool}  $ledger
+     * @param  array<string, mixed>|null  $desired
      * @return list<string>
      */
-    private static function ledgerHashes(array $current, array $ledger): array
+    private static function ledgerHashes(array $current, array $ledger, ?array $desired = null): array
     {
         $optional = [[], ['published_at' => true], ['featured' => true], ['published_at' => true, 'featured' => true]];
+        $readings = [$current];
+        if ($desired !== null) {
+            $asPlanned = self::goneFilesAsPlanned($current, $desired);
+            if ($asPlanned !== $current) {
+                $readings[] = Cast::arr($asPlanned);
+            }
+        }
+        $states = [];
+        foreach ($readings as $reading) {
+            array_push($states, ...self::ledgerStates($reading, $ledger, $optional));
+        }
+
+        return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array{hash: string, ref: string, parent?: string|null, created?: bool}  $ledger
+     * @param  list<array<string, true>>  $optional
+     * @return list<array<string, mixed>>
+     */
+    private static function ledgerStates(array $current, array $ledger, array $optional): array
+    {
         $states = array_map(fn (array $drop): array => array_diff_key($current, $drop), $optional);
         if (! array_key_exists('parent', $ledger) || (array_key_exists('parent', $current) && $ledger['parent'] === $current['parent'])) {
             foreach ($optional as $drop) {
@@ -580,7 +620,34 @@ final class Planner
             }
         }
 
-        return array_values(array_unique(array_map(CanonicalHash::of(...), $states)));
+        return $states;
+    }
+
+    /**
+     * $current with every download button that still names its file by a ulid (filesByKey found no
+     * row for it: the file was purged) given the file the plan writes at the same place, when the
+     * plan writes a download button there; anything else as it is.
+     */
+    private static function goneFilesAsPlanned(mixed $current, mixed $desired): mixed
+    {
+        if (! is_array($current)) {
+            return $current;
+        }
+        if (($current['k'] ?? null) === 'file') {
+            $planned = is_array($desired) && ($desired['k'] ?? null) === 'file' && is_string($desired['file'] ?? null) ? $desired['file'] : null;
+            if ($planned === null || ! isset(ButtonLink::fileRef($current)['media'])) {
+                return $current;
+            }
+            unset($current['media']);
+            $current['file'] = $planned;
+
+            return $current;
+        }
+        foreach ($current as $key => $child) {
+            $current[$key] = self::goneFilesAsPlanned($child, is_array($desired) ? ($desired[$key] ?? null) : null);
+        }
+
+        return $current;
     }
 
     /** @param list<string> $claims */
@@ -1485,7 +1552,10 @@ final class Planner
             return [];
         }
 
-        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'expires_at', 'meta', 'parent_id']);
+        $entries = $this->locked(Entry::query()->whereIn('id', $ids))->get(['id', 'ulid', 'type', 'status', 'published_at', 'expires_at', 'cover_media_id', 'meta', 'parent_id']);
+        // a post's card image as every reader sees it (EntryCover): the file its row names, else the old
+        // key; one read for the page of entries, only when one names a file by its row
+        $covers = EntryCover::refs($entries, false);
         $parentIds = [];
         foreach ($entries as $entry) {
             if ($entry->type === 'page' && $entry->parent_id !== null) {
@@ -1494,12 +1564,13 @@ final class Planner
         }
         $this->rememberEntryKeys($parentIds);
         $translations = $this->locked(EntryTranslation::query()->whereIn('entry_id', $ids)->whereIn('locale', $this->locales))
-            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'author_name', 'status']);
+            ->get(['entry_id', 'locale', 'title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'author_name', 'focus_keyword', 'status']);
         $byEntry = [];
         foreach ($translations as $translation) {
             $byEntry[$translation->entry_id][] = $translation;
         }
         $categories = $this->categoryKeys('entry_taxonomies', 'entry_id', $ids);
+        $fileKeys = self::fileKeysByRow($translations->pluck('body')->all());
 
         $states = [];
         foreach ($entries as $entry) {
@@ -1508,11 +1579,15 @@ final class Planner
                 $row = [
                     'title' => $translation->title,
                     'excerpt' => $translation->excerpt,
-                    'body' => $translation->body,
+                    'body' => $fileKeys === [] ? $translation->body : self::filesByKey($translation->body, $fileKeys),
                     'seo_title' => $translation->seo_title,
                     'seo_description' => $translation->seo_description,
                     'status' => $translation->status,
                 ];
+                // The focus keyword is part of the state only when set, so an item without one keeps its ledger hash.
+                if (trim((string) $translation->focus_keyword) !== '') {
+                    $row['focus_keyword'] = $translation->focus_keyword;
+                }
                 if ($entry->type === 'post') {
                     $row['slug'] = $translation->slug;
                     // A post's byline is part of the state only when set, so a post without one keeps its ledger hash.
@@ -1535,8 +1610,9 @@ final class Planner
                 }
             }
             if ($entry->type === 'post') {
-                $image = $entry->meta['image_url'] ?? null;
-                $state['image'] = is_string($image) && $image !== '' ? $image : null;
+                // in the key form the ledger hashes (a post moved from its key to its row hashes as it did)
+                $image = EntryCover::value($entry, $covers);
+                $state['image'] = $image !== '' ? $image : null;
                 $state['categories'] = $categories[$entry->id] ?? [];
                 // Only when present, so a post without them hashes as it did before they existed
                 // and ledger lines written then keep reading as unchanged.
@@ -1555,6 +1631,69 @@ final class Planner
         }
 
         return $states;
+    }
+
+    /**
+     * The storage key of every file a download button names by its library row (`do.media`, the
+     * file's ulid) in these bodies, by upper-case ulid: one read for them all, none when no button
+     * names a file by its row. The Trash counts (the same file, as its key named it).
+     *
+     * @param  array<array-key, mixed>  $bodies
+     * @return array<string, string> upper-case ulid → storage key
+     */
+    private static function fileKeysByRow(array $bodies): array
+    {
+        $ulids = [];
+        $collect = static function (mixed $value) use (&$collect, &$ulids): void {
+            if (! is_array($value)) {
+                return;
+            }
+            if (($value['k'] ?? null) === 'file' && isset(ButtonLink::fileRef($value)['media'])) {
+                $ulids[ButtonLink::fileRef($value)['media']] = true;
+
+                return;
+            }
+            foreach ($value as $child) {
+                $collect($child);
+            }
+        };
+        $collect($bodies);
+        if ($ulids === []) {
+            return [];
+        }
+
+        $keys = [];
+        foreach (Media::withTrashed()->whereIn('ulid', array_map('strval', array_keys($ulids)))->get(['ulid', 'storage_key']) as $row) {
+            $keys[strtoupper($row->ulid)] = $row->storage_key;
+        }
+
+        return $keys;
+    }
+
+    /**
+     * A body with every download button that names its file by row written in the key form the plan
+     * writes (`{"k": "file", "file": <storage key>}`), so a body the loader stored by row (or a member
+     * saved since) hashes as the ledger recorded it. A row not found is left as it is (it reads as a
+     * change).
+     *
+     * @param  array<string, string>  $keys  upper-case ulid → storage key
+     */
+    private static function filesByKey(mixed $value, array $keys): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (($value['k'] ?? null) === 'file') {
+            $ulid = ButtonLink::fileRef($value)['media'] ?? null;
+            if ($ulid !== null && isset($keys[$ulid])) {
+                unset($value['media']);
+                $value['file'] = $keys[$ulid];
+            }
+
+            return $value;
+        }
+
+        return array_map(static fn (mixed $child): mixed => self::filesByKey($child, $keys), $value);
     }
 
     /**
@@ -1640,6 +1779,10 @@ final class Planner
                 'seo_description' => self::text($item->data, 'seo_description', $locale),
                 'status' => $status,
             ];
+            $keyword = self::text($item->data, 'focus_keyword', $locale);
+            if ($keyword !== null) {
+                $row['focus_keyword'] = $keyword;
+            }
             if ($item->kind === 'post') {
                 $row['slug'] = $locale === $this->locale ? $item->anchor() : Cast::string($slugs[$locale] ?? null, $item->anchor());
                 $author = self::text($item->data, 'author', $locale);
@@ -2311,6 +2454,12 @@ final class Planner
         $row = $this->locked(SiteSetting::query()->where('group_name', $group)->where('key', $name))->first(['group_name', 'key', 'value']);
         $live = $row === null ? null : Cast::arr($row->value);
         $managed = $item->managedKeys();
+        if ($item->key === self::BRAND_ITEM) {
+            // The profile is read even before a brand row exists, so a picture staff chose there shows
+            // in the plan whenever the load would take it away.
+            $live = $this->brandImagesFromProfile($live ?? [], self::brandImagesOwned($managed));
+            $live = $live === [] && $row === null ? null : $live;
+        }
 
         $current = $live === null ? null : self::settingState($live, $managed);
         $desired = [];
@@ -2328,12 +2477,78 @@ final class Planner
 
                     continue;
                 }
-                $value = $this->urls->url($slot['key']);
+                $value = $this->mintedUrl($slot['key']);
             }
             $desired[$key] = $value;
         }
 
         return $this->decide($context, $item, $current, $this->asTheAdminStores($item, $desired, $managed, $live), $current === null ? null : $item->anchor(), null);
+    }
+
+    /**
+     * The brand images (logo, logo on a dark background, favicon, share image) a brand item owns: every one for an item that
+     * owns the whole value, only its managed ones otherwise. The item decides each of them: one its
+     * value leaves out or states null ends with no image (Applier::brandImages clears the picture).
+     *
+     * @param  list<string>|null  $managed
+     * @return list<string>
+     */
+    public static function brandImagesOwned(?array $managed): array
+    {
+        return $managed === null ? self::BRAND_IMAGES : array_values(array_intersect(self::BRAND_IMAGES, $managed));
+    }
+
+    /**
+     * The brand setting with each image the pack item owns (BRAND_IMAGES) that the
+     * setting no longer holds read from the site profile's picture, in the address form the plan
+     * writes: the loader (and the settings screen) store a brand image as the profile's picture and
+     * take its address out of the setting, so a brand image moved to the profile hashes as it did,
+     * and one the item no longer names shows as there, to be removed. An image the item does not own
+     * is never added. One read of the profile and one of its pictures (this website's, outside the
+     * Trash, pictures only), none when the setting still holds every owned image.
+     *
+     * @param  array<array-key, mixed>  $live
+     * @param  list<string>  $owned  the brand images the pack item owns (brandImagesOwned)
+     * @return array<array-key, mixed>
+     */
+    private function brandImagesFromProfile(array $live, array $owned): array
+    {
+        $columns = [];
+        foreach ($owned as $slot) {
+            $held = $live[$slot] ?? null;
+            if (! (is_string($held) && $held !== '')) {
+                $columns[$slot] = SiteProfile::IMAGE_COLUMNS[$slot];
+            }
+        }
+        $profile = $columns === [] ? null : $this->locked(SiteProfile::query())->first(array_values($columns));
+        if ($profile === null) {
+            return $live;
+        }
+        $ids = array_filter(array_map(fn (string $column): ?int => MediaRefs::id($profile->getAttribute($column)), $columns));
+        $keys = $ids === [] ? collect() : Media::query()->whereIn('id', array_values(array_unique($ids)))->where('mime', 'like', 'image/%')->pluck('storage_key', 'id');
+        foreach ($ids as $slot => $id) {
+            $key = $keys->get($id);
+            if (is_string($key)) {
+                $live[$slot] = $this->mintedUrl($key);
+            }
+        }
+
+        return $live;
+    }
+
+    /** A file's media address as the plan writes it into a setting, remembered so the loader can tell which file it names. */
+    private function mintedUrl(string $key): string
+    {
+        $url = $this->urls->url($key);
+        $this->minted[$url] = $key;
+
+        return $url;
+    }
+
+    /** The storage key of the file behind a media address this plan wrote into a setting, null for any other value. */
+    public function mintedKey(mixed $url): ?string
+    {
+        return is_string($url) ? ($this->minted[$url] ?? null) : null;
     }
 
     /**

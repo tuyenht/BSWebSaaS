@@ -30,12 +30,25 @@ use Illuminate\Support\Facades\DB;
  * The fixture is vacuumed, as autovacuum keeps a live table: freshly loaded, the trigram indexes
  * still hold the new rows in their pending list and the heap the rows the previous run deleted,
  * which more than doubles the wide search and can turn the planner away from the indexes.
+ *
+ * The plans asserted below must not depend on which rows ANALYZE happens to sample. Postgres
+ * estimates a LIKE '%…%' from the sampled histogram: the share of its values that contain the
+ * text, floored at 1 in 10,000 (5 rows here). One sampled value holding the text lifts that to
+ * about 1 in 100 (500 rows), and the search by number then joined its matches to the whole of
+ * tenants. So each customer's number is 1,000,000 plus the number in its name, which no name,
+ * email or phone holds (from the sequence, the searched customer was number 31,338, which the name
+ * of customer 31338, its owner's name and email and two phones also held), and ANALYZE reads every
+ * row (300 rows per step of the statistics target; the default of 100 samples 30,000 of the 50,000
+ * afresh on each run).
  */
 
 beforeEach(function (): void {
-    seedTenancy();
     $admin = DB::connection('pgsql_admin');
-    $admin->statement("delete from users where email like 'kh-budget-%'");
+    // Only this fixture's owners: earlier tests of a shard leave their users behind, and a few hundred
+    // of them were enough to turn the plan of the search every owner matches ("v") into a full read
+    // of users. Truncating users cascades to tenants and sites, so it comes before the seed.
+    $admin->statement('truncate users restart identity cascade');
+    seedTenancy();
     $admin->statement(<<<'SQL'
         insert into users (ulid, name, email, password, created_at, updated_at)
         select lpad(upper(to_hex(i)), 26, '0'), 'Chủ ' || (array['Nguyễn','Trần','Lê','Phạm','Hoàng'])[1 + i % 5] || ' Văn ' || i,
@@ -43,15 +56,21 @@ beforeEach(function (): void {
         from generate_series(1, 50000) as i
         SQL);
     $admin->statement(<<<'SQL'
-        insert into tenants (ulid, name, status, settings, owner_user_id, contact_phone, created_at, updated_at)
-        select lpad(upper(to_hex(u.n)), 26, 'K'), 'Công ty ' || (array['Đức Phát','Bình An','Tâm Đức','An Vinh','Hòa Bình'])[1 + u.n % 5] || ' ' || u.n,
+        insert into tenants (ulid, customer_no, name, status, settings, owner_user_id, contact_phone, created_at, updated_at)
+        select lpad(upper(to_hex(u.n)), 26, 'K'), 1000000 + u.n, 'Công ty ' || (array['Đức Phát','Bình An','Tâm Đức','An Vinh','Hòa Bình'])[1 + u.n % 5] || ' ' || u.n,
                case when u.n % 10 = 0 then 'suspended' else 'active' end, '{}', u.id,
                case when u.n % 5 = 0 then null else '+849' || lpad(((u.n::bigint * 7919) % 100000000)::text, 8, '0') end,
                now() - make_interval(mins => u.n), now()
         from (select id, substring(email from 'kh-budget-([0-9]+)@')::int as n from users where email like 'kh-budget-%') as u
         SQL);
-    $admin->statement('vacuum analyze users');
-    $admin->statement('vacuum analyze tenants');
+    $admin->statement('vacuum users');
+    $admin->statement('vacuum tenants');
+    // every row in the statistics (300 x 1,000 > 50,000), not a fresh random sample on each run
+    $admin->transaction(function () use ($admin): void {
+        $admin->statement('set local default_statistics_target = 1000');
+        $admin->statement('analyze users');
+        $admin->statement('analyze tenants');
+    });
 });
 
 afterEach(function (): void {
@@ -156,6 +175,12 @@ function khPlanReads(string $q): array
 
 it('plans a one-letter search and a search by number on the indexes, never a full read of tenants or users', function (string $q): void {
     $no = (int) DB::table('tenants')->where('name', 'like', '% 31337')->value('customer_no');
+    if ($q === '#') {
+        // the number is in no name, email or phone, so each LIKE '%…%' of the search is estimated
+        // at its floor: a number some values hold is estimated from the values sampled
+        expect(DB::table('tenants')->where('name', 'like', "%{$no}%")->orWhere('contact_phone', 'like', "%{$no}%")->exists())->toBeFalse()
+            ->and(DB::table('users')->where('name', 'like', "%{$no}%")->orWhere('email', 'like', "%{$no}%")->exists())->toBeFalse();
+    }
     $reads = khPlanReads($q === '#' ? (string) $no : $q);
 
     $seq = fn (string $table): int => count(array_filter($reads, fn (array $r): bool => $r[0] === 'Seq Scan' && $r[1] === $table));

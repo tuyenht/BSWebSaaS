@@ -114,3 +114,18 @@ it('resolves a video id only to a video source and an image id only to a picture
         ->and(SchemaImages::replaceVideos(['bg_video' => 3], $videoSchema, [9 => $source]))->toBe(['bg_video' => null])
         ->and(SchemaImages::replaceVideos(['bg_video' => 'https://evil.test/x.mp4'], $videoSchema, []))->toBe(['bg_video' => null]);
 });
+
+it('passes every image leaf, whatever it holds, through mapImages and leaves other props alone', function () use ($heroSchema, $partnersSchema): void {
+    $seen = [];
+    $map = function (mixed $value) use (&$seen): mixed {
+        $seen[] = $value;
+
+        return is_string($value) ? 9 : $value;
+    };
+
+    expect(SchemaImages::mapImages(['heading' => 'a/b.jpg', 'image_url' => 'a/b.jpg', 'cta_url' => 'a/b.jpg'], $heroSchema, $map))
+        ->toBe(['heading' => 'a/b.jpg', 'image_url' => 9, 'cta_url' => 'a/b.jpg'])
+        ->and(SchemaImages::mapImages(['logos' => [['image_url' => 4, 'name' => 'x'], ['image_url' => 'c/d.png', 'name' => 'y']]], $partnersSchema, $map))
+        ->toBe(['logos' => [['image_url' => 4, 'name' => 'x'], ['image_url' => 9, 'name' => 'y']]])
+        ->and($seen)->toBe(['a/b.jpg', 4, 'c/d.png']);
+});

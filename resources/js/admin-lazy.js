@@ -25,12 +25,15 @@ const PARTS = {
     bsMenus: () => import('./admin-menus.js'),
     bsEditorSave: () => import('./admin-editor.js'),
     bsUnsaved: () => import('./admin-unsaved.js'),
+    bsSitePreview: () => import('./admin-site-preview.js'),
     bsLangBar: () => import('./admin-lang-bar.js'),
     bsSaveBar: () => import('./admin-save-bar.js'),
     bsBell: () => import('./admin-bell.js'),
     bsNotifications: () => import('./admin-notifications.js'),
     bsMediaDrawer: () => import('./admin-media-drawer.js'),
     bsSocialKeys: () => import('./admin-social.js'),
+    bsEmailSig: () => import('./admin-email-signature.js'),
+    bsEmailTpl: () => import('./admin-email-template.js'),
 };
 
 export function makeLazy({ parts, alpine, reload }) {

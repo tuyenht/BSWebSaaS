@@ -130,11 +130,11 @@ it('has the category details, the post counter, the menu trash, the follow colum
 
     $constraints = collect(DB::connection('pgsql_admin')->select(
         "select conname, contype, convalidated, pg_get_constraintdef(oid) as def from pg_constraint
-         where conname in ('taxonomies_cover_media_id_foreign', 'taxonomies_items_count_check', 'menu_assignments_one_target_check')",
+         where conname in ('taxonomies_cover_media_id_same_site_foreign', 'taxonomies_items_count_check', 'menu_assignments_one_target_check')",
     ))->keyBy('conname');
 
     expect($constraints)->toHaveCount(3)
-        ->and($constraints['taxonomies_cover_media_id_foreign']->def)->toContain('REFERENCES media(id) ON DELETE SET NULL')
+        ->and($constraints['taxonomies_cover_media_id_same_site_foreign']->def)->toContain('FOREIGN KEY (site_id, cover_media_id) REFERENCES media(site_id, id) ON DELETE SET NULL (cover_media_id)')
         ->and($constraints->every(fn (object $c): bool => $c->convalidated === true))->toBeTrue();
 });
 

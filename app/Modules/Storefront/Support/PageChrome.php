@@ -115,7 +115,10 @@ final readonly class PageChrome
             'search' => StorefrontChrome::searchOn($headerRaw) ? $this->paths->searchUrl($locale) : null,
             // Where the search boxes ask for suggestions while the visitor types (null with search off).
             'searchSuggest' => StorefrontChrome::searchOn($headerRaw) ? $this->paths->suggestUrl($locale) : null,
-        ];
+            // The scripts the main menu's large panels need (a shared block with a slider, a video…), as the
+            // flags the head reads; every page path passes the chrome on, and a page adds its own to them.
+            // Only the header bar draws large panels (the plain header lists the menu as links).
+        ] + ($header !== null ? StorefrontChrome::panelScripts($menus['primary'] ?? []) : []);
     }
 
     /**

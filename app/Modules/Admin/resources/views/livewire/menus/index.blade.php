@@ -20,7 +20,8 @@
         'leaveSave', 'leaveDrop', 'renamed', 'newMenuName', 'menuCopied', 'delTitle', 'delBodyUsed', 'delBody',
         'delOk', 'menuDeleted', 'removeKidsTitle', 'removeKidsBody', 'removeKidsOk', 'langsToast', 'areaNone', 'areaMain', 'areaSame', 'areasSet', 'areaSaved', 'areaMainMenu', 'codeCopied',
         'checkOk', 'checkTips', 'checkBad', 'checkAndTips', 'trashKids', 'trashDays', 'restoreNeedsSave', 'restored',
-        'iconHits', 'iconTipDone', 'descTaken', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
+        'iconHits', 'iconTipDone', 'descTaken', 'areaTip', 'codeTip', 'goneTitle', 'goneBody', 'goneKids', 'goneOk', 'goneRemoved',
+        'blockDraft', 'blocksTitle', 'blocksBody',
     ])->mapWithKeys(fn (string $k): array => [$k => $u($k)])->all();
     // support staff signed in for a member: every change says why instead of happening (the server refuses it too)
     $supWhy = __('menus.reason_support_session');
@@ -40,7 +41,7 @@
         'iconAuto' => $u('icon_auto'), 'iconPick' => $u('icon_pick'), 'iconOff' => $u('icon_off'), 'iconOffTip' => $u('icon_off_tip'),
         'iconChange' => $u('icon_change'), 'iconChangeTip' => $u('icon_change_tip'), 'iconAutoTip' => $u('icon_auto_tip'),
     ];
-    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit, 'support' => $support];
+    $config = ['initial' => $initial, 'main' => $main, 'icons' => $icons, 'kinds' => $kinds, 'texts' => $texts, 'edit' => $edit, 'support' => $support, 'blocks' => $blocks];
     // The line a locked part of the screen carries during a support session.
     $supNote = 'flex items-start gap-1.5 text-caption leading-normal text-text-muted';
 
@@ -48,6 +49,8 @@
     $head = 'hit-area -mx-4 -my-3 flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left';
     $title = 'min-w-0 text-body font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]';
     $chipHide = '@max-[32.5rem]:hidden';
+    // Each area's icon as its theme declares it (MenuAreas), drawn by the area's row.
+    $areaIcons = array_values(array_unique(array_column(\App\Modules\Theme\Theming\MenuAreas::all(), 'icon')));
 @endphp
 
 <div class="@container" x-ignore wire:ignore.self data-bs-lazy="bsMenus" x-data="bsMenus(@js($config))" x-on:keydown.window="keys($event)">
@@ -191,16 +194,28 @@
                     <p x-show="!issues.length" class="px-4 py-3 text-small leading-relaxed text-text-muted">{{ $u('check_none') }}</p>
                     <template x-for="(q, i) in shownIssues()" :key="i">
                         <div class="flex flex-wrap items-center gap-2.5 border-t border-border-soft px-4 py-2.5 first:border-t-0">
-                            <span class="shrink-0" :class="q.level === 'tip' ? 'text-info-text' : 'text-warning-text'"><x-bs-admin::icon name="ri-error-warning" class="size-4" /></span>
+                            <span class="shrink-0" :class="q.tone === 'danger' ? 'text-danger-text' : (q.level === 'tip' ? 'text-info-text' : 'text-warning-text')">
+                                <span x-show="q.icon !== 'ri-layout-masonry'"><x-bs-admin::icon name="ri-error-warning" class="size-4" /></span>
+                                <span x-show="q.icon === 'ri-layout-masonry'"><x-bs-admin::icon name="ri-layout-masonry" class="size-4" /></span>
+                            </span>
                             <span class="min-w-0 flex-[1_1_260px] text-small leading-relaxed text-text" x-text="q.message"></span>
-                            <template x-if="q.item && item(q.item)">
+                            {{-- A large panel's shared block: the fix is on the shared blocks screen (also during a support session: it only opens it). --}}
+                            <template x-if="q.action === 'blocks' && q.item && item(q.item)">
+                                <span class="flex flex-wrap gap-2">
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="goIssue(q)"><x-bs-admin::icon name="ri-focus-3" class="size-4" />{{ $u('see_item') }}</x-bs-admin::button>
+                                    @if ($blocks)
+                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openBlocks()" x-bind:title="q.code === 'block_draft' ? {{ $j($u('blocks_fix_draft')) }} : {{ $j($u('blocks_fix_missing')) }}"><x-bs-admin::icon name="ri-layout-masonry" class="size-4" />{{ $u('blocks_open') }}</x-bs-admin::button>
+                                    @endif
+                                </span>
+                            </template>
+                            <template x-if="q.action !== 'blocks' && q.item && item(q.item)">
                                 <span class="flex flex-wrap gap-2">
                                     <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="goIssue(q)"><x-bs-admin::icon name="ri-focus-3" class="size-4" />{{ $u('see_item') }}</x-bs-admin::button>
                                     <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="remove(q.item)" :disabled="$support" :title="$support ? $supWhy : null"><x-bs-admin::icon name="ri-delete-bin" class="size-4" />{{ $u('remove') }}</x-bs-admin::button>
                                 </span>
                             </template>
                             @if ($support)
-                                <template x-if="q.item && item(q.item)">
+                                <template x-if="q.action !== 'blocks' && q.item && item(q.item)">
                                     <span class="{{ $supNote }} flex-[1_1_100%]"><x-bs-admin::icon name="ri-lock" class="mt-0.5 size-3.5 shrink-0" />{{ $supWhy }}</span>
                                 </template>
                             @endif
@@ -284,12 +299,17 @@
                                 <div>
                                     <div x-show="a.head" class="border-t border-border-soft px-3.5 pb-1 pt-2.5 text-caption font-bold uppercase tracking-wider text-text-muted" x-text="a.group"></div>
                                     <div class="flex flex-col gap-1.5 px-3.5 pb-2.5 pt-1">
-                                        <span class="flex items-center gap-1.5 text-caption font-semibold text-text-strong" :title="a.help">
-                                            <span class="text-text-muted"><x-bs-admin::icon name="ri-layout-top" class="size-4" /></span>
+                                        <span class="flex items-center gap-1.5 text-caption font-semibold text-text-strong" :title="a.tip">
+                                            <span class="text-text-muted">
+                                                @foreach ($areaIcons as $areaIcon)
+                                                    <template x-if="a.icon === '{{ $areaIcon }}'"><x-bs-admin::icon :name="$areaIcon" class="size-4" /></template>
+                                                @endforeach
+                                            </span>
                                             <span class="min-w-0 [overflow-wrap:anywhere]" x-text="a.label"></span>
+                                            <span x-show="a.empty" class="ml-auto shrink-0 text-text-muted" title="{{ $u('area_empty') }}"><x-bs-admin::icon name="ri-subtract" class="size-4" /><span class="sr-only">{{ $u('area_empty') }}</span></span>
                                         </span>
                                         <template x-if="devOn">
-                                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="self-start font-mono" x-on:click="copyCode(a.key)" title="{{ $u('copy_code') }}">
+                                            <x-bs-admin::button size="sm" variant="outline" color="secondary" class="self-start font-mono" x-on:click="copyCode(a.key)" x-bind:title="a.codeTip">
                                                 <span x-text="a.key"></span><x-bs-admin::icon name="ri-file-copy" class="size-3.5" />
                                             </x-bs-admin::button>
                                         </template>
@@ -330,7 +350,7 @@
                             </template>
                             <div class="flex flex-col gap-2 border-t border-border-soft px-3 pb-3 pt-2">
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-show="d.areas.some(a => a.advanced)" x-on:click="advOn = !advOn"
-                                    ><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}">{{ $u('adv_show') }}</span></x-bs-admin::button>
+                                    ><x-bs-admin::icon name="ri-arrow-up-s" class="size-4" x-show="advOn" /><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" x-show="! advOn" /><span x-text="advOn ? {{ $j($u('adv_hide')) }} : {{ $j($u('adv_show')) }}.replace(':n', advCount)"></span></x-bs-admin::button>
                                 <x-bs-admin::button size="sm" variant="outline" color="secondary" class="w-full" x-on:click="devOn = !devOn" title="{{ $u('dev_tip') }}">
                                     <x-bs-admin::icon name="ri-code-s-slash" class="size-4" /><span x-text="devOn ? {{ $j($u('dev_hide')) }} : {{ $j($u('dev_show')) }}"></span>
                                 </x-bs-admin::button>
@@ -490,7 +510,7 @@
                                         <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.cta" title="{{ $u('cta_tip') }}"><x-bs-admin::icon name="ri-cursor" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('cta') }}</span></x-bs-admin::badge>
                                         <x-bs-admin::badge pill color="danger" x-show="r.it.options.badge"><span x-text="badgeText(r.it)"></span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="danger" x-show="r.deep" x-bind:title="{{ $j($u('deep_tip')) }}.replace(':n', maxDepth)"><x-bs-admin::icon name="ri-node-tree" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('deep') }}</span></x-bs-admin::badge>
-                                        <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.mega" title="{{ $u('mega_tip') }}"><x-bs-admin::icon name="ri-layout-grid" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.mega ? {{ $j($u('mega_n')) }}.replace(':n', r.it.options.mega.columns) : ''"></span></x-bs-admin::badge>
+                                        <x-bs-admin::badge soft pill color="primary" x-show="r.it.options.mega" x-bind:title="megaKind(r.it) === 'block' ? {{ $j($u('mega_block_tip')) }} : {{ $j($u('mega_tip')) }}"><x-bs-admin::icon name="ri-layout-grid" class="size-3.5" /><span class="{{ $chipHide }}" x-text="!r.it.options.mega ? '' : (megaKind(r.it) === 'block' ? {{ $j($u('mega_block_chip')) }} : {{ $j($u('mega_n')) }}.replace(':n', r.it.options.mega.columns))"></span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="secondary" x-show="desc(r.it)" x-bind:title="desc(r.it)"><x-bs-admin::icon name="ri-text" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('has_desc') }}</span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="secondary" x-show="r.it.options.device !== 'all'"><x-bs-admin::icon name="ri-device" class="size-3.5" /><span class="{{ $chipHide }}" x-text="r.it.options.device === 'desktop' ? {{ $j($u('only_pc')) }} : {{ $j($u('only_phone')) }}"></span></x-bs-admin::badge>
                                         <x-bs-admin::badge soft pill color="success" x-show="r.it.source && r.it.source.moved && !r.state" title="{{ $u('fixed_tip') }}"><x-bs-admin::icon name="ri-check" class="size-3.5" /><span class="{{ $chipHide }}">{{ $u('fixed') }}</span></x-bs-admin::badge>
@@ -618,14 +638,33 @@
                                                     <span class="flex"><button type="button" role="switch" class="switch-row" :aria-checked="!!r.it.options.mega" x-on:click="setMega(r.k, !r.it.options.mega)">
                                                         <span class="text-small text-text-strong">{{ $u('mega_on') }}</span>
                                                     </button></span>
-                                                    <label x-show="r.it.options.mega"><span class="sr-only">{{ $u('mega_cols') }}</span>
+                                                    <label x-show="r.it.options.mega"><span class="sr-only">{{ $u('mega_kind') }}</span>
+                                                        <select class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted w-auto" title="{{ $u('mega_kind') }}" x-on:change="setMegaKind(r.k, $event.target.value)">
+                                                            <option value="cols" x-bind:selected="megaKind(r.it) === 'cols'">{{ $u('mega_kind_cols') }}</option>
+                                                            <option value="block" x-bind:selected="megaKind(r.it) === 'block'">{{ $u('mega_kind_block') }}</option>
+                                                        </select>
+                                                    </label>
+                                                    <label x-show="r.it.options.mega && megaKind(r.it) === 'cols'"><span class="sr-only">{{ $u('mega_cols') }}</span>
                                                         <select class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted w-auto" title="{{ $u('mega_cols') }}" x-on:change="setCols(r.k, $event.target.value)">
                                                             @foreach ([2, 3, 4] as $n)
                                                                 <option value="{{ $n }}" x-bind:selected="r.it.options.mega && r.it.options.mega.columns === {{ $n }}">{{ $u('cols_n', ['n' => $n]) }}</option>
                                                             @endforeach
                                                         </select>
                                                     </label>
-                                                    <span class="min-w-0 flex-[1_1_200px] text-caption leading-normal text-text-muted">{{ $u('mega_hint') }}</span>
+                                                    <template x-if="megaKind(r.it) === 'block'">
+                                                        <label class="min-w-0 max-w-full"><span class="sr-only">{{ $u('mega_block') }}</span>
+                                                            <select class="field w-full rounded border border-border-input bg-surface px-3 text-text-strong disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted w-auto max-w-full" title="{{ $u('mega_block') }}" x-on:change="setMegaBlock(r.k, $event.target.value)">
+                                                                <option value="" x-bind:selected="!r.it.options.mega.block" x-text="panelBlocks().length ? {{ $j($u('mega_block_pick')) }} : {{ $j($u('mega_block_none')) }}"></option>
+                                                                <template x-for="b in panelBlocks()" :key="b.key">
+                                                                    <option :value="b.key" x-bind:selected="r.it.options.mega.block === b.key" x-text="blockLabel(b)"></option>
+                                                                </template>
+                                                            </select>
+                                                        </label>
+                                                    </template>
+                                                    @if ($blocks)
+                                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-show="megaKind(r.it) === 'block'" x-on:click="openBlocks()"><x-bs-admin::icon name="ri-layout-masonry" class="size-4" />{{ $u('mega_block_new') }}</x-bs-admin::button>
+                                                    @endif
+                                                    <span class="min-w-0 flex-[1_1_200px] text-caption leading-normal text-text-muted" x-text="megaKind(r.it) === 'block' ? {{ $j($u('mega_block_hint')) }} : {{ $j($u('mega_hint')) }}">{{ $u('mega_hint') }}</span>
                                                 </div>
                                             </template>
                                             <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1">
@@ -708,12 +747,18 @@
                                     <span :class="it.options.mega ? '' : 'relative'">
                                         <button type="button" class="hit-area inline-flex min-h-control-row items-center gap-1 rounded px-2 text-small"
                                                 :class="it.options.cta ? 'bg-primary font-semibold text-on-primary' : (pvOpen === it.key ? 'bg-surface-hover text-primary-text' : 'text-text hover:text-primary-text')"
-                                                :aria-expanded="hasKids(it.key) ? pvOpen === it.key : null" x-on:click="pvOpen = pvOpen === it.key ? null : it.key">
+                                                :aria-expanded="hasKids(it.key) || (it.options.mega && megaKind(it) === 'block') ? pvOpen === it.key : null" x-on:click="pvOpen = pvOpen === it.key ? null : it.key">
                                             <template x-if="ico(it)"><svg class="size-4" aria-hidden="true"><use :href="'#mn-ic-' + ico(it)"></use></svg></template>
                                             <span x-text="name(it)"></span>
                                             <span x-show="it.options.badge" class="rounded-full bg-danger px-1.5 text-caption font-bold text-on-primary" x-text="badgeText(it)"></span>
-                                            <span x-show="pvKids(it.key).length"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>
+                                            <span x-show="pvKids(it.key).length || megaKind(it) === 'block'"><x-bs-admin::icon name="ri-arrow-down-s" class="size-4" /></span>
                                         </button>
+                                        <template x-if="pvOpen === it.key && it.options.mega && megaKind(it) === 'block'">
+                                            <span class="absolute inset-x-0 top-full z-10 mt-1.5 flex items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border bg-surface-muted px-5 py-6 text-center text-caption text-text-muted">
+                                                <x-bs-admin::icon name="ri-layout-masonry" class="size-5 shrink-0" />
+                                                <span x-text="{{ $j($u('pv_block')) }}.replace(':name', (blockOf(it.options.mega.block) || {}).name || {{ $j($u('pv_block_none')) }})"></span>
+                                            </span>
+                                        </template>
                                         <template x-if="pvOpen === it.key && pvKids(it.key).length && !it.options.mega">
                                             <span class="absolute left-0 top-full z-10 flex min-w-[186px] flex-col rounded-md border border-border bg-surface py-1 shadow-lg">
                                                 <template x-for="k in pvKids(it.key)" :key="k.key">
@@ -724,7 +769,7 @@
                                                 </template>
                                             </span>
                                         </template>
-                                        <template x-if="pvOpen === it.key && pvKids(it.key).length && it.options.mega">
+                                        <template x-if="pvOpen === it.key && pvKids(it.key).length && it.options.mega && megaKind(it) === 'cols'">
                                             <span class="absolute inset-x-0 top-full z-10 mt-1.5 grid gap-[18px] rounded-md border border-border bg-surface p-[18px] shadow-lg"
                                                   :style="'grid-template-columns:' + (desc(it) ? 'minmax(0,1.1fr) ' : '') + 'repeat(' + it.options.mega.columns + ',minmax(0,1fr))'">
                                                 <template x-if="desc(it)">

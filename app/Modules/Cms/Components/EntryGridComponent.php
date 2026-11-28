@@ -7,9 +7,10 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\JobFacts;
-use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Contracts\Component;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -140,22 +141,21 @@ final readonly class EntryGridComponent implements Component
             return ['props' => $props, 'items' => $this->cards($items, $locale, $variant), 'variant' => $variant, 'display' => $display];
         }
 
-        $widths = $this->masterWidths($items);
+        $refs = EntryCover::refs($items);
         $items = $items
-            ->map(function (Entry $entry) use ($locale, $widths): array {
+            ->map(function (Entry $entry) use ($locale, $refs): array {
                 $translation = $entry->translationFor($locale);
                 $route = $entry->routes->firstWhere('locale', $locale);
                 $sector = $entry->sectors->first();
                 $sectorTranslation = $sector !== null ? $sector->translationFor($locale) : null;
-                $meta = $entry->meta;
-                $image = isset($meta['image_url']) && is_string($meta['image_url']) ? $meta['image_url'] : '';
+                $image = EntryCover::value($entry, $refs);
 
                 return [
                     'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                     'url' => $route !== null ? $route->path : '',
                     'image' => $this->resolveImage($image),
                     // A stored key offers smaller widths, so a phone fetches a phone-sized photo.
-                    'srcset' => $image !== '' && ! str_contains($image, '://') && str_contains($image, '/') ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $widths[$image] ?? null) : null,
+                    'srcset' => MediaRefs::looksLikeKey($image) ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $refs->byKey($image)?->width) : null,
                     'short_outcome' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                     // The category's short card label when it has one, else its name.
                     'sector' => $sectorTranslation !== null ? $sectorTranslation->cardLabel() : '',
@@ -348,15 +348,16 @@ final readonly class EntryGridComponent implements Component
         // Resolved per call, not injected: this component lives in a boot-time registry, and the
         // site's clock is request state (scoped).
         $time = $variant === 'news-cards' ? app(SiteTime::class) : null;
-        $widths = $this->masterWidths($entries);
+        // every card's file, by id or by old key, with its master width: one read for the block
+        $refs = EntryCover::refs($entries);
         $cards = [];
         foreach ($entries as $entry) {
             $translation = $entry->translationFor($locale);
             $route = $entry->routes->firstWhere('locale', $locale);
             $sector = $variant === 'job' ? null : $entry->sectors->first();
             $meta = $entry->meta;
-            $image = isset($meta['image_url']) && is_string($meta['image_url']) ? $meta['image_url'] : '';
-            $isKey = $image !== '' && ! str_contains($image, '://') && str_contains($image, '/');
+            $image = EntryCover::value($entry, $refs);
+            $isKey = MediaRefs::looksLikeKey($image);
             $isGlyph = $image !== '' && ! str_contains($image, '/') && ! str_contains($image, '.') && ! str_contains($image, ':');
             $published = $time !== null ? DisplayDate::shown($meta, $time->forDisplay($entry->published_at), $time->zone()) : null;
 
@@ -364,7 +365,7 @@ final readonly class EntryGridComponent implements Component
                 'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                 'url' => $route !== null ? $route->path : '',
                 'image' => $isGlyph ? '' : $this->resolveImage($image),
-                'srcset' => $isKey ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $widths[$image] ?? null) : null,
+                'srcset' => $isKey ? $this->media->srcset($image, self::CARD_SRCSET_WIDTHS, $refs->byKey($image)?->width) : null,
                 'icon' => $isGlyph ? $image : '',
                 'excerpt' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                 'date' => $published?->format('d/m/Y') ?? '',
@@ -391,33 +392,5 @@ final readonly class EntryGridComponent implements Component
         }
 
         return $this->media->url($image, self::CARD_WIDTH);
-    }
-
-    /**
-     * The master width of each card photo stored as a library key, in one query, so a srcset never
-     * offers a width larger than the photo (no query when no card has such a photo).
-     *
-     * @param  iterable<Entry>  $entries
-     * @return array<string, int>
-     */
-    private function masterWidths(iterable $entries): array
-    {
-        $keys = [];
-        foreach ($entries as $entry) {
-            $image = $entry->meta['image_url'] ?? null;
-            if (is_string($image) && ! str_contains($image, '://') && str_contains($image, '/')) {
-                $keys[$image] = true;
-            }
-        }
-        if ($keys === []) {
-            return [];
-        }
-
-        $widths = [];
-        foreach (Media::query()->whereIn('storage_key', array_keys($keys))->get(['storage_key', 'width']) as $media) {
-            $widths[$media->storage_key] = Cast::int($media->width);
-        }
-
-        return $widths;
     }
 }

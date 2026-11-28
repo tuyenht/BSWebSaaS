@@ -183,7 +183,9 @@ final readonly class MediaStep
 
     /**
      * Upload or restore one planned slot through UploadMedia, inside the site's tenant context.
-     * Returns the row; a row the upload just created gets the slot's alt text.
+     * Returns the row; a row the upload just created gets the slot's alt text. The file counts into
+     * the library's storage total but is never refused for room, even with the storage switch on: a
+     * pack is the platform's own content, and a refusal part-way would leave the website half-loaded.
      *
      * @param  array{key: string, slot: string, file: string, verdict: string, storage_key: string}  $line
      * @param  array<string, mixed>  $slot  the media.json slot
@@ -200,6 +202,7 @@ final readonly class MediaStep
             collection: Cast::string($slot['collection'] ?? 'library'),
             createdBy: null,
             mayRestore: $line['verdict'] === self::RESTORE,
+            mayRefuse: false, // the platform's own content: counted, never refused for room
         );
 
         if ($media->storage_key !== $line['storage_key']) {

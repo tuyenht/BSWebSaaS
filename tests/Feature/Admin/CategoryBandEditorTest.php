@@ -5,6 +5,7 @@ use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\SetCategoryLayoutBlocks;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
@@ -315,4 +316,20 @@ it('never overwrites a change made meanwhile, and refuses a block the band does 
     });
 
     expect(beStored($this->jobs, 'after_list'))->toBe('none');
+});
+
+it('draws a shared block placed in a band as its plain row, never as a block deleted from the library', function (): void {
+    beIn(1, function (): void {
+        $block = ContentBlock::query()->create(['key' => 'thong-tin-lien-he', 'name' => 'Thông tin liên hệ', 'region' => 'inline', 'status' => 'published']);
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'layout_blocks', 'value' => [
+            'after_list' => ['vi' => ['blocks' => [['type' => 'reusable_ref', 'props' => ['block' => strtoupper($block->ulid)]]]]],
+        ]]);
+    });
+
+    beIn(1, function (): void {
+        Livewire::actingAs($this->editor)->test(BandEditor::class, ['ulid' => $this->jobs->ulid, 'slot' => 'after_list'])
+            ->assertSet('blocks.0.type', 'reusable_ref')
+            ->assertDontSeeHtml('data-ref-card')
+            ->assertDontSee(__('entries.ref.gone_name'));
+    });
 });

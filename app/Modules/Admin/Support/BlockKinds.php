@@ -51,6 +51,7 @@ final class BlockKinds
         'pricing' => ['ri-price-tag-3', 'primary', 'pricing'],
         'stats' => ['ri-bar-chart-box', 'primary', 'stats'],
         'quick_links' => ['ri-apps', 'primary', 'links'],
+        'reusable_ref' => ['ri-shapes', 'muted', 'other'],
     ];
 
     /**

@@ -97,13 +97,15 @@ final class TwoFactorChallenge extends Component
         }
 
         RateLimiter::clear($rlKey);
+        // A Google/Facebook sign-in that reached this step: the log says which one.
+        $via = Cast::string(session()->pull('2fa.via'));
         session()->forget('2fa.user_id');
         Auth::login($user);
         session()->regenerate();
         Audit::record('auth.login.succeeded', [
             'actor_id' => $user->getAuthIdentifier(),
             'actor_label' => $user->email,
-            'meta' => ['factor' => $this->useRecovery ? 'recovery' : 'totp'],
+            'meta' => array_filter(['factor' => $this->useRecovery ? 'recovery' : 'totp', 'provider' => $via]),
         ]);
 
         // Back to the page that sent the visitor to sign in (a protected page, or an invitation

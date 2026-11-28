@@ -203,10 +203,10 @@ it('lists the parts with an anchor, or says how to add one', function (): void {
     });
 });
 
-it("picks a document of this site's library in the file dialog, never another site's", function (): void {
-    app(Tenancy::class)->enter(2, fn () => actionDoc('b/library/ho-so-bbbbbbbbbbbb.pdf', 'Ấn phẩm bên ấy'));
+it("picks a document of this site's library in the file dialog by its row, never another site's", function (): void {
+    $foreign = app(Tenancy::class)->enter(2, fn (): string => actionDoc('b/library/ho-so-bbbbbbbbbbbb.pdf', 'Ấn phẩm bên ấy')->ulid);
 
-    app(Tenancy::class)->enter(1, function (): void {
+    app(Tenancy::class)->enter(1, function () use ($foreign): void {
         $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
 
         Livewire::actingAs(actionEditor())->test(Editor::class)
@@ -218,15 +218,84 @@ it("picks a document of this site's library in the file dialog, never another si
             ->assertSee('Hồ sơ năng lực.pdf')
             ->assertSee('PDF · 2,4 MB')
             ->assertDontSee('Ấn phẩm bên ấy')
-            ->call('pickButtonFile', 'b/library/ho-so-bbbbbbbbbbbb.pdf')
+            ->assertSeeHtml("pickButtonFile('{$doc->ulid}')")
+            ->assertDontSeeHtml($doc->storage_key)
+            ->call('pickButtonFile', $foreign)
             ->assertSet('blocks.0.props.button_url_do', ['k' => 'file'])
             ->call('openButtonFilePicker', '0.props.button_url')
-            ->call('pickButtonFile', $doc->storage_key)
-            ->assertSet('blocks.0.props.button_url_do', ['k' => 'file', 'file' => $doc->storage_key])
+            ->call('pickButtonFile', strtolower($doc->ulid))
+            ->assertSet('blocks.0.props.button_url_do', ['k' => 'file', 'media' => $doc->ulid])
             ->assertSet('showButtonFilePicker', false)
+            ->assertSee('Hồ sơ năng lực.pdf')
             ->assertSee('Đổi tệp')
             ->call('clearButtonFile', '0.props.button_url')
             ->assertSet('blocks.0.props.button_url_do', ['k' => 'file']);
+    });
+});
+
+it('takes from the file dialog only a well formed ulid of a document of this site outside the Trash', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
+        $image = Media::query()->create([
+            'collection' => 'library', 'slug' => 'anh', 'hash' => hash('sha256', 'anh'),
+            'storage_key' => 'a/library/anh-aaaaaaaaaaaa.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1000,
+        ]);
+        $trashed = actionDoc('a/library/ho-so-dddddddddddd.pdf');
+        $trashed->delete();
+
+        $c = Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Tải hồ sơ', 'button_url_do' => ['k' => 'file']]]]);
+        foreach ([$doc->storage_key, $image->ulid, $trashed->ulid, $doc->ulid.'x', '01J0000000000000000000000B'] as $sent) {
+            $c->call('openButtonFilePicker', '0.props.button_url')
+                ->call('pickButtonFile', $sent)
+                ->assertSet('blocks.0.props.button_url_do', ['k' => 'file']);
+        }
+    });
+});
+
+it('shows a button saved with the older file key as its document, and marks it as the current one in the dialog', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
+        actionDoc('a/library/ho-so-cccccccccccc.pdf', 'Bảng giá.pdf');
+
+        foreach ([['k' => 'file', 'file' => $doc->storage_key], ['k' => 'file', 'media' => $doc->ulid]] as $do) {
+            $html = Livewire::actingAs(actionEditor())->test(Editor::class)
+                ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Tải hồ sơ', 'button_url_do' => $do]]])
+                ->assertSee('Hồ sơ năng lực.pdf')
+                ->assertSee('Đổi tệp')
+                ->call('openButtonFilePicker', '0.props.button_url')
+                ->html();
+
+            expect(substr_count($html, 'aria-pressed="true" wire:click="pickButtonFile('))->toBe(1)
+                ->and($html)->toMatch('~aria-pressed="true" wire:click="pickButtonFile\(\''.$doc->ulid.'\'\)"~');
+        }
+    });
+});
+
+it('refuses to save a file button whose ulid in the blocks is not a document of this site', function (): void {
+    $foreign = app(Tenancy::class)->enter(2, fn (): string => actionDoc('b/library/ho-so-bbbbbbbbbbbb.pdf')->ulid);
+
+    app(Tenancy::class)->enter(1, function () use ($foreign): void {
+        $doc = actionDoc('a/library/ho-so-aaaaaaaaaaaa.pdf');
+        $image = Media::query()->create([
+            'collection' => 'library', 'slug' => 'anh', 'hash' => hash('sha256', 'anh'),
+            'storage_key' => 'a/library/anh-aaaaaaaaaaaa.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1000,
+        ]);
+        $save = static fn (string $slug, array $do) => Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('title', 'Trang chủ')
+            ->set('slug', $slug)
+            ->set('blocks', [['type' => 'cta', 'props' => ['heading' => 'Tải', 'button_label' => 'Tải hồ sơ', 'button_url_do' => $do]]])
+            ->call('save');
+
+        foreach (['another site' => $foreign, 'an image' => $image->ulid, 'unknown' => '01J0000000000000000000000B', 'malformed' => 'not-a-ulid'] as $case => $ulid) {
+            $save('trang-'.strtolower(str_replace(' ', '-', $case)), ['k' => 'file', 'media' => $ulid])->assertHasErrors('blocks');
+        }
+        $save('trang-hai-dang', ['k' => 'file', 'media' => $doc->ulid, 'file' => $doc->storage_key])->assertHasErrors('blocks');
+        expect(EntryTranslation::query()->where('slug', 'like', 'trang-%')->count())->toBe(0);
+
+        $save('trang-dung', ['k' => 'file', 'media' => $doc->ulid])->assertHasNoErrors();
+        expect(EntryTranslation::query()->where('slug', 'trang-dung')->value('body')['blocks'][0]['props']['button_url_do'])
+            ->toBe(['k' => 'file', 'media' => $doc->ulid]);
     });
 });
 
@@ -304,7 +373,7 @@ it('refuses every button call to a member who may not edit the page', function (
     'useSitePhone' => ['useSitePhone', ['0.props.button_url']],
     'openButtonFilePicker' => ['openButtonFilePicker', ['0.props.button_url']],
     'closeButtonFilePicker' => ['closeButtonFilePicker', []],
-    'pickButtonFile' => ['pickButtonFile', ['a/library/ho-so-aaaaaaaaaaaa.pdf']],
+    'pickButtonFile' => ['pickButtonFile', ['01J0000000000000000000000B']],
     'clearButtonFile' => ['clearButtonFile', ['0.props.button_url']],
 ]);
 
@@ -354,6 +423,10 @@ it('says at once when the chosen file or part has gone', function (): void {
             ])
             ->assertSee('Tệp đã chọn không còn trong thư viện. Hãy chọn tệp khác.')
             ->assertSee('Phần có Neo liên kết “hoi-dap” không còn trên trang này (Neo liên kết đã đổi hoặc phần đã bị xóa). Hãy chọn lại một phần khác.');
+
+        Livewire::actingAs(actionEditor())->test(Editor::class)
+            ->set('blocks', [['type' => 'cta', 'props' => ['button_label' => 'Ấn tải hồ sơ', 'button_url_do' => ['k' => 'file', 'media' => $doc->ulid]]]])
+            ->assertSee('Tệp đã chọn không còn trong thư viện. Hãy chọn tệp khác.');
     });
 });
 
@@ -372,7 +445,7 @@ it('opens the editor on the same number of queries however many buttons of each 
                 foreach ([
                     ['k' => 'page', 'page' => $page->ulid], ['k' => 'page'], ['k' => 'url', 'url' => 'https://facebook.com/tencongty'],
                     ['k' => 'anchor', 'anchor' => 'hoi-dap'], ['k' => 'tel', 'phone' => '0915668383'], ['k' => 'zalo', 'phone' => '0915668383'],
-                    ['k' => 'mail', 'email' => 'lienhe@tencongty.vn'], ['k' => 'file', 'file' => $doc->storage_key],
+                    ['k' => 'mail', 'email' => 'lienhe@tencongty.vn'], ['k' => 'file', 'file' => $doc->storage_key], ['k' => 'file', 'media' => $doc->ulid],
                 ] as $do) {
                     $blocks[] = ['type' => 'cta', 'props' => ['button_label' => 'Ấn thử nhé', 'button_url_do' => $do]];
                 }

@@ -43,13 +43,17 @@ use App\Modules\Cms\Policies\RedirectPolicy;
 use App\Modules\Cms\Policies\TaxonomyPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\EntryPageLinks;
+use App\Modules\Cms\Routing\PermalinkKinds;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Support\EntryCoverUsage;
 use App\Modules\Cms\Support\EntryReviewReach;
 use App\Modules\Cms\Support\LayoutSlotBlocks;
+use App\Modules\Cms\Support\ReusableBlockExpander;
 use App\Modules\Forms\Models\Form;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Events\CustomRolePermissionsAdding;
 use App\Modules\Rbac\Events\InvitationAccepted;
 use App\Modules\Rbac\Events\SiteMembershipChanged;
@@ -92,6 +96,10 @@ final class CmsServiceProvider extends ServiceProvider
         // and the request's locales, so it is scoped with them and never outlives a request.
         $this->app->scoped(LayoutSlotBlocks::class);
 
+        // The shared blocks a page places, read once per request (its memo of what it read must never
+        // reach the next Octane request): scoped.
+        $this->app->scoped(ReusableBlockExpander::class);
+
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
         $this->app->singleton(MenuTargets::class);
@@ -103,6 +111,8 @@ final class CmsServiceProvider extends ServiceProvider
         // Item kinds other modules file under categories (Catalog → `product`), re-routed when a
         // category changes. Boot-time closures only, no request state — same as MenuTargets.
         $this->app->singleton(CategoryDependents::class);
+        // Item kinds of other modules a permalink run moves (Catalog's products); boot-time closures only.
+        $this->app->singleton(PermalinkKinds::class);
 
         // The current address of a page a block button opens (the Theme renders it through the contract).
         // Built per resolve: PathBuilder holds the request-scoped SectionResolver, so it is never kept across requests.
@@ -139,6 +149,10 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+        // A file deleted for good is no entry's cover any more (its id and any old key in meta). Registered
+        // here, before MediaServiceProvider's observer drops the usage rows that find those entries.
+        // Media never depends on Cms: Cms listens.
+        Media::forceDeleting(static fn (Media $media) => EntryCoverUsage::purging($media));
         // Deleting a category drops its block slots' usage rows (polymorphic, no FK cascade).
         Taxonomy::observe(TaxonomyObserver::class);
         // Deleting a shared block drops its body's usage rows (polymorphic, no FK cascade).

@@ -33,7 +33,7 @@ final class EntryObserver
 {
     public function created(Entry $entry): void
     {
-        if (EntryCoverUsage::keyOf($entry->meta) !== null) {
+        if (EntryCoverUsage::keyOf($entry->meta) !== null || $entry->cover_media_id !== null) {
             EntryCoverUsage::sync($entry);
         }
         if ($entry->status === 'published') {
@@ -44,7 +44,8 @@ final class EntryObserver
     public function updated(Entry $entry): void
     {
         // getOriginal() still holds the stored meta while `updated` runs
-        if ($entry->wasChanged('meta') && EntryCoverUsage::keyOf($entry->getOriginal('meta')) !== EntryCoverUsage::keyOf($entry->meta)) {
+        if ($entry->wasChanged('cover_media_id')
+            || ($entry->wasChanged('meta') && EntryCoverUsage::keyOf($entry->getOriginal('meta')) !== EntryCoverUsage::keyOf($entry->meta))) {
             EntryCoverUsage::sync($entry);
         }
         if ($entry->wasChanged('status') && $entry->status === 'published') {

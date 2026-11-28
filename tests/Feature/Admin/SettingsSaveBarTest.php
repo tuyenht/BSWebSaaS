@@ -200,7 +200,7 @@ it('answers "Lưu" with nothing to save on quick sign-in without an error', func
 
 it('keeps the section\'s message above the bar, never over "Lưu"', function (): void {
     $this->actingAs(sbAdmin())->get('http://a.test/admin/settings/general')->assertOk()
-        ->assertSee('bottom-[max(1rem,calc(var(--sb-h,0px)+0.5rem),env(safe-area-inset-bottom))]', false);
+        ->assertSee('bottom-[max(1rem,calc(var(--sb-h,0px)+0.5rem),env(safe-area-inset-bottom),var(--toast-over,0px))]', false);
 });
 
 it('still refuses the save and the discard once the settings permission is gone', function (string $page, string $action, bool $operator = false): void {

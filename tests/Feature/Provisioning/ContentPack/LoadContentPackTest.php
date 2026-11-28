@@ -11,11 +11,13 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Provisioning\ContentPack\CanonicalHash;
 use App\Modules\Provisioning\ContentPack\Ledger;
 use App\Modules\Provisioning\ContentPack\PackReader;
 use App\Modules\Provisioning\ContentPack\Planner;
 use App\Modules\Provisioning\Support\FirstOwner;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -675,6 +677,170 @@ it('writes a category\'s intro picture and text, plans a change as an update, an
     expect(ContentPacks::verdict($settled, 'tax:post_cat/tin-tuc'))->toBe('unchanged');
 });
 
+it('stores the pack\'s brand logo as the site profile\'s picture, and plans it unchanged whether the profile or an older address holds it', function (): void {
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    $brand = fn (): array => ContentPacks::in($this->siteId, fn (): array => [
+        Cast::arr(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first()?->value),
+        SiteProfile::query()->value('logo_media_id'),
+    ]);
+
+    [$exit, $output] = ContentPacks::load();
+    [$setting, $profileLogo] = $brand();
+    expect($exit)->toBe(0, $output)
+        ->and($setting)->toMatchArray(['name' => 'Công ty Mẫu'])->not->toHaveKey('logo')
+        ->and($profileLogo)->toBe($logo->id);
+    $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->assertSee($logo->storage_key, false);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'setting:general.brand'))->toBe('unchanged');
+
+    // a site loaded before brand images moved to the profile: the address in the setting, which the ledger hashes the same
+    ContentPacks::in($this->siteId, function () use ($logo): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => Cast::arr($row->value) + ['logo' => app(MediaUrlResolver::class)->url($logo->storage_key)]]);
+        SiteProfile::query()->update(['logo_media_id' => null]);
+    });
+    [, $older] = ContentPacks::run();
+    expect(ContentPacks::verdict($older, 'setting:general.brand'))->toBe('unchanged');
+
+    // a member picks another logo on the settings screen (the profile names it, the address leaves the setting): their edit
+    $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
+    ContentPacks::in($this->siteId, function () use ($other): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => array_diff_key(Cast::arr($row->value), ['logo' => true])]);
+        SiteProfile::query()->update(['logo_media_id' => $other->id]);
+    });
+    [, $edited] = ContentPacks::run();
+    expect(ContentPacks::verdict($edited, 'setting:general.brand'))->toBe('skip:edited');
+});
+
+it('stores the pack\'s logo on a dark background as the site profile\'s picture too, and plans it unchanged whether the profile or an older address holds it', function (): void {
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    $dark = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('about'));
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (array $item): array => [
+        'managed_keys' => [...$item['managed_keys'], 'logo_dark'], 'value' => $item['value'] + ['logo_dark' => ['media' => 'about']],
+    ] + $item);
+    $brand = fn (): array => ContentPacks::in($this->siteId, fn (): array => [
+        Cast::arr(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first()?->value),
+        SiteProfile::query()->value('logo_media_id'),
+        SiteProfile::query()->value('logo_dark_media_id'),
+    ]);
+
+    [$exit, $output] = ContentPacks::load();
+    [$setting, $profileLogo, $profileDark] = $brand();
+    expect($exit)->toBe(0, $output)
+        ->and($setting)->toMatchArray(['name' => 'Công ty Mẫu'])->not->toHaveKey('logo')->not->toHaveKey('logo_dark')
+        ->and($profileLogo)->toBe($logo->id)
+        ->and($profileDark)->toBe($dark->id);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'setting:general.brand'))->toBe('unchanged');
+
+    // loaded before the dark logo moved to the profile: its address in the setting, hashed the same
+    ContentPacks::in($this->siteId, function () use ($dark): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => Cast::arr($row->value) + ['logo_dark' => app(MediaUrlResolver::class)->url($dark->storage_key)]]);
+        SiteProfile::query()->update(['logo_dark_media_id' => null]);
+    });
+    [, $older] = ContentPacks::run();
+    expect(ContentPacks::verdict($older, 'setting:general.brand'))->toBe('unchanged');
+
+    // a member picks another dark logo on the settings screen: their edit, kept
+    $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
+    ContentPacks::in($this->siteId, function () use ($other): void {
+        $row = SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->firstOrFail();
+        $row->update(['value' => array_diff_key(Cast::arr($row->value), ['logo_dark' => true])]);
+        SiteProfile::query()->update(['logo_dark_media_id' => $other->id]);
+    });
+    [, $edited] = ContentPacks::run();
+    expect(ContentPacks::verdict($edited, 'setting:general.brand'))->toBe('skip:edited');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and($brand()[2])->toBe($other->id);
+});
+
+/** The brand setting as stored and the profile's logo and favicon, as [setting, logo id, favicon id]. */
+function cpBrandImages(int $siteId): array
+{
+    return ContentPacks::in($siteId, fn (): array => [
+        Cast::arr(SiteSetting::query()->where('group_name', 'general')->where('key', 'brand')->first()?->value),
+        SiteProfile::query()->value('logo_media_id'),
+        SiteProfile::query()->value('favicon_media_id'),
+    ]);
+}
+
+it('takes the brand logo it placed away when the pack leaves it out or states it null, and then plans nothing', function (?array $managed, bool $stateNull): void {
+    $logo = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo'));
+    $brand = fn (array $value): array => $managed === null ? ['key' => 'setting:general.brand', 'value' => $value] : ['key' => 'setting:general.brand', 'managed_keys' => $managed, 'value' => $value];
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (): array => $brand(['name' => 'Công ty Mẫu', 'phone' => '0900 000 000', 'logo' => ['media' => 'logo']]));
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpBrandImages($this->siteId)[1])->toBe($logo->id);
+
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (): array => $brand(['name' => 'Công ty Mẫu', 'phone' => '0900 000 000'] + ($stateNull ? ['logo' => null] : [])));
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'setting:general.brand'))->toBe('update', $plan);
+
+    [$exit, $output] = ContentPacks::load();
+    [$setting, $profileLogo] = cpBrandImages($this->siteId);
+    expect($exit)->toBe(0, $output)
+        ->and($profileLogo)->toBeNull()
+        ->and($setting['logo'] ?? null)->toBeNull()
+        ->and(ContentPacks::in($this->siteId, fn () => Media::query()->whereKey($logo->id)->exists()))->toBeTrue();   // only the reference goes
+    $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->assertDontSee($logo->storage_key, false);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'setting:general.brand'))->toBe('unchanged');
+})->with([
+    'left out of a whole-value item' => [null, false],
+    'stated null in a whole-value item' => [null, true],
+    'stated null in a managed item' => [['name', 'phone', 'logo'], true],
+]);
+
+it('plans as adopted, and then clears, a logo staff chose before a whole-value brand item first loads', function (): void {
+    $staff = ContentPacks::in($this->siteId, function (): Media {
+        $media = StorefrontCards::media('logo-cua-khach');
+        SiteProfile::query()->firstOrCreate([], [])->update(['logo_media_id' => $media->id]);
+
+        return $media;
+    });
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (): array => ['key' => 'setting:general.brand', 'value' => ['name' => 'Công ty Mẫu', 'phone' => '0900 000 000']]);
+    expect(cpBrandImages($this->siteId)[0])->toBe([]);   // no brand row yet
+
+    // the dry run says the item takes over a value already there, not that it creates one
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'setting:general.brand'))->toBe('adopt', $plan);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpBrandImages($this->siteId)[1])->toBeNull()
+        ->and(ContentPacks::in($this->siteId, fn () => Media::query()->whereKey($staff->id)->exists()))->toBeTrue();   // only the reference goes
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'setting:general.brand'))->toBe('unchanged');
+});
+
+it('leaves a brand image the item does not manage, and a logo staff changed while the item is skipped', function (): void {
+    $other = ContentPacks::in($this->siteId, fn () => StorefrontCards::media('logo-moi'));
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+
+    // a member sets the favicon (not managed) and picks another logo (managed) on the settings screen
+    ContentPacks::in($this->siteId, function () use ($other): void {
+        SiteProfile::query()->update(['favicon_media_id' => $other->id, 'logo_media_id' => $other->id]);
+    });
+    ContentPacks::item($this->folder, 'settings.json', 'setting:general.brand', fn (array $item): array => ['value' => ['logo' => null] + $item['value']] + $item);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'setting:general.brand'))->toBe('skip:edited', $plan);
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(array_slice(cpBrandImages($this->siteId), 1))->toBe([$other->id, $other->id]);
+
+    // forced, the item takes the logo away; the favicon it does not manage stays
+    [$exit, $output] = ContentPacks::load(force: ['setting:general.brand']);
+    expect($exit)->toBe(0, $output)->and(array_slice(cpBrandImages($this->siteId), 1))->toBe([null, $other->id]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'setting:general.brand'))->toBe('unchanged');
+});
+
 it('clears a category\'s intro when the pack states it empty or null, and then plans nothing', function (mixed $empty): void {
     cpCategoryFields($this->folder, ['description' => ['vi' => 'Có lời giới thiệu.']]);
     [$exit, $output] = ContentPacks::load();
@@ -719,6 +885,48 @@ it('warns about an intro picture whose file is not uploaded and keeps the live p
 
     expect(ContentPacks::load()[0])->toBe(0)
         ->and(cpCategoryIntro($this->siteId)['cover'])->toBe($about->storage_key);
+});
+
+/** The focus keyword of the about page and of the launch post, as stored. */
+function cpFocusKeywords(int $siteId): array
+{
+    return ContentPacks::in($siteId, fn (): array => [
+        'page' => EntryTranslation::query()->where('slug', 'gioi-thieu')->where('locale', 'vi')->value('focus_keyword'),
+        'post' => EntryTranslation::query()->where('slug', 'ra-mat-website')->where('locale', 'vi')->value('focus_keyword'),
+    ]);
+}
+
+it('writes a page\'s and a post\'s focus keyword, sees a second load as unchanged, and clears them when the pack drops them', function (): void {
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => null, 'post' => null]);
+
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'gia công CNC theo yêu cầu']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'ra mắt website']]);
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'page:/gioi-thieu'))->toBe('update')
+        ->and(ContentPacks::verdict($plan, 'post:ra-mat-website'))->toBe('update');
+
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => 'gia công CNC theo yêu cầu', 'post' => 'ra mắt website']);
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'page:/gioi-thieu'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($again, 'post:ra-mat-website'))->toBe('unchanged');
+
+    // The keyword is part of the item's text, like the excerpt: an item without one has none.
+    foreach ([['pages.json', 'page:/gioi-thieu'], ['posts.json', 'post:ra-mat-website']] as [$file, $key]) {
+        ContentPacks::item($this->folder, $file, $key, function (array $item): array {
+            unset($item['focus_keyword']);
+
+            return $item;
+        });
+    }
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and(cpFocusKeywords($this->siteId))->toBe(['page' => null, 'post' => null]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'page:/gioi-thieu'))->toBe('unchanged')
+        ->and(ContentPacks::verdict($settled, 'post:ra-mat-website'))->toBe('unchanged');
 });
 
 /** The news category's card label and the byline of the launch post, as stored. */

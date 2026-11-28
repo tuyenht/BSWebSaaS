@@ -4,12 +4,13 @@
     button are only hidden from sight then (sr-only), so the focus stays on "Thử lại". How the
     retry went is said by the screen's shared toast (Dashboard::afterRetry): read again, the focus
     moves to the card's heading; still failing, the toast says so and stays until closed.
+    A figure card passes its own words ($message) and padding ($pad: it draws its label above).
 --}}
-<div class="p-4">
+<div class="{{ $pad ?? 'p-4' }}">
     <div wire:loading.class="sr-only" wire:target="retry('{{ $card }}')" class="flex flex-col items-start gap-2.5 py-2">
         <p role="alert" class="flex items-start gap-1.5 text-small leading-normal text-danger-text">
             <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0" />
-            <span>{{ __('dash.card_error') }}</span>
+            <span>{{ $message ?? __('dash.card_error') }}</span>
         </p>
         <x-bs-admin::button variant="outline" color="neutral" wire:click="retry('{{ $card }}')" wire:loading.attr="aria-disabled" wire:target="retry('{{ $card }}')" class="max-w-full shrink-0">
             <x-bs-admin::icon name="ri-refresh" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('dash.retry') }}</span>

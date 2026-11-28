@@ -7,12 +7,18 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Actions\PurgeMedia;
+use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Actions\TrashMedia;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Carbon\CarbonImmutable;
@@ -30,6 +36,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use LogicException;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -372,17 +379,55 @@ final class Library extends Component
         $this->picked = [];
     }
 
-    public function openUpload(): void
+    /**
+     * The upload panel, on its choice of source; 'device' goes straight to the device pane (files
+     * dropped on the page, handed over by the browser). New files go into the folder in view.
+     */
+    public function openUpload(string $source = ''): void
     {
         abort_unless(Gate::allows('media.upload'), 403);
 
         $this->uploadOpen = true;
-        $this->pickerSource = null;
+        $this->pickerSource = $source === 'device' ? 'device' : null;
         $this->closePickerDetail();
+        $this->dispatch('media-upload-opened'); // the page moves focus to the panel's heading
+    }
+
+    /** «Tải ảnh lên vào đây» (a folder's menu): that folder opens, with the upload panel on it. */
+    public function uploadInto(string $slug): void
+    {
+        abort_unless(Gate::allows('media.upload'), 403);
+
+        $folder = self::folderBySlug($slug);
+        if ($folder === null) {
+            return; // gone meanwhile, or never this site's
+        }
+        if (self::deleting($folder)) {
+            // being emptied in the background: the upload endpoints would leave a new file unsorted
+            $this->say(__('media.lib.folder_deleting', ['name' => $folder->name]), 'info');
+
+            return;
+        }
+        $this->setFolder((string) $folder->slug);
+        if ($folder->parent_id !== null) {
+            $this->dispatch('media-folder-open', slug: Cast::string(MediaFolder::query()->whereKey($folder->parent_id)->value('slug')));
+        }
+        $this->openUpload();
+    }
+
+    /** «Mở Thùng rác» / «Dọn Thùng rác» on the storage card: the Trash opens (the upload panel closes). */
+    public function openTrash(): void
+    {
+        abort_unless(MediaDeleteRights::some(), 403);
+
+        $this->closeUpload();
+        $this->setFolder('~trash');
     }
 
     public function closeUpload(): void
     {
+        $this->discardStagedUrlPreview();
+        $this->pickerUrlInput = '';
         $this->uploadOpen = false;
         $this->pickerSource = null;
     }
@@ -881,8 +926,8 @@ final class Library extends Component
         abort_unless(MediaDeleteRights::some(), 403);
 
         // only what this person may send: someone else's file (or one in use, for «own») stays
-        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->get();
-        $rows->each->delete(); // one by one, so the observers fire
+        // only the ones still out of the Trash go (and count): one by one, through TrashMedia
+        $rows = app(TrashMedia::class)->trash(app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->get());
         // the open file went to the Trash: its drawer goes with it, and the chosen files stay chosen
         if ($this->single) {
             $this->closeDetail();
@@ -937,7 +982,7 @@ final class Library extends Component
     {
         abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get()->each->restore()->count();
+        $n = app(TrashMedia::class)->restore(MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get())->count();
         $this->undoTrash = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
@@ -947,7 +992,7 @@ final class Library extends Component
         abort_unless(MediaDeleteRights::some(), 403);
 
         // with media.delete.own only what this person put in the Trash comes back out
-        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get()->each->restore()->count();
+        $n = app(TrashMedia::class)->restore(MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get())->count();
         $this->picked = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
@@ -979,16 +1024,17 @@ final class Library extends Component
         app(SupportSession::class)->forbid();
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets());
-        $rows = $query->get();
-        $bytes = Cast::int($rows->sum('size'));
-        $rows->each->forceDelete(); // one by one, so the observer drops attachments and the stored file
+        // one by one, so the observer drops attachments and the stored file, a page of files at a time
+        // (a whole Trash is never loaded at once); the message counts what was really deleted (a file
+        // taken back out of the Trash meanwhile is kept)
+        $done = app(PurgeMedia::class)->purgeAll($query);
         if ($this->single) {
             $this->closeDetail(); // the open file is gone for good
         } else {
             $this->picked = [];
         }
         $this->cancelPurge();
-        $this->say(__('media.lib.purged', ['n' => $rows->count(), 'size' => self::bytes($bytes)]));
+        $this->say(__('media.lib.purged', ['n' => $done['files'], 'size' => self::bytes($done['bytes'])]));
     }
 
     /*
@@ -1041,9 +1087,40 @@ final class Library extends Component
         abort(403);
     }
 
+    /**
+     * «Từ đường link» on the upload panel: the previewed picture is copied into the library, into the
+     * folder the panel names, under the same right as the device pane (media.upload). The shared
+     * picker's other insert, its bigint-id selection, stays closed on this page.
+     */
     public function insertPicked(): void
     {
-        abort(403);
+        abort_unless($this->uploadOpen && $this->hasUrlPick() && Gate::allows('media.upload'), 403);
+
+        $preview = $this->pickerUrlPreview ?? throw new LogicException('checked above');
+        try {
+            app(RegisterMediaUpload::class)->handle(
+                $preview['tempKey'],
+                $preview['filename'],
+                is_int(Auth::id()) ? Auth::id() : null,
+                mayRestore: Gate::allows('media.delete.any'),
+                folderId: $this->uploadFolder()?->id,
+            );
+        } catch (MediaRejectedException $e) {
+            $this->discardStagedUrlPreview(); // register may have dropped the staged bytes: a new preview is needed
+            $this->addError('pickerUrlInput', $e->userMessage());
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->discardStagedUrlPreview();
+            $this->addError('pickerUrlInput', __('media.err_unexpected'));
+
+            return;
+        }
+        $this->reset('pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
+        $this->pickerSource = null; // back to the sources, ready for the next file
+        $this->onPickerMediaUploaded();
+        $this->say(__('media.upload_success'));
     }
 
     public function pickerBulkDelete(): void
@@ -1108,10 +1185,14 @@ final class Library extends Component
         $people = new Collection;
         $byCounts = [];
         $whenCounts = [];
+        $groupCounts = [];
         $useCounts = [];
+        $usage = null;
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$useCounts): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$groupCounts, &$useCounts, &$usage): void {
+                // «Dung lượng đã dùng»: the stored and Trash totals and the plan's ceiling, one statement
+                $usage = app(MediaStorage::class)->usage();
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
@@ -1145,6 +1226,12 @@ final class Library extends Component
                         $byCounts = $directory->uploaderCounts($visible($directory->filtered(['by' => []] + $filters)));
                     }
                     $whenCounts = $directory->whenCounts($visible($directory->filtered(['since' => null, 'until' => null] + $filters)), $this->from, $this->to);
+                    // «Loại tệp», «Định dạng» and «Tình trạng» (live files only), each without its own choices
+                    $groupCounts['kinds'] = $directory->kindCounts($visible($directory->filtered(['kinds' => []] + $filters)));
+                    $groupCounts['formats'] = $directory->formatCounts($visible($directory->filtered(['formats' => []] + $filters)));
+                    if (! $trash) {
+                        $groupCounts['uses'] = $directory->useCounts($directory->filtered(['uses' => []] + $filters));
+                    }
                 }
                 if (! $trash) {
                     // «Dùng ở N nơi» on each tile and list row: one statement for the page
@@ -1175,6 +1262,10 @@ final class Library extends Component
         }
 
         $drawer = $failed ? null : $this->detailView();
+        $canUpload = Gate::allows('media.upload');
+        $storage = $usage === null ? null : self::storageMeter($usage, MediaStorage::enforcing());
+        // the full state's second button: the plans when the platform invites upgrades, else support
+        $upsell = $storage !== null && $storage['level'] === 'full' && $canUpload && app(UpgradeInvitation::class)->isOn();
 
         // a folder's count holds its sub-folders' files, as its list does
         $treeN = [];
@@ -1192,14 +1283,20 @@ final class Library extends Component
             'treeN' => $treeN,
             'kidsOf' => $folders->whereNotNull('parent_id')->countBy('parent_id')->all(),
             'current' => $current,
+            // where a file added now goes (the upload panel, the drop cover): none in the Trash, outside
+            // a folder, or in a folder being deleted, as the upload endpoints decide
+            'upFolder' => $trash || $current === null || self::deleting($current) ? null : $current,
             'counts' => $counts,
             'rows' => $page['rows'],
             'olderUlid' => $page['older'],
             'newerUlid' => $page['newer'],
             'totals' => $totals,
             'trash' => $trash,
-            'canUpload' => Gate::allows('media.upload'),
+            'canUpload' => $canUpload,
             'canDelete' => $canDelete,
+            'storage' => $storage,
+            'upsell' => $upsell,
+            'supportMail' => Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address')),
             'canDeleteAny' => $canDeleteAny,
             // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
             'mineN' => $mineN,
@@ -1217,11 +1314,54 @@ final class Library extends Component
             'uploaders' => $this->uploaderOptions($people, $this->tally ? $byCounts : null),
             'manyUploaders' => $counts['many'],
             'whenCounts' => $whenCounts,
+            'groupCounts' => $groupCounts,
             'useCounts' => $useCounts,
         ]);
         $view->title(__('media.lib.title'));
 
         return $view;
+    }
+
+    /**
+     * The «Dung lượng đã dùng» card from the library's totals (board 12): the level — `full` once the
+     * ceiling is reached, `warn` from 80 %, else `ok` — the bar's percent (at most 100) and the texts in
+     * megabytes to a tenth. As on the board, the level comes from the used figure the card shows (to a
+     * tenth of a megabyte), and the percent is rounded down from it, so the bar never reads 80 while
+     * the card is still `ok`, nor 100 before it says the room is used up. `full` (nothing more can be
+     * uploaded) only while the storage switch refuses uploads: with it off a website above its plan is
+     * told so on the `warn` card, never «chưa tải thêm được», which would not be true.
+     *
+     * @param  array{used: int, trash: int, limit: int}  $usage  bytes
+     * @return array{level: 'ok'|'warn'|'full', pct: int, used: string, limit: string, status: string, trash: string}
+     */
+    public static function storageMeter(array $usage, bool $enforcing): array
+    {
+        $used = max(0, $usage['used']);
+        $limit = max(0, $usage['limit']);
+        $share = MediaStorage::share($used, $limit);
+        $over = $share['over'];
+        $level = $over && $enforcing ? 'full' : ($share['warn'] ? 'warn' : 'ok');
+        $limitText = self::megabytes($limit, 0);
+        $left = self::megabytes(max(0, $limit - $used));
+
+        return [
+            'level' => $level,
+            'pct' => $share['pct'],
+            'used' => self::megabytes($used),
+            'limit' => $limitText,
+            'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])
+                : __($level === 'warn' ? 'media.lib.st_warn' : 'media.lib.st_left', ['left' => $left]),
+            'trash' => self::megabytes(max(0, $usage['trash'])),
+        ];
+    }
+
+    /** Bytes as megabytes, to $decimals places at most, the Vietnamese way («312,4 MB», «500 MB»). */
+    private static function megabytes(int $bytes, int $decimals = 1): string
+    {
+        $mb = round($bytes / 1048576, $decimals);
+        $places = $mb === floor($mb) ? 0 : $decimals;
+
+        return number_format($mb, $places, ',', '.').' MB';
     }
 
     /** "12,3 MB" — the size of files as people read it, Vietnamese decimal comma. */
@@ -1273,6 +1413,21 @@ final class Library extends Component
     {
         return Media::withTrashed()->whereIn('folder_id', $folderIds)
             ->offset(Cast::int(config('media.folder_undo_max_files', 100000)))->exists();
+    }
+
+    /**
+     * The folder a file added now goes into, as the upload panel names it: the one in view, unless
+     * that is the Trash, all files, the unsorted ones or a folder being deleted (the upload endpoints
+     * leave a file unsorted then too).
+     */
+    private function uploadFolder(): ?MediaFolder
+    {
+        if (($this->status === 'trash' && MediaDeleteRights::some()) || $this->folder === '' || $this->folder === '-') {
+            return null;
+        }
+        $folder = self::folderBySlug($this->folder);
+
+        return $folder !== null && ! self::deleting($folder) ? $folder : null;
     }
 
     /** Whether a queued job is deleting this folder: nothing new goes under it. */

@@ -8,7 +8,9 @@ use App\Modules\Monitoring\Console\CheckWorkerQuota;
 use App\Modules\Monitoring\Console\PingHeartbeat;
 use App\Modules\Monitoring\Console\SendDailySummary;
 use App\Modules\Monitoring\ErrorReporter;
+use App\Modules\Monitoring\Listeners\TellOperatorAboutMailQuota;
 use App\Modules\Monitoring\Support\ReportScope;
+use App\Modules\Shared\Events\MailQuotaReached;
 use Closure;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFailed;
@@ -57,6 +59,9 @@ final class MonitoringServiceProvider extends ServiceProvider
         ));
 
         Event::listen(JobProcessed::class, fn () => self::reporter(fn (ErrorReporter $reporter) => $reporter->jobFinished()));
+
+        // A website at its abuse ceiling of the shared outbox, or the platform near its own ceiling.
+        Event::listen(MailQuotaReached::class, TellOperatorAboutMailQuota::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([SendDailySummary::class, PingHeartbeat::class, CheckWorkerQuota::class]);

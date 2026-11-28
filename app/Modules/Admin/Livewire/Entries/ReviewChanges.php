@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Support\Entries\PendingChangeDiff;
+use App\Modules\Admin\Support\Entries\SubPageTakenText;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Exceptions\EntryDraftRejectedException;
@@ -463,6 +464,7 @@ final class ReviewChanges extends Component
             ->where('locale', $default)->pluck('name', 'taxonomy_id')->all());
         $order = app(SiteLocale::class)->enabled();
         $diff = app(PendingChangeDiff::class);
+        $covers = PendingChangeDiff::coverRefs($changes);
         $scopes = app(CategoryScopes::class);
         $actor = $this->actor();
 
@@ -492,7 +494,7 @@ final class ReviewChanges extends Component
             /** @var Collection<string, EntryTranslation> $live */
             $live = $entry->translations->keyBy('locale');
             $primary = $entry->type === 'post' ? $entry->primaryCategory()?->id : null;
-            $rowsDiff = $diff->between($entry, $change, $live, $primary, static fn (array $ids): array => array_intersect_key($names, array_flip($ids)), $order)['rows'];
+            $rowsDiff = $diff->between($entry, $change, $live, $primary, static fn (array $ids): array => array_intersect_key($names, array_flip($ids)), $order, $covers)['rows'];
 
             $writer = $change->updated_by !== null ? ($writers[$change->updated_by] ?? null) : null;
             $by = is_string($writer) ? $writer : Cast::string(__('admin.inbox.chg_writer_gone'));
@@ -613,11 +615,15 @@ final class ReviewChanges extends Component
     {
         $error = null;
         $path = '';
+        $said = null;
         try {
             app(ApplyEntryDraftTransition::class)->handle($entry, $this->localeOf($change), $this->actor(), $key, $seen, $note);
         } catch (EntryDraftRejectedException $refused) {
             $error = 'entries.change_err_'.$refused->reason;
             $path = $refused->path;
+            if ($refused->reason === 'subpage_path_taken') {
+                $said = SubPageTakenText::say($path, $refused->locale, $this->languageOf($change), Locales::label(...));
+            }
         } catch (InvalidTransitionException) {
             $error = 'admin.wfb.err_stale';
         } catch (AuthorizationException) {
@@ -626,7 +632,7 @@ final class ReviewChanges extends Component
             $error = 'admin.wfb.err_not_governed';
         }
         if ($error !== null) {
-            $this->addError('changes', Cast::string(__($error, ['path' => $path])));
+            $this->addError('changes', $said ?? Cast::string(__($error, ['path' => $path])));
 
             return false;
         }
@@ -775,6 +781,15 @@ final class ReviewChanges extends Component
         $default = app(SiteLocale::class)->default();
 
         return in_array($default, $codes, true) || $codes === [] ? $default : $codes[0];
+    }
+
+    /** The language a refusal names: the website's own when the change holds it, else the first it holds in the website's order (never the stored key order). */
+    private function languageOf(EntryDraft $change): string
+    {
+        $codes = array_map(strval(...), array_keys($change->content['locales']));
+        $default = app(SiteLocale::class)->default();
+
+        return in_array($default, $codes, true) || $codes === [] ? $default : app(SiteLocale::class)->inSiteOrder($codes)[0];
     }
 
     private function writerName(EntryDraft $change): string

@@ -28,25 +28,23 @@ use Illuminate\Validation\Rule;
  * form_submission_files (SubmitForm → StoreLeadFile), and the rules here only ask that what was
  * sent under its name is files.
  *
- * form_fields.type's CHECK allows STORED_TYPES today. number, date, radio and checkboxes already
- * validate here so widening that CHECK is the only schema step they need; until then no form can
- * hold one.
+ * form_fields.type's CHECK lists exactly TYPES (migration 2101_01_01_000000).
  */
 final class FormFieldTypes
 {
-    /** @var list<string> */
-    public const array STORED_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', self::FILE];
+    /** @var list<string> Every field type, in the order «Biểu mẫu» offers them. */
+    public const array TYPES = ['text', 'email', 'tel', 'textarea', 'number', 'date', 'select', 'radio', 'checkboxes', 'checkbox', self::FILE];
 
-    /** @var list<string> */
-    public const array TYPES = [...self::STORED_TYPES, 'number', 'date', 'radio', 'checkboxes'];
+    /** @var list<string> Types a form may hold (the column's CHECK). */
+    public const array STORED_TYPES = self::TYPES;
 
     /**
-     * Types the storefront form block can draw today. Any other type is neither shown nor collected,
+     * Types the storefront form block can draw. Any other type is neither shown nor collected,
      * so a visitor is never asked for an answer they cannot give.
      *
      * @var list<string>
      */
-    public const array DRAWN_TYPES = ['text', 'email', 'tel', 'textarea', 'select', 'checkbox', self::FILE];
+    public const array DRAWN_TYPES = self::TYPES;
 
     /** The attachment type: its files are rows of their own, never part of the lead's data. */
     public const string FILE = 'file';
@@ -84,7 +82,7 @@ final class FormFieldTypes
     private const int UPLOADS_CAP = 20;
 
     /** A number answer: at most 15 digits before the point and 6 after — never an exponent. */
-    private const string NUMBER_PATTERN = '/^-?\d{1,15}(\.\d{1,6})?$/';
+    private const string NUMBER_PATTERN = '/^-?\d{1,15}(\.\d{1,6})?$/D';
 
     public static function isUsableKey(string $key): bool
     {
@@ -251,16 +249,16 @@ final class FormFieldTypes
     }
 
     /**
-     * What a visitor reads for each choice, keyed by its value: the label in their language, else in
-     * Vietnamese, else the value itself, so a choice is never shown blank.
+     * What a visitor reads for each choice, keyed by its value: the label in their language, else in the
+     * site's default language, else any stored one, else the value itself, so a choice is never shown blank.
      *
      * @return array<string, string>
      */
-    public static function choiceLabels(FormField $field, string $locale): array
+    public static function choiceLabels(FormField $field, string $locale, ?string $default = null): array
     {
         $labels = [];
         foreach (self::choices($field) as $choice) {
-            $labels[$choice['value']] = ($choice['label'][$locale] ?? '') ?: (($choice['label']['vi'] ?? '') ?: $choice['value']);
+            $labels[$choice['value']] = FormDraft::text($choice['label'], $locale, $default) ?: $choice['value'];
         }
 
         return $labels;

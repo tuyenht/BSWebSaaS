@@ -25,6 +25,8 @@ final class PlanFeatureText
         'rbac.custom_roles' => 'roles',
         'rbac.category_scopes' => 'scopes',
         'users.max' => 'users',
+        'mail.platform_daily' => 'mail',
+        'permalinks.custom' => 'permalinks',
     ];
 
     /** The smallest value a limit takes on this screen (a plan always lets a customer have one website in one language). */
@@ -51,7 +53,7 @@ final class PlanFeatureText
      */
     public static function ownCard(string $key): bool
     {
-        return $key === 'users.max';
+        return in_array($key, ['users.max', 'mail.platform_daily'], true);
     }
 
     public static function min(string $key): int

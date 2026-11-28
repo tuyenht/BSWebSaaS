@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Concerns;
 
 use App\Modules\Admin\Support\Entries\PendingChangeDiff;
+use App\Modules\Admin\Support\Entries\SubPageTakenText;
 use App\Modules\Admin\Support\EntryProseBody;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Cms\Actions\ApplyEntryDraft;
@@ -16,9 +17,11 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\DisplayDate;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -66,6 +69,50 @@ trait EditsPendingChange
 
     public string $changeNote = '';
 
+    /**
+     * «Chưa làm được» (board 07): a move of the pending change refused for a reason the member can act
+     * on — the dialog's title (which move), the reason in plain words, and whether «Tải lại» is offered
+     * (the change moved on elsewhere). Null while none is shown.
+     *
+     * @var array{title: string, text: string, reload: bool}|null
+     */
+    #[Locked]
+    public ?array $refusal = null;
+
+    /**
+     * The reasons the dialog says (the board draws these; a schedule refused while a change is open
+     * keeps its line on the screen).
+     */
+    private const array REFUSAL_DIALOG = [
+        'change_locked', 'change_pending', 'change_stale', 'not_live', 'content_invalid',
+        'category_governed', 'locale_disabled', 'slug_taken', 'subpage_path_taken', 'workflow_governed',
+    ];
+
+    /** «Tải bản mới nhất?» is open: «Tải lại» was pressed with edits still in the form. */
+    public bool $changeReloadAsk = false;
+
+    /**
+     * The fields «Tải lại» would replace, named in «Tải bản mới nhất?»; set only by reloadChange after a
+     * refusal that offered it, so the question's answer can never load over a form nobody asked about.
+     */
+    #[Locked]
+    public ?string $reloadReplaces = null;
+
+    /**
+     * Focus once «Chưa làm được» or «Tải bản mới nhất?» leaves (Alpine, merged into each one's x-data): back to
+     * the button that opened it, unless the focus already sits on something shown (the next dialog). That
+     * button may be gone or hidden (it sat in the question before «Duyệt đăng» / «Bỏ thay đổi», or in the
+     * dialog before this one): then the band's first move, else the bar's main button, else its «⋯» button.
+     */
+    public const string REFUSAL_REFOCUS = 'opener: null, init() { this.opener = document.activeElement; }, '
+        .'destroy() { const opener = this.opener; setTimeout(() => { '
+        .'const shown = (el) => el instanceof HTMLElement && el !== document.body && el.isConnected && el.getClientRects().length > 0; '
+        .'if (shown(document.activeElement)) { return; } '
+        .'[opener, ...["[data-change-band] [data-change-act]:not([aria-disabled])", "[data-guide=main]", "[data-guide=main-b]", "[data-guide=more]"].flatMap((q) => [...document.querySelectorAll(q)])].find(shown)?.focus(); }); }';
+
+    /** The move this request makes on the change, naming the dialog: save, submit, apply, approve, discard; null for a move the board draws no dialog for (return, a middle step). */
+    private ?string $changeAct = 'save';
+
     /** What this request's save did with an edit held back: 'saved' into the change, 'same' as the website (nothing written). */
     private ?string $heldSave = null;
 
@@ -93,13 +140,22 @@ trait EditsPendingChange
             $this->seoTitle = Cast::string($text['seo_title'] ?? '');
             $this->seoDescription = Cast::string($text['seo_description'] ?? '');
             $this->coverAlt = Cast::string($text['cover_alt'] ?? '');
+            // a change saved before the focus keyword existed leaves the live one (applying it keeps it)
+            if (array_key_exists('focus_keyword', $text)) {
+                $this->focusKeyword = Cast::string($text['focus_keyword']);
+            }
         }
         $shared = $change->content['shared'] ?? [];
+        // the cover: the file its cover_media_id names (read only when it names one; none when it
+        // names no live file), else, with no id, the meta's key
+        $coverId = $shared['cover_media_id'] ?? null;
+        if (array_key_exists('meta', $shared) || EntryCover::named($coverId)) {
+            $this->loadCover($coverId, $shared['meta'] ?? null);
+        }
         if (array_key_exists('meta', $shared)) {
-            $cover = data_get($shared['meta'], 'image_url');
-            $this->coverImageKey = is_string($cover) ? $cover : '';
             if ($this->type === 'post') {
                 $this->displayDate = DisplayDate::of($shared['meta']);
+                $this->loadJobCard($shared['meta']);
             }
         }
         if ($this->type === 'post' && array_key_exists('template_override', $shared)) {
@@ -167,16 +223,21 @@ trait EditsPendingChange
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
-            'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
+            'focus_keyword' => $this->focusKeyword !== '' ? $this->focusKeyword : null,
         ];
-        /** @var array<string, mixed> $meta */
-        $meta = Cast::arr($change !== null && array_key_exists('meta', $change->content['shared'] ?? []) ? $change->content['shared']['meta'] : $entry->meta);
-        if ($this->coverImageKey !== '') {
-            $meta['image_url'] = $this->coverImageKey;
-        } else {
-            unset($meta['image_url']);
+        // the cover over the one the change holds (else the website's), as the direct save writes it: by its row
+        $held = $change !== null ? ($change->content['shared'] ?? []) : [];
+        $cover = $this->coverToStore(
+            array_key_exists('cover_media_id', $held) ? $held['cover_media_id'] : $entry->cover_media_id,
+            Cast::arr(array_key_exists('meta', $held) ? $held['meta'] : $entry->meta),
+            $this->coverStoredSame,
+        );
+        if ($cover === null) {
+            return false;
         }
-        $shared = ['meta' => $meta] + ($this->type === 'post' && $filing !== [] ? ['primary_category_id' => $filing[0]] : []);
+        [$coverId, $meta] = $cover;
+        $text['cover_alt'] = ($coverId !== null || EntryCover::metaValue($meta) !== '') && $this->coverAlt !== '' ? $this->coverAlt : null;
+        $shared = ['cover_media_id' => $coverId, 'meta' => $meta] + ($this->type === 'post' && $filing !== [] ? ['primary_category_id' => $filing[0]] : []);
         // «Thuộc tính bài» goes into the change too, from the website's default language (every language's)
         if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
             $before = $change !== null && array_key_exists('template_override', $change->content['shared'] ?? []) ? $change->content['shared']['template_override'] : $entry->template_override;
@@ -184,8 +245,13 @@ trait EditsPendingChange
             $shared['meta'] = $meta;
             $shared['template_override'] = $this->formTemplate(is_string($before) ? $before : null);
         }
+        // «Thông tin tuyển dụng» goes into the change too (this language's words, every language's boxes),
+        // judged as written onto the card the change holds now (a refusal takes the transaction back)
+        /** @var array<string, mixed> $meta */
+        $meta = $this->jobWritten($meta);
+        $shared['meta'] = $meta;
 
-        if ($change === null && $this->sameAsLive($entry, $live, $text, $meta, $filing[0] ?? null)) {
+        if ($change === null && $this->sameAsLive($entry, $live, $text, $coverId, $meta, $filing[0] ?? null)) {
             $this->heldSave = 'same';
 
             return true;
@@ -194,9 +260,7 @@ trait EditsPendingChange
         try {
             $saved = app(SaveEntryDraft::class)->handle($entry, $this->user(), $this->locale, $text, $shared);
         } catch (EntryDraftRejectedException $refused) {
-            $refused->reason === 'slug_taken'
-                ? $this->addError('slug', $refused->userMessage())
-                : $this->addError('workflow', $refused->userMessage());
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         }
@@ -213,22 +277,24 @@ trait EditsPendingChange
      * @param  array<string, mixed>  $text
      * @param  array<string, mixed>  $meta
      */
-    private function sameAsLive(Entry $entry, ?EntryTranslation $live, array $text, array $meta, ?int $primary): bool
+    private function sameAsLive(Entry $entry, ?EntryTranslation $live, array $text, ?int $coverId, array $meta, ?int $primary): bool
     {
         if ($live === null) {
             return false;
         }
         $before = ['blocks' => $this->liveBodyAsSaved($live)];
-        foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'cover_alt'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'cover_alt', 'focus_keyword'] as $field) {
             if (Cast::string($live->getAttribute($field)) !== Cast::string($text[$field] ?? null)) {
                 return false;
             }
         }
 
         return self::keysSorted($before) === self::keysSorted($text['body'])
-            && data_get($entry->meta, 'image_url') === ($meta['image_url'] ?? null)
+            // the same picture, also when the form names by its row the one the website still names by its key
+            && EntryCover::same($entry->cover_media_id, $entry->meta, $coverId, $meta)
             && ($this->type !== 'post' || ! $this->postPropsRead || (DisplayDate::of($entry->meta) === DisplayDate::of($meta) && $entry->template_override === $this->formTemplate($entry->template_override)))
-            && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null));
+            && ($this->type !== 'post' || $primary === ($this->storedCategories($entry)[0] ?? null))
+            && ($this->type !== 'post' || [$entry->meta['facts'] ?? null, $entry->meta['badge'] ?? null] === [$meta['facts'] ?? null, $meta['badge'] ?? null]);
     }
 
     /**
@@ -259,6 +325,7 @@ trait EditsPendingChange
     public function submitChange(): void
     {
         $this->resetErrorBag(['workflow', 'changeNote']);
+        $this->changeAct = 'submit';
         $entry = $this->persist('save');
         if (! $entry instanceof Entry || $this->heldSave === null) {
             return;
@@ -292,6 +359,7 @@ trait EditsPendingChange
     {
         $this->resetErrorBag('workflow');
         $entry = $this->changeEntry();
+        $this->changeAct = app(EntryWorkflowResolver::class)->forEntry($entry) === null ? 'apply' : 'approve';
         if ($this->changeCount() > 0 && $this->pendingChangeIsOpen($entry)) {
             $entry = $this->persist('save');
             if (! $entry instanceof Entry || $this->heldSave !== 'saved') {
@@ -317,6 +385,7 @@ trait EditsPendingChange
         $this->changeApplyAsk = false;
         $entry = $this->changeEntry();
         [$workflow, $change] = $this->changeContext($entry);
+        $this->changeAct = $workflow === null ? 'apply' : 'approve';
         if ($change === null || $this->changeSeen === null) {
             $this->changeRefused('change_stale');
 
@@ -327,7 +396,7 @@ trait EditsPendingChange
             try {
                 app(ApplyEntryDraft::class)->handle($entry, $this->user(), $this->changeSeen);
             } catch (EntryDraftRejectedException $refused) {
-                $this->changeRefused($refused->reason, $refused->path);
+                $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
                 return;
             } catch (AuthorizationException) {
@@ -359,6 +428,7 @@ trait EditsPendingChange
 
     public function askDiscardChange(): void
     {
+        $this->changeAct = 'discard';
         $entry = $this->changeEntry();
         if ($this->pendingChange($entry) === null) {
             $this->changeRefused('change_stale');
@@ -372,11 +442,12 @@ trait EditsPendingChange
     public function discardChange(): void
     {
         $this->changeDiscardAsk = false;
+        $this->changeAct = 'discard';
         $entry = $this->changeEntry();
         try {
             app(DiscardEntryDraft::class)->handle($entry, $this->user(), (string) $this->changeSeen);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return;
         } catch (AuthorizationException) {
@@ -404,6 +475,7 @@ trait EditsPendingChange
     /** «Trả lại»: the change goes back to its writer with the note (the workflow's move that needs one). */
     public function returnChange(): void
     {
+        $this->changeAct = null;
         $entry = $this->changeEntry();
         $this->resetErrorBag('changeNote');
         $note = trim($this->changeNote);
@@ -438,6 +510,7 @@ trait EditsPendingChange
     /** A middle step of the workflow on the change (one that neither publishes nor needs a note: «Chuyển duyệt»). */
     public function moveChange(string $key): void
     {
+        $this->changeAct = null;
         $entry = $this->changeEntry();
         [$workflow, $change] = $this->changeContext($entry);
         $move = $workflow !== null && $change !== null
@@ -461,7 +534,7 @@ trait EditsPendingChange
         try {
             $to = app(ApplyEntryDraftTransition::class)->handle($entry, $this->locale, $this->user(), $key, (string) $this->changeSeen, $note);
         } catch (EntryDraftRejectedException $refused) {
-            $this->changeRefused($refused->reason, $refused->path);
+            $this->changeRefused($refused->reason, $refused->path, $refused->locale);
 
             return false;
         } catch (InvalidTransitionException) {
@@ -489,19 +562,107 @@ trait EditsPendingChange
     private function changeSettled(string $toast): void
     {
         $this->changeSeen = null;
+        $this->reopenForm();
+        $this->dispatch('bs-toast', text: $toast);
+    }
+
+    /**
+     * The form opened again as it opens (mount): the website's version, then the pending change as it
+     * stands now, which also sets the version this form saw from what it loaded (openPendingChange).
+     * The rich text editor takes the new text, and the browser forgets the copy it kept on the device.
+     */
+    private function reopenForm(): void
+    {
         $this->changeMemo = false;
         $this->resetChanges();
         if ($this->prose) {
             $this->dispatch('admin-editor-set-html', target: 'bodyHtml', html: $this->bodyHtml);
         }
         $this->dispatch('admin-editor-saved');
-        $this->dispatch('bs-toast', text: $toast);
     }
 
-    /** The refusal in plain words: a taken address of the change's own under the link field, anything else (a sub-page's address included) above the form. */
-    private function changeRefused(string $reason, string $path = ''): void
+    /**
+     * The refusal in plain words. A save, a send, «Cập nhật website» / «Duyệt đăng» or «Bỏ thay đổi»
+     * refused for a reason the board draws opens «Chưa làm được», titled by that move (a save or a send
+     * refused because the change was sent is «Chưa sửa được»); a taken address of the change's own also stays
+     * under the link field. Any other (a return or a middle step refused) is the line above the form.
+     */
+    private function changeRefused(string $reason, string $path = '', string $locale = ''): void
     {
-        $this->addError($reason === 'slug_taken' ? 'slug' : 'workflow', Cast::string(__('entries.change_err_'.$reason, ['path' => $path])));
+        $text = $reason === 'subpage_path_taken'
+            ? SubPageTakenText::say($path, $locale, $this->locale)
+            : Cast::string(__('entries.change_err_'.$reason, ['path' => $path]));
+        if ($reason === 'slug_taken') {
+            $this->addError('slug', $text);
+        }
+        if ($this->changeAct === null || ! in_array($reason, self::REFUSAL_DIALOG, true)) {
+            if ($reason === 'change_stale') {
+                // no dialog, so no «Tải lại» button: the line says to reload the page
+                $text = Cast::string(__('entries.change_err_change_stale_page'));
+            }
+            if ($reason !== 'slug_taken') {
+                $this->addError('workflow', $text);
+            }
+
+            return;
+        }
+        $title = $reason === 'change_locked' && in_array($this->changeAct, ['save', 'submit'], true) ? 'entries.refuse.t_locked' : 'entries.refuse.t_'.$this->changeAct;
+        $this->refusal = ['title' => Cast::string(__($title)), 'text' => $text, 'reload' => $reason === 'change_stale'];
+    }
+
+    /** «Đóng» (or Escape, the backdrop) on «Chưa làm được»: nothing else changes. */
+    public function closeRefusal(): void
+    {
+        $this->refusal = null;
+    }
+
+    /**
+     * «Tải lại» on «Chưa làm được» (the change moved on elsewhere): the form takes the change as it
+     * stands now. Typed edits still in the form are never kept over it (they would be saved over
+     * another member's edits nobody here has seen): with some, «Tải bản mới nhất?» asks first and
+     * names the fields it replaces; with none, it loads at once. Only after a refusal that offered it.
+     */
+    public function reloadChange(): void
+    {
+        $this->changeEntry();
+        if (($this->refusal['reload'] ?? false) !== true) {
+            return;
+        }
+        $this->refusal = null;
+        $names = $this->unsavedNames();
+        if ($names !== []) {
+            $this->reloadReplaces = implode(', ', $names);
+            $this->changeReloadAsk = true;
+
+            return;
+        }
+        $this->loadNewestChange();
+    }
+
+    /** «Tải bản mới nhất» on «Tải bản mới nhất?»: the typed edits go, the change as it stands now comes in. */
+    public function confirmReloadChange(): void
+    {
+        $this->changeEntry();
+        if ($this->reloadReplaces === null) {
+            return;
+        }
+        $this->loadNewestChange();
+    }
+
+    /** «Ở lại» (or Escape, the backdrop) on «Tải bản mới nhất?»: the form keeps what was typed, nothing loaded. */
+    public function keepTypedText(): void
+    {
+        $this->changeReloadAsk = false;
+        $this->reloadReplaces = null;
+    }
+
+    private function loadNewestChange(): void
+    {
+        $this->changeReloadAsk = false;
+        $this->reloadReplaces = null;
+        $this->reopenForm();
+        // the change may be gone (applied or discarded elsewhere): the form then shows the website's version
+        $this->dispatch('bs-toast', text: Cast::string(__($this->changeSeen === null ? 'entries.refuse.reloaded_gone' : 'entries.refuse.reloaded')));
     }
 
     /** The saved entry, re-read and authorized for every call (livewire/update skips the route middleware). */
@@ -771,6 +932,9 @@ trait EditsPendingChange
         $names = static fn (array $ids): array => array_map(Cast::string(...), TaxonomyTranslation::query()->whereIn('taxonomy_id', $ids)
             ->where('locale', app(SiteLocale::class)->default())->pluck('name', 'taxonomy_id')->all());
 
-        return app(PendingChangeDiff::class)->between($entry, $change, $live, $livePrimary, $names, app(SiteLocale::class)->enabled());
+        // the covers named by id (a read only when one is)
+        $covers = MediaRefs::rows([$change->content['shared']['cover_media_id'] ?? null, $entry->cover_media_id]);
+
+        return app(PendingChangeDiff::class)->between($entry, $change, $live, $livePrimary, $names, app(SiteLocale::class)->enabled(), $covers);
     }
 }

@@ -3,6 +3,11 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\CheckSocialApps;
+use App\Modules\Admin\Console\EnsureMailMonths;
+use App\Modules\Admin\Console\FillPdfPages;
+use App\Modules\Admin\Console\MediaRefsById;
+use App\Modules\Admin\Console\PruneMailLogs;
+use App\Modules\Admin\Console\ReconcileBlockUsage;
 use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Console\RecoverSiteOwnerCommand;
 use App\Modules\Admin\Console\RekeySiteMedia;
@@ -12,6 +17,8 @@ use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Http\Middleware\RestrictAdminAddress;
 use App\Modules\Admin\Http\Middleware\TrackSignedInDevice;
+use App\Modules\Admin\Listeners\RecordTenantMail;
+use App\Modules\Admin\Listeners\ReserveMailQuota;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\Account;
@@ -24,8 +31,11 @@ use App\Modules\Admin\Livewire\CatalogSettings;
 use App\Modules\Admin\Livewire\Categories\Index as CategoriesIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
+use App\Modules\Admin\Livewire\EmailDnsStatus;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
+use App\Modules\Admin\Livewire\EmailRecentMail;
 use App\Modules\Admin\Livewire\EmailSettings;
+use App\Modules\Admin\Livewire\EmailTemplates;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
@@ -54,14 +64,20 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Mail\MailLogWriter;
+use App\Modules\Admin\Support\Mail\MailSendContext;
+use App\Modules\Admin\Support\Mail\MailTemplateMail;
+use App\Modules\Admin\Support\Mail\MailTemplates;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\RoleLabel;
+use App\Modules\Shared\Contracts\MailFailureRecorder;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
@@ -73,6 +89,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
@@ -104,6 +121,13 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Per request (Octane-safe): where the website's admin may be opened from, read once.
         $this->app->scoped(AdminAddressLimit::class);
+
+        // What TenantMailer::apply() set up for the mail about to leave: per request / per job.
+        $this->app->scoped(MailSendContext::class);
+        // The «Mẫu thư» on/off list, read once per website for the request / job.
+        $this->app->scoped(MailTemplates::class);
+        // Feature modules record a mail that failed in the website's mail log through Shared.
+        $this->app->bind(MailFailureRecorder::class, MailLogWriter::class);
     }
 
     public function boot(): void
@@ -111,7 +135,7 @@ final class AdminServiceProvider extends ServiceProvider
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CheckSocialApps::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class]);
+            $this->commands([CheckSocialApps::class, FillPdfPages::class, MediaRefsById::class, ReconcileBlockUsage::class, ReconcileContentUsage::class, RecoverSiteOwnerCommand::class, RekeySiteMedia::class, EnsureMailMonths::class, PruneMailLogs::class]);
         }
 
         // Meta's data-deletion callback and its status page: per IP, a burst Meta never needs.
@@ -141,6 +165,9 @@ final class AdminServiceProvider extends ServiceProvider
             if ($setting->group_name === 'storefront' && $setting->key === 'floating_contact') {
                 FloatingContactInput::syncIconUsage(Cast::int($setting->getKey()), []);
             }
+            if ($setting->group_name === 'theme' && $setting->key === 'heading_decor') {
+                HeadingDecorInput::syncMaskUsage(Cast::int($setting->getKey()), []);
+            }
         });
 
         // Admin UI primitives as anonymous Blade components: <x-bs-admin::icon />, etc.
@@ -159,6 +186,9 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.otp-challenge', EmailOtpChallenge::class);
         Livewire::component('admin.account', Account::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
+        Livewire::component('admin.email-recent-mail', EmailRecentMail::class);
+        Livewire::component('admin.email-templates', EmailTemplates::class);
+        Livewire::component('admin.email-dns-status', EmailDnsStatus::class);
         Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
         Livewire::component('admin.admin-ui-settings', AdminUiSettings::class);
@@ -199,12 +229,27 @@ final class AdminServiceProvider extends ServiceProvider
             now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));
-        VerifyEmail::toMailUsing(fn (mixed $notifiable, string $url): MailMessage => (new MailMessage)
-            ->subject(__('auth.verify_email_subject'))
-            ->greeting(Cast::string(config('admin.brand.name')))
-            ->line(__('auth.verify_email_intro'))
-            ->action(__('auth.verify_email_action'), $url)
-            ->line(__('auth.verify_email_outro')));
+        // Through the website's outbox like every other account mail (and so in its mail log).
+        VerifyEmail::toMailUsing(function (mixed $notifiable, string $url): MailMessage {
+            app(TenantMailer::class)->apply();
+
+            // The website's (or the platform's) wording of «Xác minh địa chỉ email» when it has one.
+            $templated = app(MailTemplateMail::class)->message('verify', [
+                '{customer_name}' => Cast::string(data_get($notifiable, 'name')),
+                '{customer_email}' => Cast::string(data_get($notifiable, 'email')),
+                '{verify_url}' => $url,
+            ]);
+            if ($templated !== null) {
+                return $templated;
+            }
+
+            return (new MailMessage)
+                ->subject(__('auth.verify_email_subject'))
+                ->greeting(Cast::string(config('admin.brand.name')))
+                ->line(__('auth.verify_email_intro'))
+                ->action(__('auth.verify_email_action'), $url)
+                ->line(__('auth.verify_email_outro'));
+        });
 
         // XOAUTH2 SMTP transport for OAuth2 email senders (Gmail/MS/Yahoo). TenantMailer
         // stashes host/port/username + a freshly-minted access token into this mailer's
@@ -225,6 +270,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Stamp the tenant's reply-to onto outgoing mail so replies reach the customer, not the
         // shared platform inbox (stateless per-message — no Octane reply-to leak).
         Event::listen(MessageSending::class, SetTenantReplyTo::class);
+        // The website's mail log and daily limit of the shared outbox (MailQuotaGate).
+        Event::listen(MessageSending::class, ReserveMailQuota::class);
+        Event::listen(MessageSent::class, RecordTenantMail::class);
 
         // A website's own domain needs its managers (design.md §28): bell + mail.
         Event::listen(DomainNeedsAttention::class, TellSiteAboutDomain::class);

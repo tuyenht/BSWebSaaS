@@ -50,10 +50,14 @@ final class EdgeCachePurges
         'form_submission_files', 'form_submissions', 'lead_search_terms',
         // admin members: invitations, their roles, the categories a member may edit
         'invitation_category_scopes', 'invitation_roles', 'invitations', 'member_category_scopes',
+        // the website's mail log, its day counts and its mail templates: the admin's email settings
+        'mail_daily', 'mail_logs', 'mail_templates',
         // the admin library's folders: no media address names its folder
         'media_folders',
         // the admin product search's word table (the storefront search reads its own columns)
         'product_search_words',
+        // the website's running totals (stored bytes of its library): the admin's storage meter
+        'site_counters',
         // notices to the website's managers
         'site_notifications',
         // the isolation self-check's rows

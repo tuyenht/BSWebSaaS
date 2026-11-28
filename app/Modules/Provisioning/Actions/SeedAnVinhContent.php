@@ -12,11 +12,12 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\EnsureMediaFromKey;
-use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Provisioning\Support\FirstOwner;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
@@ -31,7 +32,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
  *
  * Idempotent — anchored on localized slug (taxonomies/entries) or route path (pages).
  * Runs INSIDE the tenant context (caller enters it) so site_id is stamped and RLS-scoped.
- * card image_url = the storage key of the website's own copy of a seed file (EntryGridComponent
+ * card image = the row of the website's own copy of a seed file in cover_media_id (EntryGridComponent
  * resolves it at render); page-section block
  * images reference a media_id (BlockRenderer resolves it at render via MediaLibraryUrls).
  */
@@ -225,7 +226,6 @@ final readonly class SeedAnVinhContent
 
     public function __construct(
         private RouteSync $routes,
-        private MediaUrlResolver $media,
         private EnsureMediaFromKey $ensureMedia,
         private TaxonomyPaths $paths,
         private FirstOwner $owner,
@@ -595,13 +595,20 @@ final readonly class SeedAnVinhContent
 
     /**
      * Stamps the real An Vinh brand name, legal name, and NAP on the existing SiteProfile
-     * (created blank by ProvisionSite). Also upserts the localized brand_name translation.
+     * (created blank by ProvisionSite), with its brand images as the profile's pictures (logo,
+     * favicon: a small cut of the logo until An Vinh supplies a dedicated favicon file; share image:
+     * the about photo), never as addresses. Also upserts the localized brand_name translation.
      */
     private function updateBrandNAP(string $locale): void
     {
         $profile = SiteProfile::query()->firstOrCreate([], []);
+        $logo = $this->ensureMedia->fromSeedSource(self::KEY_LOGO);
+        $about = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT);
 
         $profile->fill([
+            'logo_media_id' => $logo->id,
+            'favicon_media_id' => $logo->id,
+            'og_image_media_id' => $about->id,
             'brand_name' => 'Cơ Khí Chính Xác An Vinh',
             'legal_name' => 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH',
             'tax_code' => '0108649706',
@@ -622,26 +629,18 @@ final readonly class SeedAnVinhContent
             ],
         );
 
-        // Storefront brand setting: name, logo, SEO defaults, and NAP.
+        // Storefront brand setting: name, SEO defaults, and NAP (the brand images are the profile's, above).
         // - name: displayed in the header logo aria-label and footer copyright
         // - legal_name: full legal name shown in the footer company block
         // - description: meta description fallback for pages without a per-page description
-        // - og_image: fallback og:image; per-entry images override this in StorefrontController
         // - address/phone/email/license: NAP for the footer; conditional — tenants without
         //   these keys get a minimal footer so no An Vinh content leaks to other tenants
-        $logo = $this->ensureMedia->fromSeedSource(self::KEY_LOGO)->storage_key;
-        $about = $this->ensureMedia->fromSeedSource(self::KEY_ABOUT)->storage_key;
         SiteSetting::query()->updateOrCreate(
             ['group_name' => 'general', 'key' => 'brand'],
             ['value' => [
                 'name' => 'Cơ Khí Chính Xác An Vinh',
                 'legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh',
-                'logo' => $this->media->url($logo),
-                // Browser-tab icon (PNG is fine). Interim: a small cut of the logo until An Vinh
-                // supplies a dedicated favicon file — still beats showing the platform's icon.
-                'favicon' => $this->media->url($logo, 64),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
-                'og_image' => $this->media->url($about, 1280),
                 // Combined address string — used by the footer display and as fallback streetAddress
                 // for tenants that haven't been re-seeded with the split NAP fields below.
                 'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
@@ -676,8 +675,8 @@ final readonly class SeedAnVinhContent
      * Create a published post (product / project / service / news) under the given categories.
      * The first category ID is the primary one (drives routing). If $blocks is empty, falls back
      * to a single richtext block from $excerpt. Card image: a seed file's key (filed for the website
-     * under its code first) stored in meta['image_url'], or a glyph name without a slash
-     * (EntryGridComponent resolves it at render time via MediaUrlResolver).
+     * under its code first) stored as its row in cover_media_id (EntryCover::stored), or a glyph name
+     * without a slash in meta['image_url'] (EntryGridComponent resolves it at render time via MediaUrlResolver).
      *
      * @param  list<int>  $categoryIds  first = primary category (prefix for routing)
      * @param  list<array<string, mixed>>  $blocks  body blocks; falls back to a richtext from $excerpt
@@ -699,24 +698,28 @@ final readonly class SeedAnVinhContent
         if ($existing !== null) {
             // Re-seed: the post's text is admin-owned, but the featured image is canonical here — so
             // refresh just it, so a re-curated photo (new content-hash key) reaches existing posts.
+            // The post has one cover: the seed file's row in cover_media_id, with no meta.image_url beside it
+            // (a glyph stays in meta with no id), so a cover the editor moved to its row is replaced, not doubled.
             $entry = Entry::query()->find($existing->entry_id);
             if ($entry !== null) {
-                $meta = $entry->meta;
-                if (data_get($meta, 'image_url') !== $image) {
-                    $meta['image_url'] = $image;
-                    $entry->update(['meta' => $meta]);
+                [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image] + Cast::arr($entry->meta), lock: true);
+                $entry->fill(['cover_media_id' => $coverId, 'meta' => $meta]);
+                if ($entry->isDirty(['cover_media_id', 'meta'])) {
+                    $entry->save();
                 }
             }
 
             return;
         }
 
+        [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image], lock: true);
         $entry = Entry::query()->create([
             'type' => 'post',
             'author_id' => $this->owner->id(),
             'status' => 'published',
             'published_at' => now(),
-            'meta' => ['image_url' => $image],
+            'cover_media_id' => $coverId,
+            'meta' => $meta,
         ]);
 
         $body = $blocks !== []

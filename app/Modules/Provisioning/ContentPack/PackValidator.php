@@ -490,10 +490,12 @@ final readonly class PackValidator
 
             return;
         }
-        if (($value['mask_media'] ?? '') !== '') {
-            $errors[] = "{$at}: mask_media is a picture of the site's own library; a pack cannot set it.";
+        foreach (['mask_media', 'mask_ulid'] as $field) {
+            if (($value[$field] ?? '') !== '') {
+                $errors[] = "{$at}: {$field} is a picture of the site's own library; a pack cannot set it.";
 
-            return;
+                return;
+            }
         }
         $probe = array_combine(array_map('strval', array_keys($value)), $value);
         if ($managed !== null) {
@@ -587,7 +589,8 @@ final readonly class PackValidator
                         if (is_string($type) && $this->components->has($type) && is_array($block['props'] ?? null)) {
                             $this->blockLinks("{$where}: block ".($index + 1)." ({$type})", $block['props'], $this->components->schemaFor($type), '', $errors);
                             $schema = $this->components->schemaFor($type);
-                            $files = ButtonLink::refs($block['props'], $schema)['files'];
+                            $buttonRefs = ButtonLink::refs($block['props'], $schema);
+                            $files = [...$buttonRefs['files'], ...$buttonRefs['media']];
                             $htmlImages = [];
                             foreach (SchemaHtml::values($block['props'], $schema) as $html) {
                                 array_push($htmlImages, ...RichHtml::imageIds($html));
@@ -950,6 +953,13 @@ final readonly class PackValidator
         $this->localeMap($pack, $item->key, $item->data, 'title', true, self::TEXT_MAX, $errors);
         foreach (['excerpt', 'seo_title', 'seo_description'] as $field) {
             $this->localeMap($pack, $item->key, $item->data, $field, false, self::TEXT_MAX, $errors);
+        }
+        // The words the page should be found by («Từ khóa muốn lên top»): one line of plain text, never shown on the website.
+        $this->localeMap($pack, $item->key, $item->data, 'focus_keyword', false, EntryContentRules::FOCUS_KEYWORD_MAX, $errors);
+        foreach (Cast::arr($item->data['focus_keyword'] ?? null) as $locale => $keyword) {
+            if (is_string($keyword) && mb_strlen($keyword) <= EntryContentRules::FOCUS_KEYWORD_MAX && (PlainText::label($keyword) !== $keyword || PlainText::hasMarkup($keyword))) {
+                $errors[] = "{$item->key}: focus_keyword ({$locale}) must be one line of plain text, without tags or extra spaces.";
+            }
         }
         if ($item->kind === 'post') {
             $this->slugMap($pack, $item, $errors);

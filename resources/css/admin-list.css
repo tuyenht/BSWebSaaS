@@ -2371,7 +2371,8 @@
             display: none;
         }
 
-        .list-more:not(:has(.list-mi:not([data-xm~='xv']))) {
+        .list-more[data-has~='allxv'],
+        .list-more:not([data-has]):not(:has(.list-mi:not([data-xm~='xv']))) {
             display: none;
         }
     }
@@ -2404,13 +2405,20 @@
             display: none;
         }
 
-        .list-rows[data-acts~='xv']:not([data-acts~='xd']):not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'], .list-mi[data-xm~='xt'])),
-        .list-rows[data-acts~='xd']:not([data-acts~='xv']):not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xt'])),
-        .list-rows[data-acts~='xt']:not([data-acts~='xv']):not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xd'])),
-        .list-rows[data-acts~='xv'][data-acts~='xd']:not([data-acts~='xt']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xt'])),
-        .list-rows[data-acts~='xv'][data-acts~='xt']:not([data-acts~='xd']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'])),
-        .list-rows[data-acts~='xd'][data-acts~='xt']:not([data-acts~='xv']) .list-more:not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'])),
-        .list-rows[data-acts~='xv'][data-acts~='xd'][data-acts~='xt'] .list-more:not(:has(.list-mi:not([data-xm]))) {
+        .list-rows[data-acts~='xv']:not([data-acts~='xd']):not([data-acts~='xt']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xd']):not([data-has~='xt']),
+        .list-rows[data-acts~='xv']:not([data-acts~='xd']):not([data-acts~='xt']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'], .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xd']:not([data-acts~='xv']):not([data-acts~='xt']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xv']):not([data-has~='xt']),
+        .list-rows[data-acts~='xd']:not([data-acts~='xv']):not([data-acts~='xt']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xt']:not([data-acts~='xv']):not([data-acts~='xd']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xv']):not([data-has~='xd']),
+        .list-rows[data-acts~='xt']:not([data-acts~='xv']):not([data-acts~='xd']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'], .list-mi[data-xm~='xd'])),
+        .list-rows[data-acts~='xv'][data-acts~='xd']:not([data-acts~='xt']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xt']),
+        .list-rows[data-acts~='xv'][data-acts~='xd']:not([data-acts~='xt']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xt'])),
+        .list-rows[data-acts~='xv'][data-acts~='xt']:not([data-acts~='xd']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xd']),
+        .list-rows[data-acts~='xv'][data-acts~='xt']:not([data-acts~='xd']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xd'])),
+        .list-rows[data-acts~='xd'][data-acts~='xt']:not([data-acts~='xv']) .list-more[data-has]:not([data-has~='plain']):not([data-has~='xv']),
+        .list-rows[data-acts~='xd'][data-acts~='xt']:not([data-acts~='xv']) .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]), .list-mi[data-xm~='xv'])),
+        .list-rows[data-acts~='xv'][data-acts~='xd'][data-acts~='xt'] .list-more[data-has]:not([data-has~='plain']),
+        .list-rows[data-acts~='xv'][data-acts~='xd'][data-acts~='xt'] .list-more:not([data-has]):not(:has(.list-mi:not([data-xm]))) {
             display: none;
         }
     }

@@ -28,9 +28,10 @@ use Illuminate\Support\Facades\DB;
  * Brand images (logo, logo on a dark background, favicon, share image) are media ids on the
  * profile, returned as `media_ids` (slot → id, only the slots that are set). Tenancy cannot turn an
  * id into an address (that is Media's job), so the storefront's BrandImages reader does it, in one
- * query for the four. The older URL strings general.brand still holds for logo, favicon and share
- * image come back apart, as `legacy_images` (slot → URL), never as top-level keys: the reader
- * shows them until that image is first saved on the settings screen, which removes them.
+ * query for the four. The older URL strings general.brand may still hold for any of the four come
+ * back apart, as `legacy_images` (slot → URL), never as top-level keys: the reader shows them until
+ * that image is first saved on the settings screen, which removes them (media:refs-by-id moves them
+ * to the profile).
  *
  * `license` is the business licence number, `license_text` the authority that issued it (per
  * language); `business_hours` is the checked BusinessHours shape; `date_format` is how the site

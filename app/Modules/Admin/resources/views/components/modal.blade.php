@@ -8,6 +8,7 @@
     'closeLabel' => null,
     'compact' => false,
     'alert' => false,
+    'describedby' => null,
 ])
 @php
     // Self-contained per-instance modal. $trigger opens it; Escape / backdrop / close button
@@ -47,7 +48,8 @@
         : '{ open: false, opener: null, show() { this.opener = document.activeElement; this.open = true; }, hide() { this.open = false; this.opener?.focus(); } }');
     $form = $model !== null || $alpine;
     // `compact`: the sheet below 600px stops at 90% of the screen's height (default 92%). `alert`: the
-    // dialog is a question that must be answered or dismissed, so it is an alertdialog.
+    // dialog is a question that must be answered or dismissed, so it is an alertdialog. `describedby`
+    // names the element inside that says what the dialog is about (read out with its title).
     $sheetMax = $compact ? 'max-h-[90dvh]' : 'max-h-[92dvh]';
     $dialogRole = $alert ? 'alertdialog' : 'dialog';
 @endphp
@@ -68,7 +70,7 @@
             <div x-show="open" x-transition.opacity @click="hide()" class="absolute inset-0 bg-gray-900/45"></div>
 
             <div x-show="open" x-transition x-trap="open"
-                 role="{{ $dialogRole }}" aria-modal="true" aria-labelledby="{{ $tid }}"
+                 role="{{ $dialogRole }}" aria-modal="true" aria-labelledby="{{ $tid }}" @if ($describedby) aria-describedby="{{ $describedby }}" @endif
                  class="relative flex {{ $sheetMax }} w-full flex-col rounded-t-xl bg-surface shadow-lg min-[600px]:max-h-[calc(100dvh-2rem)] {{ $sheetBox }} min-[600px]:rounded-md">
                 <div class="flex items-start gap-3 border-b border-border px-5 py-4">
                     <div class="min-w-0 flex-1">

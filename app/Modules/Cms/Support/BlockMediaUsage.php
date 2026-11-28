@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
  * sync() collects every media id the block lists reference: by an image or video prop (a hero's
  * background video counts as used like a picture), by a library picture (`img[data-media-id]`)
  * inside a formatted-text (`html`) prop, or by a "Tải tệp" button (its library file named by
- * storage key, ButtonLink). It keeps the ones that name this site's media, prunes the owner's
+ * row ulid, or by storage key in a body saved before files were named by row, ButtonLink). It keeps the ones that name this site's media, prunes the owner's
  * content rows that are no longer named and adds the missing ones. It runs inside the caller's
  * transaction (the save), so the index never drifts from the content. forget() drops an owner's
  * rows when the owner is gone: the attachment is polymorphic, no foreign key cascades it (D3).
@@ -43,8 +43,8 @@ final readonly class BlockMediaUsage
      */
     public function sync(string $ownerType, int $ownerId, iterable $blockLists): void
     {
-        [$ids, $keys] = $this->referenced($blockLists);
-        $mediaIds = $this->visibleMediaIds($ids, $keys);
+        [$ids, $keys, $ulids] = $this->referenced($blockLists);
+        $mediaIds = $this->visibleMediaIds($ids, $keys, $ulids);
 
         $rows = fn (): Builder => Mediable::query()
             ->where('mediable_type', $ownerType)
@@ -103,18 +103,19 @@ final readonly class BlockMediaUsage
      * skipped alike. One query (RLS + the site scope).
      *
      * @param  list<int>  $ids
-     * @param  list<string>  $keys  storage keys (a button's file)
+     * @param  list<string>  $keys  storage keys (a button's file in an older body)
+     * @param  list<string>  $ulids  upper-case row ulids (a button's file)
      * @return list<int>
      */
-    private function visibleMediaIds(array $ids, array $keys): array
+    private function visibleMediaIds(array $ids, array $keys, array $ulids): array
     {
-        if ($ids === [] && $keys === []) {
+        if ($ids === [] && $keys === [] && $ulids === []) {
             return [];
         }
 
         $visible = [];
         $found = Media::withTrashed()
-            ->where(fn (Builder $query) => $query->whereIn('id', $ids)->orWhereIn('storage_key', $keys))
+            ->where(fn (Builder $query) => $query->whereIn('id', $ids)->orWhereIn('storage_key', $keys)->orWhereIn('ulid', $ulids))
             ->pluck('id');
         foreach ($found as $id) {
             $visible[] = Cast::int($id);
@@ -126,16 +127,17 @@ final readonly class BlockMediaUsage
     /**
      * Every media id the block lists reference: by an image or video prop, and by a library
      * picture inside an html prop — so a picture used only inside formatted text still counts as
-     * used (the library's "where used" list and its delete warning) — and the storage keys of the
-     * files their buttons offer.
+     * used (the library's "where used" list and its delete warning) — and the row ulids (or, in an
+     * older body, the storage keys) of the files their buttons offer.
      *
      * @param  iterable<mixed>  $blockLists
-     * @return array{0: list<int>, 1: list<string>} media ids, and the storage keys button files name
+     * @return array{0: list<int>, 1: list<string>, 2: list<string>} media ids, the storage keys and the upper-case ulids button files name
      */
     private function referenced(iterable $blockLists): array
     {
         $ids = [];
         $keys = [];
+        $ulids = [];
         foreach ($blockLists as $blocks) {
             if (! is_array($blocks)) {
                 continue;
@@ -152,11 +154,17 @@ final readonly class BlockMediaUsage
                     foreach (SchemaHtml::values($props, $schema) as $html) {
                         $ids = array_merge($ids, RichHtml::imageIds($html));
                     }
-                    $keys = array_merge($keys, ButtonLink::refs($props, $schema)['files']);
+                    $refs = ButtonLink::refs($props, $schema);
+                    $keys = array_merge($keys, $refs['files']);
+                    foreach ($refs['media'] as $ulid) {
+                        if (preg_match(ButtonLink::ULID_PATTERN, $ulid) === 1) {
+                            $ulids[] = strtoupper($ulid);
+                        }
+                    }
                 }
             }
         }
 
-        return [array_values(array_unique($ids)), array_values(array_unique($keys))];
+        return [array_values(array_unique($ids)), array_values(array_unique($keys)), array_values(array_unique($ulids))];
     }
 }

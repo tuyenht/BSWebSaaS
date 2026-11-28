@@ -2,7 +2,10 @@
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -23,8 +26,10 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use Illuminate\Support\Facades\View;
+use Tests\Fixtures\StorefrontCards;
 
 /*
  * Query Budget guardrail (CLAUDE.md §6): assert a hard ceiling of DB queries per
@@ -41,6 +46,26 @@ it('renders the storefront home within its query budget', function (): void {
     $budget = 11; // + nav: one assignment lookup (miss → empty menu) on top of the page resolve
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk());
+
+    expect($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the storefront home placing three shared blocks within the budget plus one', function (): void {
+    // One query reads every shared block a page places (body and slots together), however many.
+    $budget = 12;
+    app(Tenancy::class)->enter(1, function (): void {
+        $refs = [];
+        foreach (['mot', 'hai', 'ba'] as $key) {
+            $block = ContentBlock::query()->create(['key' => $key, 'name' => 'Khối '.$key, 'region' => 'inline', 'status' => 'published']);
+            ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => [
+                ['type' => 'cta', 'props' => ['heading' => 'Khối dùng chung '.$key]],
+            ]]]);
+            $refs[] = ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $block->ulid]];
+        }
+        EntryTranslation::query()->update(['body' => json_encode(['blocks' => $refs])]);
+    });
+
+    $count = countQueries(fn () => $this->get('http://a.test/')->assertOk()->assertSee('Khối dùng chung ba'));
 
     expect($count)->toBeLessThanOrEqual($budget);
 });
@@ -169,6 +194,34 @@ it('renders the storefront home with contact buttons drawn by their own pictures
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
+it('renders the storefront home with a heading mask picture within the budget plus one', function (): void {
+    // The mask picture resolves in ONE media query, by its row ulid or by an older storage key alike;
+    // with none set the heading decoration adds no query, so this is the home budget + 1.
+    $budget = 12;
+    StorefrontCards::pinMediaConfig();   // an absolute file address, the only shape printed in url()
+    $mask = app(Tenancy::class)->enter(1, function (): Media {
+        $hash = hash('sha256', 'heading-mask');
+
+        return Media::query()->create([
+            'collection' => 'library', 'slug' => 'hoa-van', 'hash' => $hash, 'storage_key' => 's/library/hoa-van-'.substr($hash, 0, 12).'.png',
+            'mime' => 'image/png', 'size' => 2_000, 'width' => 320, 'height' => 32,
+        ]);
+    });
+    $url = e(app(MediaUrlResolver::class)->fileUrl($mask->storage_key));
+
+    foreach ([['mask_ulid' => $mask->ulid], ['mask_media' => $mask->storage_key]] as $setting) {
+        app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->updateOrCreate(['group_name' => 'theme', 'key' => 'heading_decor'], ['value' => $setting]));
+
+        $html = '';
+        $count = countQueries(function () use (&$html): void {
+            $html = $this->get('http://a.test/')->assertOk()->getContent();
+        });
+
+        expect($html)->toContain('--sf-decor-mask:url('.$url.')')
+            ->and($count)->toBeLessThanOrEqual($budget);
+    }
+});
+
 it('renders the storefront home with the full chrome within its query budget', function (): void {
     // The home budget plus the three reads any menu costs (items, their labels, link targets).
     // Tokens, header and footer settings share the one settings read the home already makes,
@@ -271,6 +324,41 @@ it('renders the storefront home with a phone menu and no products within its que
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
+/** The main menu of site 1 with one top-level item whose large panel shows a published shared block. */
+function qbBlockPanelMenu(): void
+{
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'storefront', 'key' => 'header', 'value' => ['sticky' => false]]);
+        $block = ContentBlock::query()->create(['key' => 'bang-lon', 'name' => 'Bảng lớn', 'region' => 'menu', 'status' => 'published']);
+        ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => [
+            ['type' => 'cta', 'props' => ['heading' => 'Bảng lớn dùng chung']],
+        ]]]);
+        $home = Entry::query()->firstOrFail();
+        $menu = Menu::query()->create(['name' => 'Chính', 'handle' => 'primary']);
+        foreach (range(1, 3) as $position) {
+            $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => $home->id,
+                'position' => $position, 'meta' => $position === 1 ? ['mega' => ['type' => 'block', 'block' => $block->ulid]] : []]);
+            $item->translations()->create(['locale' => 'vi', 'label' => "Mục {$position}"]);
+        }
+        MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $menu->id]);
+    });
+}
+
+it('renders the storefront home with a large panel showing a shared block within the menu budget plus one', function (): void {
+    // The home budget, the menu's three reads and the phone menu's products-section read, plus ONE read
+    // for every shared block the large panels show (with the page's own references when it has any).
+    $budget = 16;
+    qbBlockPanelMenu();
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/')->assertOk()->getContent();
+    });
+
+    expect($html)->toContain('sf-nav__panel--block')->toContain('Bảng lớn dùng chung')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
 it('renders the site’s 404 page with the full chrome within its query budget', function (): void {
     // The page resolve misses (the route, then the redirect check), then the same chrome as the
     // home: one settings read, the brand, the menus' three reads. The contact page costs nothing
@@ -304,6 +392,21 @@ it('renders the site’s 404 page with the full chrome within its query budget',
     });
 
     expect($html)->toContain('sf-404')->toContain('sf-header')->toContain('sf-footer')->toContain('Mục 3')
+        ->and($count)->toBeLessThanOrEqual($budget);
+});
+
+it('renders the site’s 404 page with a large panel showing a shared block within its budget plus one', function (): void {
+    // The 404 page's own budget (no footer menu here, so one read less than with the full chrome)
+    // plus the one read of the panels' blocks.
+    $budget = 15;
+    qbBlockPanelMenu();
+
+    $html = '';
+    $count = countQueries(function () use (&$html): void {
+        $html = $this->get('http://a.test/khong-co-trang-nay')->assertNotFound()->getContent();
+    });
+
+    expect($html)->toContain('sf-404')->toContain('sf-nav__panel--block')->toContain('Bảng lớn dùng chung')
         ->and($count)->toBeLessThanOrEqual($budget);
 });
 
@@ -450,6 +553,7 @@ it('renders the admin "Tổng quan" with every card on a flat query budget', fun
         grantRole($member, 'everything', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'entries.review', 'entries.approve',
             'settings.manage', 'forms.view', 'domains.manage', 'media.upload', 'menus.manage']);
         SiteModule::query()->create(['module_key' => 'contacts', 'enabled' => true]);
+        SiteModule::query()->create(['module_key' => 'media', 'enabled' => true]);
 
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
@@ -485,10 +589,11 @@ it('renders the admin "Tổng quan" with every card on a flat query budget', fun
     });
 
     expect($html)->toContain(__('dash.rev_title'))->toContain(__('dash.wr_title'))->toContain(__('dash.wr_returned_title'))
-        ->toContain(__('dash.start_title'))->toContain(__('dash.todo_leads', ['n' => 12]))
+        ->toContain(__('dash.start_title'))->toContain(__('dash.todo_leads', ['n' => 12]))->toContain(__('dash.st_label'))->toContain('id="tq-m-storage"')
         // The shell (tenancy, nav, entitlement) and one bounded read per card: the newest unread
         // leads, the domains, the first steps, the review queue (with its rows' relations), the
-        // member's own posts counted up to 99+ in one statement, and five recent pages and posts.
+        // member's own posts counted up to 99+ in one statement, five recent pages and posts, and
+        // the library's storage against the plan in one statement (measured 38 → 39 with it).
         // Every list is capped, so the count does not grow with the website's size.
         ->and($count)->toBeLessThanOrEqual(41);
 });

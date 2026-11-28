@@ -38,7 +38,22 @@ final class EmailOtpChallenge extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
-        return null;
+        return $this->usesAuthenticator(User::find(session('2fa.user_id'))) ? $this->toAuthenticatorStep() : null;
+    }
+
+    /**
+     * The emailed code stands in only for people without the authenticator app. Someone who turned
+     * the app on is asked for it however they reached this step: a code mailed to the inbox must
+     * never replace it (that inbox may be exactly what was taken, e.g. with a Google account).
+     */
+    private function usesAuthenticator(mixed $user): bool
+    {
+        return $user instanceof User && $user->two_factor_confirmed_at !== null;
+    }
+
+    private function toAuthenticatorStep(): mixed
+    {
+        return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);
     }
 
     public function verify(): mixed
@@ -52,6 +67,9 @@ final class EmailOtpChallenge extends Component
             session()->forget('2fa.user_id');
 
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
+        }
+        if ($this->usesAuthenticator($user)) {
+            return $this->toAuthenticatorStep();
         }
 
         // Defense in depth: never authenticate a non-operator on the platform plane, even if a
@@ -90,13 +108,15 @@ final class EmailOtpChallenge extends Component
         }
 
         RateLimiter::clear($rlKey);
+        // A Google/Facebook sign-in that reached this step: the log says which one.
+        $via = Cast::string(session()->pull('2fa.via'));
         session()->forget('2fa.user_id');
         Auth::login($user);
         session()->regenerate();
         Audit::record('auth.login.succeeded', [
             'actor_id' => $user->getAuthIdentifier(),
             'actor_label' => $user->email,
-            'meta' => ['factor' => 'email_otp'],
+            'meta' => array_filter(['factor' => 'email_otp', 'provider' => $via]),
         ]);
 
         // Back to the page that sent the visitor to sign in (a protected page, or an invitation
@@ -107,6 +127,11 @@ final class EmailOtpChallenge extends Component
     public function resend(): void
     {
         $user = User::find(session('2fa.user_id'));
+        if ($this->usesAuthenticator($user)) {
+            $this->toAuthenticatorStep();
+
+            return;
+        }
 
         // Locked out after too many wrong codes: a new code would be refused until the wait is over,
         // so none is sent; the wait stays on screen instead of a "sent" that cannot be used.

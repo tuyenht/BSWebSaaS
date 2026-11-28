@@ -134,7 +134,9 @@ final class MediaLibraryDirectory
             ->selectRaw($column.' as k, ulid')->toBase()->first();
         $backwards = $after === '' && $before !== '' && $cursor !== null;
 
-        $rows = (clone $query)->select(['id', 'ulid', 'storage_key', 'original_filename', 'mime', 'size', 'width', 'height', 'alt', 'folder_id', 'created_at', 'deleted_at']);
+        // of meta only the page count the tiles show (a PDF's «N trang»), not the whole document
+        $rows = (clone $query)->select(['id', 'ulid', 'storage_key', 'original_filename', 'mime', 'size', 'width', 'height', 'alt', 'folder_id', 'created_at', 'deleted_at'])
+            ->selectRaw("jsonb_build_object('pages', meta->'pages') as meta");
         if ($cursor !== null) {
             // forward on a desc order reads smaller keys; going back flips it
             $smaller = ($dir === 'desc') !== $backwards;
@@ -266,6 +268,63 @@ final class MediaLibraryDirectory
         }
 
         return $out;
+    }
+
+    /**
+     * How many of a query's files each «Loại tệp» choice holds (KINDS: a picture is any file but a
+     * PDF), in one statement: read with every condition but that one.
+     *
+     * @param  Builder<Media>  $query
+     * @return array<string, int> keyed by the KINDS choice
+     */
+    public function kindCounts(Builder $query): array
+    {
+        $row = (clone $query)->toBase()->selectRaw("count(*) filter (where mime <> 'application/pdf') as img, count(*) filter (where mime = 'application/pdf') as pdf")->first();
+
+        return ['img' => Cast::int($row->img ?? 0), 'pdf' => Cast::int($row->pdf ?? 0)];
+    }
+
+    /**
+     * How many of a query's files each «Định dạng» choice holds, in one statement: read with every
+     * condition but that one.
+     *
+     * @param  Builder<Media>  $query
+     * @return array<string, int> keyed by the FORMATS choice
+     */
+    public function formatCounts(Builder $query): array
+    {
+        $select = [];
+        $bindings = [];
+        foreach (array_values(self::FORMATS) as $i => $mimes) {
+            $select[] = 'count(*) filter (where mime in ('.implode(', ', array_fill(0, count($mimes), '?')).")) as f{$i}";
+            $bindings = [...$bindings, ...$mimes];
+        }
+        $row = (clone $query)->toBase()->selectRaw(implode(', ', $select), $bindings)->first();
+        $out = [];
+        foreach (array_keys(self::FORMATS) as $i => $format) {
+            $out[$format] = Cast::int($row->{"f{$i}"} ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
+     * How many of a query's live files are used somewhere and how many are not (USES, as the
+     * «Tình trạng» filter reads it), in one statement: read with every condition but that one.
+     *
+     * @param  Builder<Media>  $query
+     * @return array<string, int> keyed by the USES choice
+     */
+    public function useCounts(Builder $query): array
+    {
+        $used = clone $query;
+        $this->usage->constrain($used, true, liveOwners: true);
+        $row = (clone $query)->toBase()->selectRaw('count(*) as n')
+            ->selectSub($used->toBase()->selectRaw('count(*)'), 'used')
+            ->first();
+        $usedN = Cast::int($row->used ?? 0);
+
+        return ['used' => $usedN, 'unused' => Cast::int($row->n ?? 0) - $usedN];
     }
 
     /**

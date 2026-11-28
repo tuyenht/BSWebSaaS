@@ -94,7 +94,7 @@ it('refuses to save a server on the private network, in plain words, and stores 
 
     app(Tenancy::class)->enter(1, function () use ($admin, $host): void {
         Livewire::actingAs($admin)->test(EmailSettings::class)
-            ->set('method', 'smtp_password')->set('smtpHost', $host)->set('smtpPort', 587)
+            ->set('provider', 'other')->set('relay', 'smtp')->set('smtpHost', $host)->set('smtpPort', 587)
             ->set('smtpUsername', 'u')->set('smtpPassword', 'p')
             ->call('save')
             ->assertHasErrors(['smtpHost'])
@@ -109,7 +109,7 @@ it('refuses to save a server name that does not exist, saying to check it', func
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailSettings::class)
-            ->set('method', 'smtp_password')->set('smtpHost', 'smtp.gmial.com')->set('smtpPort', 587)
+            ->set('provider', 'other')->set('relay', 'smtp')->set('smtpHost', 'smtp.gmial.com')->set('smtpPort', 587)
             ->set('smtpUsername', 'u')->set('smtpPassword', 'p')
             ->call('save')
             ->assertHasErrors(['smtpHost'])
@@ -137,7 +137,7 @@ it('refuses a port that is not a mail port and names the ones allowed', function
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailSettings::class)
-            ->set('method', 'smtp_password')->set('smtpHost', 'mail.example.net')->set('smtpPort', 6379)
+            ->set('provider', 'other')->set('relay', 'smtp')->set('smtpHost', 'mail.example.net')->set('smtpPort', 6379)
             ->set('smtpUsername', 'u')->set('smtpPassword', 'p')
             ->call('save')
             ->assertHasErrors(['smtpPort'])
@@ -150,7 +150,7 @@ it('still saves a public server on a mail port', function (): void {
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailSettings::class)
-            ->set('method', 'smtp_password')->set('smtpHost', 'mail.example.net')->set('smtpPort', 465)
+            ->set('provider', 'other')->set('relay', 'smtp')->set('smtpHost', 'mail.example.net')->set('smtpPort', 465)
             ->set('smtpUsername', 'u')->set('smtpPassword', 'p')
             ->call('save')
             ->assertHasNoErrors();

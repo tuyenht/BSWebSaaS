@@ -10,7 +10,11 @@
     Item options: an icon, a badge and (below the top level) a description go in the label
     (StorefrontChrome::menuLabel); "Hiện trên" hides the row on the other device by class; a
     top-level "nút nổi bật" is drawn as a button; a top-level item set to a large panel lays its
-    children out in columns (--sf-mega-cols), and stays a plain list in the phone drawer.
+    children out in columns (--sf-mega-cols), and stays a plain list in the phone drawer. A large panel
+    built from a shared block ($item['panel'], MenuResolver: the block already drawn by the theme's own
+    views, so printed as it is) opens the block instead, also for an item with no children; the phone
+    drawer still lists the children. When the block cannot be shown the resolver hands null and the item
+    is what it would be without the panel.
     In the phone drawer ($drawer) every parent on the first and second level is ONE button (label and
     chevron, the whole row toggles it); a parent with a page of its own starts its panel with a
     "Tổng quan <name>" row linking to that page ($overview, StorefrontChrome::drawerOverview), which carries
@@ -33,7 +37,7 @@
                     @include('theme::partials.nav-disclosure', ['items' => $item['children'], 'depth' => $depth + 1, 'idPrefix' => $panel, 'overview' => \App\Modules\Theme\Chrome\StorefrontChrome::drawerOverview($item)])
                 </div>
             </li>
-        @elseif ($depth === 0 && ! empty($item['children']))
+        @elseif ($depth === 0 && (! empty($item['children']) || (! $sfDrawer && ! empty($item['panel']))))
             @php($panel = $idPrefix.'-'.$loop->index)
             @php($trail = \App\Modules\Theme\Chrome\StorefrontChrome::inTrail($item) ? ' is-trail' : '')
             <li class="sf-nav__item sf-nav__item--parent{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuItemClass($item) }}" data-disclosure>
@@ -42,9 +46,13 @@
                 @else
                     <a class="sf-nav__link{{ $trail }}" href="{{ $item['url'] }}" @if (! empty($item['active'])) aria-current="page" @elseif ($trail !== '') aria-current="true" @endif @foreach (($item['attrs'] ?? []) as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>{{ \App\Modules\Theme\Chrome\StorefrontChrome::menuLabel($item) }}</a><button type="button" class="sf-nav__chev{{ $trail }}" aria-expanded="false" aria-controls="{{ $panel }}" aria-label="{{ __('storefront.submenu_toggle', ['label' => $item['label']]) }}">@include('theme::partials.sf-icon', ['name' => 'chevron', 'size' => 16])</button>
                 @endif
-                <div class="sf-nav__panel{{ ! empty($item['mega']) ? ' sf-nav__panel--mega' : '' }}" id="{{ $panel }}"@if (! empty($item['mega'])) style="--sf-mega-cols: {{ (int) $item['mega'] }}"@endif>
-                    @include('theme::partials.nav-disclosure', ['items' => $item['children'], 'depth' => 1, 'overview' => null])
-                </div>
+                @if (! empty($item['panel']))
+                    <div class="sf-nav__panel sf-nav__panel--block" id="{{ $panel }}"><div class="sf-nav__block">{{ $item['panel'] }}</div></div>
+                @else
+                    <div class="sf-nav__panel{{ ! empty($item['mega']) ? ' sf-nav__panel--mega' : '' }}" id="{{ $panel }}"@if (! empty($item['mega'])) style="--sf-mega-cols: {{ (int) $item['mega'] }}"@endif>
+                        @include('theme::partials.nav-disclosure', ['items' => $item['children'], 'depth' => 1, 'overview' => null])
+                    </div>
+                @endif
             </li>
         @elseif ($item['url'] !== '#' || ! empty($item['children']))
             {{-- The drawer marks the trail on its top level only: inside an open group the current page alone stands out. --}}

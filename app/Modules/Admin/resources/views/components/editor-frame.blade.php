@@ -17,7 +17,9 @@
     // the Livewire methods the save buttons wait on
     'target' => 'save,publish',
     'saveTip' => null,
-    // «Xem trước»: ['url' => ?string, 'why' => ?string] — the address of the saved version, or why there is none yet
+    // «Xem trước»: ['url' => ?string, 'why' => ?string, 'dialog' => ?bool] — the address of the saved version, or why
+    // there is none yet; `dialog` true: the screen draws the in-page «Xem trước trên website» (components/preview-dialog)
+    // and the button opens it (the window event bs-site-preview) instead of a new tab
     'preview' => ['url' => null, 'why' => null],
     // whether «Xem trước» also sits in the bar from 600px up (posts and pages); otherwise it is only the phone's ⋮ item (products)
     'previewBar' => true,
@@ -72,14 +74,21 @@
             <x-bs-admin::save-state :note="$note" data-guide="state" class="max-w-full" />
         </div>
         <span wire:ignore class="contents">
-            <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ped-retry shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()">
-                <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('catalog.ed.retry') }}
+            {{-- on the phone's one bar the word gives way to the icon alone when it does not fit (data-retry-tight, admin-editor.js) --}}
+            <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ped-retry shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()"
+                                title="{{ __('catalog.ed.retry') }}">
+                <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> <span class="ped-retry-t">{{ __('catalog.ed.retry') }}</span>
             </x-bs-admin::button>
         </span>
 
         <span class="ped-sp flex-1"></span>
         <div class="ped-acts flex flex-wrap items-center justify-end gap-2 @max-[48rem]:flex-nowrap">
             @if (! $previewBar)
+            @elseif (($preview['url'] ?? null) && ($preview['dialog'] ?? false))
+                <x-bs-admin::button variant="outline" color="secondary" class="ped-pv shrink-0" data-guide="preview" aria-haspopup="dialog" x-on:click="$dispatch('bs-site-preview')"
+                                    title="{{ __('admin.editor.preview') }}">
+                    <x-bs-admin::icon name="ri-eye" :class="$glyph" /> {{ __('admin.editor.preview') }}
+                </x-bs-admin::button>
             @elseif ($preview['url'] ?? null)
                 <x-bs-admin::button variant="outline" color="secondary" class="ped-pv shrink-0" data-guide="preview" :href="$preview['url']" :navigate="false" target="_blank" rel="noopener"
                                     title="{{ __('admin.editor.preview_tip') }}">
@@ -105,7 +114,9 @@
                     <x-bs-admin::icon name="ri-more-2-fill" :class="$glyph" />
                 </x-bs-admin::button>
                 <x-bs-admin::list.menu class="list-menu" :label="$more">
-                    @if ($preview['url'] ?? null)
+                    @if (($preview['url'] ?? null) && ($preview['dialog'] ?? false))
+                        <x-bs-admin::list.menu-item class="ped-child-mi" icon="ri-eye" aria-haspopup="dialog" x-on:click="close(false); $dispatch('bs-site-preview')">{{ __('admin.editor.preview') }}</x-bs-admin::list.menu-item>
+                    @elseif ($preview['url'] ?? null)
                         <x-bs-admin::list.menu-item class="ped-child-mi" icon="ri-eye" :href="$preview['url']" target="_blank" rel="noopener">{{ __('admin.editor.preview') }}</x-bs-admin::list.menu-item>
                     @elseif ($preview['why'] ?? null)
                         <x-bs-admin::list.menu-item class="ped-child-mi" icon="ri-eye" off x-on:click="$bsToast({{ $toast($preview['why']) }})">{{ __('admin.editor.preview') }}</x-bs-admin::list.menu-item>

@@ -850,7 +850,8 @@ it('empties every language\'s cover words in a pending change that swaps the pic
         $entry = changeLivePost($author, changeNewsCategory(), ['vi', 'en']);
         $live = function () use ($entry, $old): Entry {
             // written straight to the rows: the model in hand may still hold the values set before
-            Entry::query()->whereKey($entry->id)->update(['meta' => json_encode(['image_url' => $old->storage_key])]);
+            // (an applied change writes its picture by its row: the old shape comes back whole)
+            Entry::query()->whereKey($entry->id)->update(['cover_media_id' => null, 'meta' => json_encode(['image_url' => $old->storage_key])]);
             DB::table('entry_translations')->where('entry_id', $entry->id)->where('locale', 'vi')->update(['cover_alt' => 'Thợ đứng máy']);
             DB::table('entry_translations')->where('entry_id', $entry->id)->where('locale', 'en')->update(['cover_alt' => 'A machinist at work']);
 
@@ -904,5 +905,80 @@ it('leaves the byline as it is when applying a change saved before bylines exist
         app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->fresh()->version());
 
         expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin cũ')->author_name->toBe('Phòng Kỹ thuật');
+    });
+});
+
+it('carries a live post\'s focus keyword through a pending change, per language, and applies the one the change names', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory(), ['vi', 'en']);
+        $entry->translationFor('vi')->update(['focus_keyword' => 'bản tin kỹ thuật']);
+        $entry->translationFor('en')->update(['focus_keyword' => 'engineering news']);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+        expect($change->content['locales']['vi']['focus_keyword'])->toBe('bản tin kỹ thuật');
+
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['focus_keyword' => 'tin gia công CNC']);
+        expect($entry->fresh()->translationFor('vi')->focus_keyword)->toBe('bản tin kỹ thuật');   // the live words stay until applied
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->focus_keyword->toBe('tin gia công CNC')
+            ->and($entry->fresh()->translationFor('en')->focus_keyword)->toBe('engineering news');
+
+        // words the column cannot take are refused, nothing held
+        expect(changeRejection(fn () => app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['focus_keyword' => str_repeat('a', 121)])))
+            ->toBe('content_invalid')
+            ->and(changeOf($entry->fresh()))->toBeNull();
+    });
+});
+
+it('leaves the focus keyword as it is when applying a change saved before it existed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin cũ']);
+        $content = $change->content;
+        unset($content['locales']['vi']['focus_keyword']);
+        $change->forceFill(['content' => $content])->save();
+        $entry->translationFor('vi')->update(['focus_keyword' => 'bản tin kỹ thuật']);
+
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->fresh()->version());
+
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin cũ')->focus_keyword->toBe('bản tin kỹ thuật');
+    });
+});
+
+it('names the picture of a change by its row, and the applied post too, with no old key beside it', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $media = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bia-moi', 'hash' => str_repeat('f', 64),
+            'storage_key' => 'a/library/bia-moi-ffffffffffff.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+        ]);
+        $entry = changeLivePost($author, changeNewsCategory());
+
+        // by its row: an old key sent beside it is not kept
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', [], ['cover_media_id' => $media->id, 'meta' => ['image_url' => 'a/library/cu-000000000000.png']]);
+        expect($change->content['shared']['cover_media_id'])->toBe($media->id)
+            ->and($change->content['shared']['meta'])->not->toHaveKey('image_url');
+        // the change's files are read FOR KEY SHARE in the apply's transaction: a purge meanwhile waits for it
+        $held = [];
+        DB::listen(function ($query) use (&$held): void {
+            if (str_contains($query->sql, 'from "media"') && str_contains($query->sql, '"id" in') && str_contains($query->sql, 'for key share')) {
+                $held[] = $query->bindings;
+            }
+        });
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($held)->not->toBeEmpty()
+            ->and(in_array($media->id, array_merge(...$held), true))->toBeTrue()
+            ->and($entry->fresh()->cover_media_id)->toBe($media->id)
+            ->and($entry->fresh()->meta)->not->toHaveKey('image_url');
+
+        // a change held from before, naming the picture by its old key: applied as its row
+        Entry::query()->whereKey($entry->id)->update(['cover_media_id' => null]);
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', [], ['meta' => ['image_url' => $media->storage_key]]);
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->cover_media_id)->toBe($media->id)
+            ->and($entry->fresh()->meta)->not->toHaveKey('image_url');
     });
 });

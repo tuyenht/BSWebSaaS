@@ -17,11 +17,13 @@ use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\JobFacts;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Rbac\Support\RoleLabel;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -261,23 +263,16 @@ final class ReviewInbox extends Component
     /** Open a post in the reader (only one that is actually in this person's queue). */
     public function open(string $ulid): void
     {
-        $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
-        $this->detail = $this->current !== null;
-        $this->trailShown = self::TRAIL_PAGE;
-        $this->note = '';
-        $this->closeNote();
-        $this->resetErrorBag();
-        if ($this->detail) {
-            // Below the two-pane width the reader now covers the list: the reading starts at its title.
-            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) document.getElementById('inbox-reader-title')?.focus()");
-        }
+        $this->select($ulid, true);
     }
 
     /**
-     * «Bài trước» / «Bài sau» in the reader's bar: the neighbour of the open post in the list on screen.
-     * Only a post of this person's list opens (open() checks it again).
+     * «Bài trước» / «Bài sau» in the reader's bar, or ↑ / ↓ on the keyboard ($keys, board 17): the neighbour
+     * of the open post in the list on screen. The buttons open it like a click on its row; the keys only
+     * mark it and read it, so below the two-pane width the list stays in view unless the reader already
+     * covers it. Only a post of this person's list is picked (select() checks it again).
      */
-    public function step(int $by): void
+    public function step(int $by, bool $keys = false): void
     {
         $ulids = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values();
         $at = $this->current === null ? false : $ulids->search($this->current);
@@ -287,8 +282,27 @@ final class ReviewInbox extends Component
 
         $target = $ulids->get($at + ($by < 0 ? -1 : 1));
         if (is_string($target)) {
-            $this->open($target);
+            $this->select($target, ! $keys);
             $this->shown = max($this->shown, $ulids->search($target) + 1);
+        }
+    }
+
+    /**
+     * Read the post $ulid in the reader. $show also brings the reader over the list below the two-pane
+     * width (a click on a row, «Bài sau»), and the reading starts at its title there; otherwise the reader
+     * keeps covering the list or not, as it did.
+     */
+    private function select(string $ulid, bool $show): void
+    {
+        $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
+        $this->detail = $this->current !== null && ($show || $this->detail);
+        $this->trailShown = self::TRAIL_PAGE;
+        $this->note = '';
+        $this->closeNote();
+        $this->resetErrorBag();
+        if ($show && $this->detail) {
+            // Below the two-pane width the reader now covers the list: the reading starts at its title.
+            $this->js("if (window.matchMedia('(max-width: 63.999rem)').matches) document.getElementById('inbox-reader-title')?.focus()");
         }
     }
 
@@ -520,11 +534,18 @@ final class ReviewInbox extends Component
 
     /**
      * Apply a transition to the open post. The engine owns the rules; this only decides where
-     * the failure is shown and moves the reader on to the next piece of work.
+     * the failure is shown and moves the reader on to the next piece of work. $ulid is the post a
+     * question named: when the reader has moved on since it was asked, nothing is applied.
      */
-    public function apply(string $key): void
+    public function apply(string $key, ?string $ulid = null): void
     {
         $this->resetErrorBag();
+
+        if ($ulid !== null && $ulid !== $this->current) {
+            $this->addError('inbox', __('admin.inbox.err_moved'));
+
+            return;
+        }
 
         $entry = $this->currentEntry();
         if (! $entry instanceof Entry) {
@@ -604,13 +625,20 @@ final class ReviewInbox extends Component
      * dialog keeps it on the field until it is put right. Anything else (done, refused, the post moved on)
      * is the page's message, and the dialog closes. The move must be one this person may make from where
      * the post stands, going live, asking no reason, on a post not yet live — the same set the dialog is
-     * shown for; ApproveEntryForLater judges it all again on the locked row.
+     * shown for; ApproveEntryForLater judges it all again on the locked row. $ulid is the post the dialog
+     * named: when the reader has moved on since, nothing is approved.
      *
      * @return string|null the field's error, or null once the dialog may close
      */
-    public function approveLater(string $key, string $publishAt): ?string
+    public function approveLater(string $key, string $publishAt, ?string $ulid = null): ?string
     {
         $this->resetErrorBag();
+
+        if ($ulid !== null && $ulid !== $this->current) {
+            $this->addError('inbox', __('admin.inbox.err_moved'));
+
+            return null;
+        }
 
         $when = ScheduleInput::parse($publishAt);
         $refused = ScheduleInput::error($publishAt);
@@ -1122,7 +1150,7 @@ final class ReviewInbox extends Component
      *     step_no: int, step_count: int, step_label: string, step_icon: string, workflow: string,
      *     fields: list<array{label: string, value: string}>, missing: list<string>, seo_edit: bool,
      *     words: int, paragraphs: int,
-     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string}>,
+     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, first: bool, note: bool, icon: string, primary: bool}>,
      *     schedule: array{at: string, offset: int, zone: string},
      *     trail: list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
      *     trail_total: int, trail_more: int,
@@ -1171,6 +1199,8 @@ final class ReviewInbox extends Component
                 'note' => $transition->requires_note,
                 // The same icon as its reason dialog: going live, taking a live post down, or a return.
                 'icon' => $live ? 'ri-check-double' : ($states->firstWhere('key', $fromState)?->is_published === true ? 'ri-eye-off' : 'ri-arrow-go-back'),
+                // Enter runs the first move that goes live (board 17), through its own button and question
+                'primary' => $live && ! in_array(true, array_column($actions, 'primary'), true),
             ];
         }
 
@@ -1184,6 +1214,7 @@ final class ReviewInbox extends Component
         $seoTitle = $translation?->seo_title;
         $seoDescription = $translation?->seo_description;
         $mayEdit = $actor->can('update', $entry);
+        $cover = $this->coverUrl(EntryCover::value($entry, EntryCover::refs([$entry], keys: false)));
 
         return [
             'ulid' => (string) $entry->ulid,
@@ -1191,7 +1222,7 @@ final class ReviewInbox extends Component
             'section' => $this->sectionLabel($entry),
             'author' => $this->authorName($entry),
             'sent_at' => $this->waitedAt($entry),
-            'cover' => $this->coverUrl($entry),
+            'cover' => $cover,
             'body' => $body,
             'excerpt' => $translation?->excerpt,
             'seo_title' => $seoTitle,
@@ -1204,7 +1235,7 @@ final class ReviewInbox extends Component
             'fields' => $this->mainFields($entry, $locale),
             // «Bài này còn thiếu …» (board 17): what a reader of the card or of Google will miss
             'missing' => array_values(array_filter([
-                $this->coverUrl($entry) === null ? (string) __('admin.inbox.missing_cover') : null,
+                $cover === null ? (string) __('admin.inbox.missing_cover') : null,
                 ($translation->excerpt ?? '') === '' ? (string) __('admin.inbox.missing_excerpt') : null,
                 ($seoTitle ?? '') === '' ? (string) __('admin.inbox.missing_seo_title') : null,
                 ($seoDescription ?? '') === '' ? (string) __('admin.inbox.missing_seo_description') : null,
@@ -1292,11 +1323,14 @@ final class ReviewInbox extends Component
         return ['at' => ScheduleInput::tomorrowEight(), 'offset' => $offset, 'zone' => $zone];
     }
 
-    private function coverUrl(Entry $entry): ?string
+    /**
+     * The address of the cover picture. An old cover value may be a glyph name or an outside address:
+     * only a storage key is a picture of ours, anything else counts as no cover here (it was a broken
+     * picture before).
+     */
+    private function coverUrl(string $value): ?string
     {
-        $key = data_get($entry->meta, 'image_url');
-
-        return is_string($key) && $key !== '' ? app(MediaUrlResolver::class)->url($key, 640) : null;
+        return MediaRefs::looksLikeKey($value) ? app(MediaUrlResolver::class)->url($value, 640) : null;
     }
 
     /**

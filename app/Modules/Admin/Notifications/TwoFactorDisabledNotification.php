@@ -49,6 +49,7 @@ final class TwoFactorDisabledNotification extends Notification implements Should
         Audit::record($this->turnedOn ? 'auth.2fa.enabled_notice_failed' : 'auth.2fa.disabled_notice_failed', [
             'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
         ]);
+        $this->recordMailFailure($e);
     }
 
     /**

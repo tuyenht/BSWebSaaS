@@ -17,6 +17,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -241,8 +242,9 @@ it('marks only the gallery products of the media file\'s own site', function ():
     $picture = app(Tenancy::class)->enter(1, fn (): Media => markProductMedia('a'));
     $otherText = app(Tenancy::class)->enter(2, function () use ($picture): ProductTranslation {
         [$product, $translation] = markProduct('do-ga-site-khac');
-        // A row of the other site pointing at this file (no write path makes one; the mark must not follow it).
-        ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $picture->id, 'position' => 0]);
+        // The other site cannot point a gallery row at this file: the same-site key refuses it.
+        expect(fn () => DB::transaction(fn () => ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $picture->id, 'position' => 0])))
+            ->toThrow(QueryException::class, 'product_images_media_id_same_site_foreign');
         pinProductMarks();
 
         return $translation;

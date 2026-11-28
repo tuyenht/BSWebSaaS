@@ -9,6 +9,11 @@
     $hint = 'm-0 mt-1.5 text-small text-text-muted [overflow-wrap:anywhere]';
     $err = fn (string $key): ?string => $shown[$key]['msg'] ?? null;
     $last = count($fields) - 1;
+    // Another language than the main one: its texts only; what every language shares is locked («Chung»),
+    // an empty text shows the main language's words as its example and in the preview.
+    $src = $sourceTexts;
+    $or = fn (string $text, string $fallback): string => trim($text) !== '' ? trim($text) : trim($fallback);
+    $shownName = $translating ? $or($name, $src['name']) : trim($name);
 @endphp
 <div class="flex flex-col gap-4" x-on:bm-focus.window="requestAnimationFrame(() => document.getElementById($event.detail.id)?.focus())"
      x-on:bm-first-error.window="$wire.openFirstError()">
@@ -22,6 +27,12 @@
         <h1 class="m-0 min-w-0 flex-auto text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $title }}</h1>
     </div>
 
+    @if (count($langBar) > 1)
+        {{-- The language bar (board 15, the editors' shared bar): the language open and how far every other is
+             written; another opens in this editor with its own link, through the unsaved-changes question. --}}
+        <x-bs-admin::lang-bar :langs="$langBar" :manage="$langManage" focus="bm-name" />
+    @endif
+
     <div class="flex flex-wrap items-start gap-4">
         <div class="flex min-w-0 flex-[999_1_520px] flex-col gap-4">
             {{-- Thông tin chung --}}
@@ -29,9 +40,9 @@
                 <div class="{{ $head }}"><h2 id="bm-s1" class="{{ $h2 }}">{{ __('form_builder.card_general') }}</h2></div>
                 <div class="flex min-w-0 flex-col gap-4 p-4">
                     <div>
-                        <label for="bm-name" class="{{ $lab }}">{{ __('form_builder.name_label') }} <span class="text-danger-text" aria-hidden="true">*</span></label>
-                        <input id="bm-name" type="text" class="field {{ $in }}" wire:model.blur="name" maxlength="200" required
-                            placeholder="{{ __('form_builder.name_placeholder') }}" @if ($err('name')) aria-invalid="true" @endif
+                        <label for="bm-name" class="{{ $lab }}">{{ __('form_builder.name_label') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multiLang)<x-bs-admin::lang-chip :code="$locale" class="ms-auto" />@endif</label>
+                        <input id="bm-name" type="text" class="field {{ $in }}" wire:model.blur="name" maxlength="200" dir="{{ $textDir }}" lang="{{ $locale }}" @unless ($translating) required @endunless
+                            placeholder="{{ $translating ? $src['name'] : __('form_builder.name_placeholder') }}" @if ($err('name')) aria-invalid="true" @endif
                             aria-describedby="@if ($err('name'))bm-name-e @endif bm-name-h" @if ($isNew && $ulid === null) autofocus @endif>
                         @if ($err('name'))
                             <x-bs-admin::field-error id="bm-name-e" class="mt-1.5">{{ $err('name') }}</x-bs-admin::field-error>
@@ -43,8 +54,11 @@
                             <b id="bm-active-l" class="block font-semibold text-text-strong">{{ __('form_builder.active_label') }} · {{ $active ? __('form_builder.on') : __('form_builder.off') }}</b>
                             <span id="bm-active-h" class="text-small text-text-muted">{{ $active ? __('form_builder.active_on_hint') : __('form_builder.active_off_hint') }}</span>
                         </div>
+                        @if ($translating)
+                            <x-bs-admin::shared-chip :why="$sharedWhy" />
+                        @endif
                         <button type="button" role="switch" class="switch hit-area" aria-checked="{{ $active ? 'true' : 'false' }}"
-                            aria-label="{{ __('form_builder.active_label') }}" aria-describedby="bm-active-h" wire:click="$toggle('active')"></button>
+                            aria-label="{{ __('form_builder.active_label') }}" aria-describedby="bm-active-h" @if ($translating) disabled title="{{ $sharedWhy }}" @else wire:click="$toggle('active')" @endif></button>
                     </div>
                 </div>
             </section>
@@ -57,19 +71,23 @@
                 </div>
                 <div class="flex min-w-0 flex-col gap-4 p-4">
                     <p class="m-0 text-small text-text-muted">{{ __('form_builder.fields_hint_drag') }} <x-bs-admin::icon name="ri-draggable" class="inline size-4 align-text-bottom" /> {{ __('form_builder.fields_hint_rest', ['n' => count($kinds)]) }}</p>
-                    <div class="flex flex-col overflow-hidden rounded-md border border-border" role="list" aria-label="{{ __('form_builder.fields_label') }}" wire:sort="sortField">
+                    @if ($translating)
+                        <p class="m-0 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-lock" class="mt-0.5 size-4 shrink-0" />{{ __('form_builder.shared_fields_hint') }}</p>
+                    @endif
+                    <div class="flex flex-col overflow-hidden rounded-md border border-border" role="list" aria-label="{{ __('form_builder.fields_label') }}" @unless ($translating) wire:sort="sortField" @endunless>
                         @foreach ($fields as $i => $f)
                             @php
                                 $key = $f['key'];
                                 $open = $openKey === $key;
-                                $label = trim($f['label']) !== '' ? $f['label'] : __('form_builder.field_unnamed');
+                                $label = $translating ? ($or($f['label'], $src['labels'][$key] ?? '') ?: __('form_builder.field_unnamed')) : (trim($f['label']) !== '' ? $f['label'] : __('form_builder.field_unnamed'));
+                                $missing = $translating && trim($f['label']) === '';
                                 $fe = $err('f:'.$key);
                                 $labelBad = $fe !== null && ($shown['f:'.$key]['id'] ?? '') === 'bm-l-'.$key;
                                 $choicesBad = $fe !== null && ! $labelBad;
                             @endphp
-                            <div role="listitem" wire:key="bm-f-{{ $key }}" wire:sort:item="{{ $key }}" @class(['flex flex-col bg-surface', 'border-t border-border' => $i > 0])>
+                            <div role="listitem" wire:key="bm-f-{{ $key }}" @unless ($translating) wire:sort:item="{{ $key }}" @endunless @class(['flex flex-col bg-surface', 'border-t border-border' => $i > 0])>
                                 <div class="flex min-h-13 flex-wrap items-center gap-2 py-1.5 pe-2 ps-1">
-                                    <span wire:sort:handle class="inline-flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-text-muted" title="{{ __('form_builder.drag') }}" aria-hidden="true">
+                                    <span @unless ($translating) wire:sort:handle @endunless @class(['inline-flex h-11 w-8 shrink-0 items-center justify-center text-text-muted', 'cursor-grab' => ! $translating, 'opacity-50' => $translating]) title="{{ __('form_builder.drag') }}" aria-hidden="true">
                                         <x-bs-admin::icon name="ri-draggable" class="size-5" />
                                     </span>
                                     <div class="flex min-w-0 flex-[1_1_200px] flex-col">
@@ -77,16 +95,17 @@
                                         <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-muted">
                                             <span class="inline-flex items-center gap-1"><x-bs-admin::icon :name="$kinds[$f['type']] ?? 'ri-text'" class="size-4" /> {{ __('form_builder.type.'.$f['type']) }}</span>
                                             @if ($f['required'])<span class="font-semibold text-danger-text">* {{ __('form_builder.required') }}</span>@endif
+                                            @if ($missing)<span class="inline-flex items-center gap-1 text-warning-text"><span class="lb-dot" data-k="partial" aria-hidden="true"></span>{{ __('form_builder.field_missing_lang', ['lang' => $langName]) }}</span>@endif
                                             @if ($fe !== null && ! $open)<span class="inline-flex items-center gap-1 text-danger-text"><x-bs-admin::icon name="ri-error-warning" class="size-4" />{{ $fe }}</span>@endif
                                         </span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-1" wire:sort:ignore>
-                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="move({{ Js::from($key) }}, -1)"
+                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="move({{ Js::from($key) }}, -1)" :disabled="$translating"
                                             :aria-disabled="$i === 0 ? 'true' : 'false'" class="aria-disabled:opacity-50"
                                             :aria-label="__('form_builder.up_aria', ['label' => $label])" :title="__('form_builder.up_aria', ['label' => $label])">
                                             <x-bs-admin::icon name="ri-arrow-up" class="size-4" /><span class="max-[599.98px]:sr-only">{{ __('form_builder.up') }}</span>
                                         </x-bs-admin::button>
-                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="move({{ Js::from($key) }}, 1)"
+                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="move({{ Js::from($key) }}, 1)" :disabled="$translating"
                                             :aria-disabled="$i === $last ? 'true' : 'false'" class="aria-disabled:opacity-50"
                                             :aria-label="__('form_builder.down_aria', ['label' => $label])" :title="__('form_builder.down_aria', ['label' => $label])">
                                             <x-bs-admin::icon name="ri-arrow-down" class="size-4" /><span class="max-[599.98px]:sr-only">{{ __('form_builder.down') }}</span>
@@ -101,16 +120,16 @@
                                     <div id="bm-fe-{{ $key }}" class="flex flex-col gap-3 border-t border-dashed border-border-strong bg-surface-muted px-4 pb-4 pt-3" wire:sort:ignore>
                                         <div class="grid gap-4 min-[600px]:grid-cols-2">
                                             <div>
-                                                <label for="bm-l-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.field_label') }} <span class="text-danger-text" aria-hidden="true">*</span></label>
-                                                <input id="bm-l-{{ $key }}" type="text" class="field {{ $in }}" wire:model.blur="fields.{{ $i }}.label" maxlength="200" required
-                                                    placeholder="{{ __('form_builder.field_label_placeholder') }}" @if ($labelBad) aria-invalid="true" aria-describedby="bm-l-{{ $key }}-e" @endif>
+                                                <label for="bm-l-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.field_label') }} <span class="text-danger-text" aria-hidden="true">*</span>@if ($multiLang)<x-bs-admin::lang-chip :code="$locale" class="ms-auto" />@endif</label>
+                                                <input id="bm-l-{{ $key }}" type="text" class="field {{ $in }}" wire:model.blur="fields.{{ $i }}.label" maxlength="200" dir="{{ $textDir }}" lang="{{ $locale }}" @unless ($translating) required @endunless
+                                                    placeholder="{{ $translating ? ($src['labels'][$key] ?? '') : __('form_builder.field_label_placeholder') }}" @if ($labelBad) aria-invalid="true" aria-describedby="bm-l-{{ $key }}-e" @endif>
                                                 @if ($labelBad)
                                                     <x-bs-admin::field-error id="bm-l-{{ $key }}-e" class="mt-1.5">{{ $fe }}</x-bs-admin::field-error>
                                                 @endif
                                             </div>
                                             <div>
-                                                <label for="bm-t-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.field_type') }}</label>
-                                                <select id="bm-t-{{ $key }}" class="field {{ $in }}" wire:model.live="fields.{{ $i }}.type">
+                                                <label for="bm-t-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.field_type') }}@if ($translating)<x-bs-admin::shared-chip :why="$sharedWhy" class="ms-auto" />@endif</label>
+                                                <select id="bm-t-{{ $key }}" class="field {{ $in }} disabled:opacity-60" wire:model.live="fields.{{ $i }}.type" @disabled($translating)>
                                                     @foreach ($kinds as $kind => $icon)
                                                         <option value="{{ $kind }}">{{ __('form_builder.type.'.$kind) }}</option>
                                                     @endforeach
@@ -126,7 +145,7 @@
                                                     @foreach (array_values(array_unique([...$fileKinds, $f['accept']])) as $acc)
                                                         @php $accOn = $f['accept'] === $acc; @endphp
                                                         <label @class(['flex min-h-hit cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5', 'border-border-strong' => ! $accOn, 'border-primary-text bg-[color-mix(in_srgb,var(--color-primary-text)_6%,transparent)]' => $accOn])>
-                                                            <input type="radio" name="bm-a-{{ $key }}" value="{{ $acc }}" class="mt-0.5 size-4.5 shrink-0 accent-primary-text" wire:model.live="fields.{{ $i }}.accept">
+                                                            <input type="radio" name="bm-a-{{ $key }}" value="{{ $acc }}" class="mt-0.5 size-4.5 shrink-0 accent-primary-text" wire:model.live="fields.{{ $i }}.accept" @disabled($translating)>
                                                             <span class="flex min-w-0 flex-col gap-1 text-body text-text-strong [overflow-wrap:anywhere]">
                                                                 <span>{{ __('form_builder.file_kind.'.$acc) }}</span>
                                                                 @if ($accOn)
@@ -140,7 +159,7 @@
                                             <div class="grid gap-4 min-[600px]:grid-cols-2">
                                                 <div>
                                                     <label for="bm-m-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.file_max') }}</label>
-                                                    <select id="bm-m-{{ $key }}" class="field {{ $in }}" wire:model.live="fields.{{ $i }}.max_files">
+                                                    <select id="bm-m-{{ $key }}" class="field {{ $in }} disabled:opacity-60" wire:model.live="fields.{{ $i }}.max_files" @disabled($translating)>
                                                         @for ($n = 1; $n <= \App\Modules\Forms\Support\FormFieldTypes::MAX_FILES; $n++)
                                                             <option value="{{ $n }}">{{ trans_choice('form_builder.file_max_n', $n, ['n' => $n]) }}</option>
                                                         @endfor
@@ -155,21 +174,21 @@
                                                 </p>
                                             </div>
                                         @endif
-                                        @if ($f['type'] === 'select')
+                                        @if (\App\Modules\Forms\Support\FormFieldTypes::isChoice($f['type']))
                                             <div>
-                                                <label for="bm-o-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.choices_label') }}</label>
-                                                <textarea id="bm-o-{{ $key }}" rows="4" class="{{ $in }} py-2 text-body" wire:model.blur="fields.{{ $i }}.choices"
-                                                    placeholder="{{ __('form_builder.choices_placeholder') }}" @if ($choicesBad) aria-invalid="true" aria-describedby="bm-o-{{ $key }}-e" @endif></textarea>
+                                                <label for="bm-o-{{ $key }}" class="{{ $lab }}">{{ __('form_builder.choices_label') }}@if ($multiLang)<x-bs-admin::lang-chip :code="$locale" class="ms-auto" />@endif</label>
+                                                <textarea id="bm-o-{{ $key }}" rows="4" class="{{ $in }} py-2 text-body" wire:model.blur="fields.{{ $i }}.choices" dir="{{ $textDir }}" lang="{{ $locale }}"
+                                                    placeholder="{{ $translating ? ($src['choices'][$key] ?? '') : __('form_builder.choices_placeholder') }}" @if ($choicesBad) aria-invalid="true" aria-describedby="bm-o-{{ $key }}-e" @endif></textarea>
                                                 @if ($choicesBad)
                                                     <x-bs-admin::field-error id="bm-o-{{ $key }}-e" class="mt-1.5">{{ $fe }}</x-bs-admin::field-error>
                                                 @endif
                                             </div>
                                         @endif
                                         <label class="flex min-h-hit cursor-pointer items-center gap-2.5 text-body text-text">
-                                            <input type="checkbox" class="size-4 shrink-0 accent-primary-text" wire:model.live="fields.{{ $i }}.required">
+                                            <input type="checkbox" class="size-4 shrink-0 accent-primary-text" wire:model.live="fields.{{ $i }}.required" @disabled($translating)>
                                             <span>{{ __('form_builder.required_check') }}</span>
                                         </label>
-                                        <x-bs-admin::button size="sm" variant="outline" color="danger" class="self-start" wire:click="removeField({{ Js::from($key) }})">
+                                        <x-bs-admin::button size="sm" variant="outline" color="danger" class="self-start" wire:click="removeField({{ Js::from($key) }})" :disabled="$translating">
                                             <x-bs-admin::icon name="ri-delete-bin-6" class="size-4" /> {{ __('form_builder.remove_field') }}
                                         </x-bs-admin::button>
                                     </div>
@@ -192,7 +211,11 @@
                     @if (isset($shown['fields']))
                         <x-bs-admin::field-error id="bm-add-err" tabindex="-1">{{ $shown['fields']['msg'] }}</x-bs-admin::field-error>
                     @endif
-                    @if (count($fields) < \App\Modules\Forms\Support\FormDraft::MAX_FIELDS)
+                    @if ($translating)
+                        <x-bs-admin::button variant="outline" color="secondary" id="bm-add" class="self-start" disabled :title="$sharedWhy">
+                            <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('form_builder.add_field') }} <x-bs-admin::icon name="chevron-down" class="size-4" />
+                        </x-bs-admin::button>
+                    @elseif (count($fields) < \App\Modules\Forms\Support\FormDraft::MAX_FIELDS)
                         <x-bs-admin::dropdown class="self-start">
                             <x-slot:trigger>
                                 <x-bs-admin::button variant="outline" color="secondary" id="bm-add" :aria-describedby="isset($shown['fields']) ? 'bm-add-err' : null">
@@ -216,21 +239,21 @@
                 <div class="{{ $head }}"><h2 id="bm-s3" class="{{ $h2 }}">{{ __('form_builder.card_after') }}</h2></div>
                 <div class="flex min-w-0 flex-col gap-4 p-4">
                     <div>
-                        <label for="bm-thx" class="{{ $lab }}">{{ __('form_builder.success_label') }}</label>
-                        <textarea id="bm-thx" rows="3" class="{{ $in }} py-2 text-body" wire:model.blur="success" maxlength="1000"
-                            placeholder="{{ __('form_builder.success_placeholder') }}" @if ($err('success')) aria-invalid="true" aria-describedby="bm-thx-e" @endif></textarea>
+                        <label for="bm-thx" class="{{ $lab }}">{{ __('form_builder.success_label') }}@if ($multiLang)<x-bs-admin::lang-chip :code="$locale" class="ms-auto" />@endif</label>
+                        <textarea id="bm-thx" rows="3" class="{{ $in }} py-2 text-body" wire:model.blur="success" maxlength="1000" dir="{{ $textDir }}" lang="{{ $locale }}"
+                            placeholder="{{ $translating && $src['success'] !== '' ? $src['success'] : __('form_builder.success_placeholder') }}" @if ($err('success')) aria-invalid="true" aria-describedby="bm-thx-e" @endif></textarea>
                         @if ($err('success'))
                             <x-bs-admin::field-error id="bm-thx-e" class="mt-1.5">{{ $err('success') }}</x-bs-admin::field-error>
                         @endif
                     </div>
                     <div>
-                        <span id="bm-em-l" class="{{ $lab }}">{{ __('form_builder.notify_label') }}</span>
+                        <span id="bm-em-l" class="{{ $lab }}">{{ __('form_builder.notify_label') }}@if ($translating)<x-bs-admin::shared-chip :why="$sharedWhy" class="ms-auto" />@endif</span>
                         <div class="flex flex-wrap items-center gap-1.5" role="list" aria-labelledby="bm-em-l">
                             @forelse ($emails as $j => $email)
                                 <span role="listitem" wire:key="bm-em-{{ $j }}-{{ md5($email) }}" class="inline-flex min-h-8 max-w-full items-center gap-1 rounded-full bg-surface-hover pe-1 ps-2.5 text-small text-text-strong [overflow-wrap:anywhere]">
                                     {{ $email }}
                                     <button type="button" class="hit-area inline-flex size-6 shrink-0 items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text"
-                                        aria-label="{{ __('form_builder.email_remove', ['email' => $email]) }}" title="{{ __('form_builder.email_remove', ['email' => $email]) }}" wire:click="removeEmail({{ $j }})">
+                                        aria-label="{{ __('form_builder.email_remove', ['email' => $email]) }}" title="{{ __('form_builder.email_remove', ['email' => $email]) }}" wire:click="removeEmail({{ $j }})" @disabled($translating)>
                                         <x-bs-admin::icon name="ri-close" class="size-4" />
                                     </button>
                                 </span>
@@ -239,10 +262,10 @@
                             @endforelse
                         </div>
                         <div class="mt-2 flex flex-wrap gap-2">
-                            <input type="email" inputmode="email" autocomplete="off" class="field {{ $in }} min-w-0 flex-[1_1_14rem]" wire:model="newEmail"
+                            <input type="email" inputmode="email" autocomplete="off" class="field {{ $in }} min-w-0 flex-[1_1_14rem] disabled:opacity-60" wire:model="newEmail" @disabled($translating)
                                 wire:keydown.enter.prevent="addEmail" aria-label="{{ __('form_builder.notify_input') }}" placeholder="{{ __('form_builder.notify_placeholder') }}"
                                 @if ($emailError !== '') aria-invalid="true" aria-describedby="bm-em-e" @endif>
-                            <x-bs-admin::button variant="outline" color="secondary" wire:click="addEmail">
+                            <x-bs-admin::button variant="outline" color="secondary" wire:click="addEmail" :disabled="$translating">
                                 <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('form_builder.notify_add') }}
                             </x-bs-admin::button>
                         </div>
@@ -258,7 +281,7 @@
             <section id="bm-s4" class="{{ $card }} scroll-mt-4" aria-labelledby="bm-s4-h">
                 <div class="{{ $head }}"><h2 id="bm-s4-h" class="{{ $h2 }}">{{ __('form_builder.place_title') }}</h2></div>
                 <div class="flex min-w-0 flex-col items-start gap-3 p-4">
-                    <p class="m-0 text-body text-text [overflow-wrap:anywhere]">{{ __('form_builder.place_text', ['name' => trim($name) !== '' ? trim($name) : trim($saved['name'])]) }}</p>
+                    <p class="m-0 text-body text-text [overflow-wrap:anywhere]">{{ __('form_builder.place_text', ['name' => $translating ? $src['name'] : (trim($name) !== '' ? trim($name) : trim($saved['name']))]) }}</p>
                     @if ($pagePath !== null)
                         <p class="{{ $hint }} mt-0">{{ __('form_builder.place_on') }}
                             <a href="{{ $pagePath }}" target="_blank" rel="noopener" class="font-semibold text-primary-text underline underline-offset-2">{{ $pagePath }}</a></p>
@@ -281,15 +304,15 @@
                         {{ $showThanks ? __('form_builder.preview_form') : __('form_builder.preview_thanks') }}
                     </x-bs-admin::button>
                 </div>
-                <div class="flex flex-col gap-3 bg-surface-muted p-4" inert>
-                    <b class="text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong [overflow-wrap:anywhere]">{{ trim($name) }}</b>
+                <div class="flex flex-col gap-3 bg-surface-muted p-4" dir="{{ $textDir }}" inert>
+                    <b class="text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong [overflow-wrap:anywhere]">{{ $shownName }}</b>
                     @if ($showThanks)
                         <div class="flex gap-2 rounded-md bg-success-soft p-4 text-success-text">
-                            <x-bs-admin::icon name="ri-checkbox-circle" class="size-5 shrink-0" /><span class="[overflow-wrap:anywhere]">{{ trim($success) !== '' ? trim($success) : $thanksDefault }}</span>
+                            <x-bs-admin::icon name="ri-checkbox-circle" class="size-5 shrink-0" /><span class="[overflow-wrap:anywhere]">{{ trim($success) !== '' ? trim($success) : ($translating && $src['success'] !== '' ? $src['success'] : $thanksDefault) }}</span>
                         </div>
                     @else
                         @foreach ($fields as $f)
-                            @php $pl = (trim($f['label']) !== '' ? trim($f['label']) : __('form_builder.field_unnamed')).($f['required'] ? ' *' : ''); @endphp
+                            @php $pl = (($translating ? $or($f['label'], $src['labels'][$f['key']] ?? '') : trim($f['label'])) ?: __('form_builder.field_unnamed')).($f['required'] ? ' *' : ''); @endphp
                             @if ($f['type'] === 'checkbox')
                                 <span class="flex items-start gap-2 text-small font-semibold text-text-strong"><span class="mt-0.5 size-4 shrink-0 rounded-sm border border-border-input bg-surface"></span><span class="[overflow-wrap:anywhere]">{{ $pl }}</span></span>
                             @elseif ($f['type'] === 'file')
@@ -315,5 +338,5 @@
     <x-bs-admin::save-bar :changes="$changes" :invalid="$invalid" live first-error="bm-first-error" />
     <x-bs-admin::unsaved-dialog :count="$changes" :label="$title" save="save" discard="resetChanges" :body="$leave"
         :save-label="__('form_builder.leave_save')" :discard-label="__('form_builder.leave_discard')" />
-    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" dismiss="closeToast" :undo="$removed !== null ? 'undoLast' : null" />
+    <x-bs-admin::toast :message="$toastMsg" :tone="$toastTone" :seq="$toastSeq" :sticky="$toastTone === 'info'" dismiss="closeToast" :undo="$removed !== null ? 'undoLast' : null" />
 </div>

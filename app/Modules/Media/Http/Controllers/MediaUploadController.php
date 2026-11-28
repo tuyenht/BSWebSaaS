@@ -6,6 +6,8 @@ use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Exceptions\MediaRejectedException;
+use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
+use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +67,7 @@ final class MediaUploadController
                 'filename' => ['required', 'string', 'max:255'],
                 'width' => ['nullable', 'integer'],
                 'height' => ['nullable', 'integer'],
+                'folder' => ['nullable', 'string', 'max:255'],
             ]);
 
             $media = $register->handle(
@@ -74,6 +77,7 @@ final class MediaUploadController
                 $request->has('width') ? $request->integer('width') : null,
                 $request->has('height') ? $request->integer('height') : null,
                 mayRestore: $this->mayRestore(),
+                folderId: $this->folderId($request),
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
@@ -91,6 +95,7 @@ final class MediaUploadController
         try {
             $request->validate([
                 'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:'.UploadMedia::MAX_KB],
+                'folder' => ['nullable', 'string', 'max:255'],
             ]);
 
             $file = $request->file('file');
@@ -98,7 +103,7 @@ final class MediaUploadController
                 return response()->json(['message' => __('media.err_file_invalid')], 422);
             }
 
-            $media = $upload->handle($file, 'library', $this->actorId(), $this->mayRestore());
+            $media = $upload->handle($file, 'library', $this->actorId(), $this->mayRestore(), $this->folderId($request));
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
@@ -126,6 +131,26 @@ final class MediaUploadController
     private function mayRestore(): bool
     {
         return Gate::allows('media.delete.any');
+    }
+
+    /**
+     * The folder the library was showing when the file was added (its slug, as the page names
+     * folders): filing a file there is the media.upload right these endpoints already hold, as moving
+     * files into a folder is. Looked up through the folder's site scope, so another site's slug finds
+     * nothing; a folder gone meanwhile or being deleted in the background leaves the file unsorted.
+     */
+    private function folderId(Request $request): ?int
+    {
+        $slug = trim((string) $request->string('folder'));
+        if ($slug === '') {
+            return null;
+        }
+        $folder = MediaFolder::query()->where('slug', $slug)->first(['id']);
+        if ($folder === null || DeleteLargeMediaFolder::pending(app(CurrentSite::class)->id(), $folder->id)) {
+            return null;
+        }
+
+        return $folder->id;
     }
 
     private function actorId(): ?int

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Theme\Rendering;
 
+use App\Modules\Theme\Components\BlockReference;
+
 /**
  * The places around a post, a list and a product where a site puts blocks of its own: the post's
  * side column, the band before and the band at the end of a list, of a post and of a product, and the three places on
@@ -38,6 +40,12 @@ final class LayoutSlots
      */
     public const array TYPE_SLOTS = ['recent_posts' => ['post_aside', 'after_post']];
 
+    /**
+     * The slots that take no shared block (BlockReference): a product's tabs are capped in blocks, and
+     * a reference would hide how many it holds.
+     */
+    public const array NO_REFERENCES = ['product_tabs'];
+
     /** A category's value that hides the slot in every language. */
     public const string NONE = 'none';
 
@@ -57,6 +65,10 @@ final class LayoutSlots
     /** Whether a block of $type may sit in $slot. */
     public static function accepts(string $slot, string $type): bool
     {
+        if ($type === BlockReference::TYPE) {
+            return ! in_array($slot, self::NO_REFERENCES, true);
+        }
+
         return ! isset(self::TYPE_SLOTS[$type]) || in_array($slot, self::TYPE_SLOTS[$type], true);
     }
 
@@ -85,6 +97,33 @@ final class LayoutSlots
             foreach ($value as $text) {
                 if (is_array($text) && is_array($text['blocks'] ?? null)) {
                     $lists[] = $text['blocks'];
+                }
+            }
+        }
+
+        return $lists;
+    }
+
+    /**
+     * The same block lists as blockLists(), each with the slot and the language it is shown in, for
+     * the index of where shared blocks are used. A slot that is not one of SLOTS, or a value that is
+     * not a block list, is skipped.
+     *
+     * @return list<array{slot: string, locale: string, blocks: array<array-key, mixed>}>
+     */
+    public static function placedLists(mixed $slots): array
+    {
+        $lists = [];
+        if (! is_array($slots)) {
+            return $lists;
+        }
+        foreach ($slots as $slot => $value) {
+            if (! is_string($slot) || ! self::has($slot) || ! is_array($value)) {
+                continue;
+            }
+            foreach ($value as $locale => $text) {
+                if (is_string($locale) && is_array($text) && is_array($text['blocks'] ?? null)) {
+                    $lists[] = ['slot' => $slot, 'locale' => $locale, 'blocks' => $text['blocks']];
                 }
             }
         }

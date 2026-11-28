@@ -199,14 +199,21 @@ trait EditsButtonActions
         }
     }
 
-    /** A document of THIS site's library (site-scoped lookup), never a key taken as given. */
-    public function pickButtonFile(string $key): void
+    /**
+     * A document of THIS site's library, named by its row ulid: the format is checked, then the row
+     * is looked up site-scoped (documents only, outside the Trash) and its own ulid is stored, never
+     * the value as sent.
+     */
+    public function pickButtonFile(string $ulid): void
     {
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
         $path = $this->buttonFilePath;
-        if ($this->buttonPath($path) && Media::query()->where('storage_key', $key)->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->exists()) {
-            $this->putButton($path, ['k' => 'file', 'file' => $key]);
+        $media = $this->buttonPath($path) && preg_match(ButtonLink::ULID_PATTERN, $ulid) === 1
+            ? Media::query()->where('ulid', strtoupper($ulid))->whereIn('mime', ButtonLink::DOCUMENT_MIMES)->value('ulid')
+            : null;
+        if (is_string($media)) {
+            $this->putButton($path, ['k' => 'file', 'media' => $media]);
             $this->buttonTouched[ButtonActions::fid($path)] = true;
         }
         $this->closeButtonFilePicker();
@@ -225,7 +232,7 @@ trait EditsButtonActions
      * What the panel draws for every button, and the library's documents while the dialog is open.
      *
      * @param  array<string, array<array-key, mixed>>  $schemas
-     * @return array{buttons: array<string, array<string, mixed>>, documents: list<array{key: string, name: string, meta: string, icon: string}>, fileCurrent: string}
+     * @return array{buttons: array<string, array<string, mixed>>, documents: list<array{ulid: string, key: string, name: string, meta: string, icon: string, current: bool}>}
      */
     private function buttonPanel(array $schemas): array
     {
@@ -251,10 +258,18 @@ trait EditsButtonActions
         }
         $this->buttonResults = $results;
 
+        // The current file is marked by its row ulid, or by its key in a body saved before files were named by row.
+        $currentRef = ($current['k'] ?? null) === 'file' ? ButtonLink::fileRef($current) : null;
+        $documents = [];
+        foreach ($this->showButtonFilePicker && Gate::allows('media.view') ? $panel->documents() : [] as $doc) {
+            $documents[] = $doc + ['current' => isset($currentRef['media'])
+                ? strtoupper($currentRef['media']) === strtoupper($doc['ulid'])
+                : isset($currentRef['file']) && $currentRef['file'] === $doc['key']];
+        }
+
         return [
             'buttons' => $buttons,
-            'documents' => $this->showButtonFilePicker && Gate::allows('media.view') ? $panel->documents() : [],
-            'fileCurrent' => Cast::string($current['file'] ?? ''),
+            'documents' => $documents,
         ];
     }
 
@@ -293,7 +308,7 @@ trait EditsButtonActions
      */
     private function carried(array $value): array
     {
-        $keep = ['k' => true, 'page' => true, 'url' => true, 'blank' => true, 'anchor' => true, 'phone' => true, 'email' => true, 'subject' => true, 'file' => true];
+        $keep = ['k' => true, 'page' => true, 'url' => true, 'blank' => true, 'anchor' => true, 'phone' => true, 'email' => true, 'subject' => true, 'media' => true, 'file' => true];
         $value = array_intersect_key($value, $keep);
 
         return ButtonLink::problem($value) === 'kind' ? ['k' => $value['k']] : $value;

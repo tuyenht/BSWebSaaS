@@ -6,8 +6,10 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Models\FormSubmissionFile;
 use App\Modules\Forms\Notifications\NewLeadNotification;
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Notifications\Support\Notify;
+use App\Modules\Shared\Contracts\MailFailureRecorder;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\TurnstileVerifier;
@@ -99,8 +101,7 @@ final readonly class SubmitForm
     {
         foreach ($form->fields as $field) {
             if ($field->type === 'checkbox' && ! empty($data[$field->key])) {
-                $labels = Cast::arr($field->label);
-                $data[$field->key] = Cast::string($labels[app()->getLocale()] ?? $labels['vi'] ?? null) ?: true;
+                $data[$field->key] = FormDraft::text($field->label, app()->getLocale()) ?: true;
             }
         }
 
@@ -177,6 +178,8 @@ final readonly class SubmitForm
         } catch (Throwable $e) {
             // Best-effort: a mail/transport failure must not 500 the storefront or lose the lead.
             report($e);
+            // …and the website's «Thư gần đây» shows the notice that did not leave.
+            app(MailFailureRecorder::class)->mailFailed(NewLeadNotification::class, $e, $recipients);
         }
     }
 }

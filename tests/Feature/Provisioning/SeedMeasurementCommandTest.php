@@ -146,3 +146,26 @@ it('names the website\'s owner as the creator of every page and post it seeds', 
             ->and(Entry::query()->where(fn ($q) => $q->whereNull('author_id')->orWhere('author_id', '!=', $owner))->count())->toBe(0);
     });
 });
+
+it('stores each seeded post photo cover as its picture row, with no storage key left in meta', function (): void {
+    $siteId = StorefrontCards::site('Đo tốc độ', 'cwv.platform.test');
+
+    $this->artisan('site:seed-measurement', ['--host' => 'cwv.platform.test'])->assertSuccessful();
+
+    app(Tenancy::class)->enter($siteId, function (): void {
+        $posts = Entry::query()->where('type', 'post')->get(['id', 'cover_media_id', 'meta']);
+        $photos = $posts->filter(fn (Entry $post): bool => $post->cover_media_id !== null);
+
+        // a photo cover is its row; an icon cover (a glyph name, no slash) stays a word in meta
+        expect($photos)->not->toBeEmpty();
+        foreach ($posts as $post) {
+            $word = (string) data_get($post->meta, 'image_url');
+            if ($post->cover_media_id !== null) {
+                expect(Media::query()->whereKey($post->cover_media_id)->exists())->toBeTrue()
+                    ->and($word)->toBe('');
+            } else {
+                expect($word)->not->toContain('/');
+            }
+        }
+    });
+});

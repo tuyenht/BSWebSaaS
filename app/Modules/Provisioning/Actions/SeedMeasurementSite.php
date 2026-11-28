@@ -5,6 +5,8 @@ namespace App\Modules\Provisioning\Actions;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Cms\Models\ContentBlockTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
@@ -14,6 +16,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\EnsureMediaFromKey;
@@ -21,6 +24,7 @@ use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use Carbon\CarbonImmutable;
 
@@ -32,7 +36,8 @@ use Carbon\CarbonImmutable;
  * job's tap check needs on a phone, top-rule features, a rounded call to action, contact cards) and
  * `/ban-tin`, a news card grid with two child categories, and a "Dịch vụ" main-menu item with two
  * sub-items (so the job's phone-menu pass measures parent rows, their arrows and sub-links). The
- * provisioned `/tin-tuc` list is left as it is.
+ * provisioned `/tin-tuc` list is left as it is. The about page also places a published shared block
+ * (Khối dùng chung), so the job measures a page whose blocks come partly from the block library.
  *
  * White-label: neutral sample text, no brand. Idempotent: rows are looked up by slug, storage key,
  * setting key or route path and refreshed or left as they are. Runs inside the site's tenant
@@ -56,6 +61,9 @@ final readonly class SeedMeasurementSite
 
     /** Three pages that together draw every block kind the registry knows (a test pins this). */
     public const string ABOUT_PATH = '/do-kiem-gioi-thieu';
+
+    /** The reference code of the shared block the about page places. */
+    public const string SHARED_BLOCK_KEY = 'do-kiem-khoi-chung';
 
     public const string CONTENT_PATH = '/do-kiem-noi-dung';
 
@@ -91,7 +99,8 @@ final readonly class SeedMeasurementSite
         $this->seedPage($locale, $photos);
 
         $ids = array_map(static fn (Media $media): int => (int) $media->id, $photos);
-        foreach (self::extraPages($ids) as $path => [$title, $blocks]) {
+        $shared = $this->seedSharedBlock($locale);
+        foreach (self::extraPages($ids, $shared) as $path => [$title, $blocks]) {
             $this->seedBlockPage($locale, $path, $title, $blocks);
         }
         $this->seedNewsSlots($locale);
@@ -104,9 +113,10 @@ final readonly class SeedMeasurementSite
      * grid or rail, so the CI job measures each kind's real markup.
      *
      * @param  array<string, int>  $img  photo name => media id
+     * @param  string  $sharedBlock  the ulid of the shared block the about page places (seedSharedBlock)
      * @return array<string, array{0: string, 1: list<array<string, mixed>>}>
      */
-    public static function extraPages(array $img): array
+    public static function extraPages(array $img, string $sharedBlock = ''): array
     {
         $photoNames = ['slide-1', 'slide-2', 'slide-3', 'product-1', 'product-2', 'product-3', 'news-1', 'news-2', 'news-3'];
         $pic = static fn (int $n): int => $img[$photoNames[$n % 9]];
@@ -215,7 +225,7 @@ final readonly class SeedMeasurementSite
         ];
 
         return [
-            self::ABOUT_PATH => ['Giới thiệu đo tốc độ', $about],
+            self::ABOUT_PATH => ['Giới thiệu đo tốc độ', [...$about, ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $sharedBlock]]]],
             self::CONTENT_PATH => ['Nội dung đo tốc độ', $content],
             self::COMMERCE_PATH => ['Thương mại đo tốc độ', $commerce],
         ];
@@ -239,6 +249,29 @@ final readonly class SeedMeasurementSite
                 ['type' => 'file_card', 'props' => ['badge' => 'PDF', 'title' => 'Hồ sơ năng lực', 'text' => 'Tải về tài liệu giới thiệu.', 'url' => '/lien-he']],
             ],
         ];
+    }
+
+    /**
+     * The published shared block the about page places (a call to action), looked up by its reference
+     * code and refreshed; returns its ulid. The body goes through the model, so it is cleaned like any.
+     */
+    private function seedSharedBlock(string $locale): string
+    {
+        $block = ContentBlock::query()->firstOrCreate(
+            ['key' => self::SHARED_BLOCK_KEY],
+            ['name' => 'Lời mời liên hệ dùng chung', 'region' => 'inline', 'status' => ContentBlock::PUBLISHED],
+        );
+        if ($block->status !== ContentBlock::PUBLISHED) {
+            $block->update(['status' => ContentBlock::PUBLISHED]);
+        }
+        $translation = ContentBlockTranslation::query()->where('content_block_id', $block->id)->where('locale', $locale)->first()
+            ?? new ContentBlockTranslation(['content_block_id' => $block->id, 'locale' => $locale]);
+        $translation->body = ['blocks' => [
+            ['type' => 'cta', 'props' => ['heading' => 'Bạn cần một đối tác gia công?', 'text' => 'Gửi bản vẽ, chúng tôi báo giá trong một ngày làm việc.', 'button_label' => 'Gửi yêu cầu', 'button_url' => '/lien-he', 'variant' => 'default']],
+        ]];
+        $translation->save();
+
+        return $block->ulid;
     }
 
     private function seedNewsSlots(string $locale): void
@@ -506,8 +539,10 @@ final readonly class SeedMeasurementSite
             return;
         }
 
+        [$coverId, $meta] = EntryCover::stored(null, ['image_url' => $image], lock: true);
         $entry = Entry::query()->create([
-            'type' => 'post', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => $publishedAt, 'meta' => ['image_url' => $image],
+            'type' => 'post', 'author_id' => $this->owner->id(), 'status' => 'published', 'published_at' => $publishedAt,
+            'cover_media_id' => $coverId, 'meta' => $meta,
         ]);
         $entry->translations()->create([
             'locale' => $locale, 'title' => $title, 'slug' => $slug, 'status' => 'published', 'excerpt' => $excerpt,

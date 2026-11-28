@@ -23,7 +23,9 @@
     // $busy (optional, a fixed method name too): while the host's call to it runs, the panel is aria-busy, ✕ is aria-disabled
     // and nothing closes the panel (an irreversible step must not be left half-seen).
     // The panel counts as an open [data-bs-modal] (it is on the page only while open), so a dialog closed over it
-    // leaves the page behind locked.
+    // leaves the page behind locked. It is a working panel for the toast (data-toast-keep): a message that finds no
+    // room beside or above it stands just above the footer's buttons (data-toast-foot) when it fits below the
+    // header, else stays where it is, in sight, its timer running as usual (resources/js/admin-toast-spot.js).
     //
     // A screen that keeps its state in the browser passes `state` (an Alpine expression: the panel is
     // drawn while it is set) and `close` as the Alpine call that asks to close it (the screen may
@@ -55,7 +57,7 @@
 @if ($alpine)
 <template x-if="{{ $state }}">
 @endif
-<div data-bs-modal x-data="{
+<div data-bs-modal data-toast-keep x-data="{
          open: true,
          back: @js($returnTo),
          opener: null,
@@ -100,7 +102,7 @@
         </div>
         <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-5 py-4">{{ $slot }}</div>
         @isset($footer)
-            <div class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">{{ $footer }}</div>
+            <div data-toast-foot class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-[599.98px]:flex-col-reverse max-[599.98px]:*:w-full">{{ $footer }}</div>
         @endisset
     </div>
 </div>

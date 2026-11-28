@@ -3,14 +3,15 @@
 namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Exceptions\MediaKeyRejectedException;
+use App\Modules\Media\Exceptions\SeedFileCopyFailedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 
 /**
  * Ensures a Media master exists for a storage_key already sitting in R2, returning it (idempotent
@@ -26,6 +27,12 @@ use RuntimeException;
  * of the key) because the original file bytes aren't at hand; it only needs to be unique, which the
  * storage_key already is. size is 0 (unknown without fetching the object). An existing master for
  * the key is returned untouched — a real upload is never clobbered.
+ *
+ * The seeders call this many times inside one long transaction of their own. A row of size 0 adds
+ * nothing to the library's storage total, so SiteCounters never touches (or holds) the total's row
+ * and an upload of the website meanwhile does not wait for the seed to end. A caller that passes a
+ * real size counts it at once and holds that row until it commits: keep such a transaction to one
+ * file (one Tenancy::enter per file, as media:rekey-site does).
  */
 final readonly class EnsureMediaFromKey
 {
@@ -43,6 +50,7 @@ final readonly class EnsureMediaFromKey
         private CurrentSite $current,
         private SiteDirectory $sites,
         private MediaKeyPrefix $prefix,
+        private MediaStorage $storage,
     ) {}
 
     /**
@@ -69,7 +77,7 @@ final readonly class EnsureMediaFromKey
             if ($disk->exists($sourceKey)) {
                 $mime = self::MIME_BY_EXT[strtolower(pathinfo($key, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
                 if (! MediaKey::copyAs($disk, $sourceKey, $key, $mime)) {
-                    throw new RuntimeException("Copying the seed file '{$sourceKey}' to '{$key}' failed.");
+                    throw new SeedFileCopyFailedException("Copying the seed file '{$sourceKey}' to '{$key}' failed.");
                 }
             } else {
                 Log::warning('Seed file missing from media storage', ['source' => $sourceKey, 'key' => $key]);
@@ -98,10 +106,17 @@ final readonly class EnsureMediaFromKey
             throw MediaKeyRejectedException::notOwnFolder($storageKey);
         }
 
-        return Media::query()->firstOrCreate(
+        $media = Media::query()->firstOrCreate(
             ['storage_key' => $storageKey],
             array_merge($this->deriveFromKey($storageKey), $overrides),
         );
+        // a row just made counts into the library's storage total (never refused: this files what is
+        // already stored, it uploads nothing), as the last write
+        if ($media->wasRecentlyCreated) {
+            $this->storage->added($media);
+        }
+
+        return $media;
     }
 
     /**

@@ -5,12 +5,15 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Fixtures\StorefrontCards;
 
 /*
  * «Xem trước» of a page or post visitors cannot see yet: the real storefront page of an entry of the
@@ -117,6 +120,31 @@ it('shows a draft page as the website would draw it to a member who may edit it,
         ->toContain('class="sf-preview" role="note"')
         ->toContain(__('storefront.preview_band'))
         ->not->toContain('rel="canonical"');
+});
+
+it('draws the cover a draft post names by id, with no old key, and none when that file is in the Trash', function (): void {
+    StorefrontCards::pinMediaConfig();
+    $author = epMember(['entries.view', 'entries.edit.any']);
+    $ulid = epPost(epSection('admin_approval'), $author, send: false);
+    $cover = app(Tenancy::class)->enter(1, function () use ($ulid): Media {
+        $cover = StorefrontCards::media('bia-xem-truoc');
+        DB::table('entries')->where('ulid', $ulid)->update(['cover_media_id' => $cover->id]);
+
+        return $cover;
+    });
+    $stem = pathinfo(basename($cover->storage_key), PATHINFO_FILENAME);
+
+    $html = (string) $this->actingAs($author)->get("http://a.test/admin/content/{$ulid}/preview")->assertOk()->getContent();
+    expect(str_contains($html, $stem))->toBeTrue('the cover named by id is not drawn');
+
+    // in the Trash: no cover, even beside an old key
+    app(Tenancy::class)->enter(1, function () use ($cover, $ulid): void {
+        $cover->delete();
+        DB::table('entries')->where('ulid', $ulid)->update(['meta' => json_encode(['image_url' => 's/library/anh-cu-a1b2c3d4e5f6.webp'])]);
+    });
+    epFresh();
+    $html = (string) $this->actingAs($author)->get("http://a.test/admin/content/{$ulid}/preview")->assertOk()->getContent();
+    expect($html)->not->toContain($stem)->not->toContain('anh-cu-a1b2c3d4e5f6');
 });
 
 it('answers a member who may only see the list as if the entry did not exist', function (): void {

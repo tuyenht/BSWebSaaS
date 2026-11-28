@@ -6,7 +6,11 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteFeature;
+use App\Modules\Tenancy\Services\SiteCounters;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -94,6 +98,18 @@ it('uploads each file once through the media library and reuses it on the next r
         ->and(packMedia($this->siteId))->toBe($keys)
         ->and(ContentPacks::in($this->siteId, fn () => Media::query()->count()))->toBe(2)
         ->and(Storage::disk('r2')->get($keys['header.png']))->toBe('marker');
+});
+
+it('loads the pack\'s images on a website with no room left, counting them, even with the storage switch on', function (): void {
+    config(['media.storage_enforce' => true]);
+    ContentPacks::in($this->siteId, fn () => SiteFeature::query()->create(['feature_key' => MediaStorage::FEATURE, 'value' => 0]));
+
+    [$exit, $output] = mediaLoad();
+
+    expect($exit)->toBe(0, $output)->and(packMedia($this->siteId))->toHaveCount(2);
+    $sizes = ContentPacks::in($this->siteId, fn () => (int) Media::query()->sum('size'));
+    expect(ContentPacks::in($this->siteId, fn () => app(SiteCounters::class)->read([MediaStorage::BYTES])['values'][MediaStorage::BYTES]))
+        ->toBe($sizes)->toBeGreaterThan(0);
 });
 
 it('reports a matching file in the Trash without restoring it, and restores it only when forced', function (): void {
@@ -192,11 +208,37 @@ it('resolves the pack\'s image slots to the uploaded media on the next content l
 
         expect($entry->translationFor('vi')?->body['blocks'][0]['props']['image_url'])->toBe($header->id)
             ->and(Mediable::query()->where('mediable_type', 'entry')->where('mediable_id', $entry->id)->where('media_id', $header->id)->exists())->toBeTrue()
-            ->and($post->meta['image_url'] ?? null)->toBe($keys['news-1.png']);
+            ->and(Media::query()->whereKey($post->cover_media_id)->value('storage_key'))->toBe($keys['news-1.png'])
+            ->and($post->meta)->not->toHaveKey('image_url');   // the card image is the post's one cover, by its row
     });
 
     $html = $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->getContent();
     expect($html)->toContain('header-');
+});
+
+it('loads a post\'s card image as its one cover: the plan reads a cover by its row, a new image replaces it and an unset one clears it', function (): void {
+    mediaLoad();
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $post = fn (): Entry => ContentPacks::in($this->siteId, fn (): Entry => Entry::query()->whereKey(EntryTranslation::query()->where('slug', 'ra-mat-website')->value('entry_id'))->firstOrFail());
+    $media = fn (string $name): int => ContentPacks::in($this->siteId, fn (): int => (int) Media::query()->where('original_filename', $name)->value('id'));
+
+    // the post as the editor stores it once a member saves it: its picture by its row, no old key
+    ContentPacks::in($this->siteId, fn () => $post()->update(['cover_media_id' => $media('news-1.png'), 'meta' => []]));
+    [, $dry] = ContentPacks::run();
+    expect(ContentPacks::verdict($dry, 'post:ra-mat-website'))->toBe('unchanged');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => ['image' => ['media' => 'header']] + $item);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($post()->cover_media_id)->toBe($media('header.png'))
+        ->and($post()->meta)->not->toHaveKey('image_url');
+
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => array_diff_key($item, ['image' => true]));
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and($post()->cover_media_id)->toBeNull()
+        ->and($post()->meta)->not->toHaveKey('image_url');
 });
 
 it('refuses an upload that would overwrite an object no image of the site owns', function (): void {
@@ -408,10 +450,11 @@ it('gives a page button the uploaded document and its label the file\'s type and
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output);
 
-    $key = ContentPacks::in($this->siteId, fn () => Media::query()->where('original_filename', 'profile.pdf')->value('storage_key'));
+    $profile = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    $key = $profile->storage_key;
     expect(aboutLastBlock($this->siteId))->toMatchArray([
         'button_label' => 'Tải hồ sơ (PDF · 1 KB)',
-        'button_url_do' => ['k' => 'file', 'file' => $key],
+        'button_url_do' => ['k' => 'file', 'media' => $profile->ulid],   // by its library row, never its address
     ]);
 
     $html = $this->get('http://'.ContentPacks::HOST.'/gioi-thieu')->assertOk()->getContent();
@@ -453,8 +496,9 @@ it('finds a legacy_key\'s file by the old key its row records, never by its file
     });
 
     [$exit, $output] = ContentPacks::load();
+    $ulid = ContentPacks::in($this->siteId, fn () => Media::query()->where('storage_key', $moved)->value('ulid'));
     expect($exit)->toBe(0, $output)
-        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'file' => $moved]]);
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'media' => $ulid]]);
 })->with([
     'moved by media:rekey-site' => 'moved_from',
     'copied by a seeder' => 'seed_source',
@@ -478,4 +522,96 @@ it('leaves the download button out when its document slot names an existing imag
     [$exit, $output] = ContentPacks::load();
     expect($exit)->toBe(0, $output)
         ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_label' => 'Tải hồ sơ'])->not->toHaveKey('button_url_do');
+});
+
+it('plans a download button stored by its row as unchanged on the next run, and a member\'s other file as their edit', function (): void {
+    profileButton($this->folder);
+    mediaLoad();
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $profile = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    expect(ContentPacks::in($this->siteId, fn (): bool => Mediable::query()->where('media_id', $profile->id)->where('mediable_type', 'entry')->exists()))->toBeTrue();
+
+    [, $again] = ContentPacks::run();
+    expect(ContentPacks::verdict($again, 'page:/gioi-thieu'))->toBe('unchanged');
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)->and($output)->toContain('0 items written');
+
+    // a member points the button at another document of the library: their edit, never undone by the pack
+    $code = siteCode($this->siteId);
+    ContentPacks::in($this->siteId, function () use ($code): void {
+        $other = Media::query()->create([
+            'collection' => 'library', 'slug' => 'bang-gia', 'hash' => hash('sha256', 'bang-gia'),
+            'storage_key' => $code.'/bang-gia-0123abcd.pdf', 'mime' => 'application/pdf', 'size' => 1024,
+        ]);
+        $translation = EntryTranslation::query()->where('entry_id', SiteRoute::query()->where('path', '/gioi-thieu')->value('entry_id'))->where('locale', 'vi')->firstOrFail();
+        $body = $translation->body;
+        $last = array_key_last($body['blocks']);
+        $body['blocks'][$last]['props']['button_url_do'] = ['k' => 'file', 'media' => $other->ulid];
+        $translation->update(['body' => $body]);
+    });
+    [, $edited] = ContentPacks::run();
+    expect(ContentPacks::verdict($edited, 'page:/gioi-thieu'))->toBe('skip:edited');
+});
+
+it('writes the download button again when its document left the library for good, never reading it as a member\'s edit', function (): void {
+    profileButton($this->folder);
+    mediaLoad();
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output);
+    $old = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+
+    // the document is purged from the library (no row holds its ulid any more), then uploaded again
+    DB::connection('pgsql_admin')->table('media')->where('id', $old->id)->delete();
+    [$exit, $output] = mediaLoad();
+    expect($exit)->toBe(0, $output);
+    $new = ContentPacks::in($this->siteId, fn (): Media => Media::query()->where('original_filename', 'profile.pdf')->firstOrFail());
+    expect($new->ulid)->not->toBe($old->ulid);
+
+    [, $plan] = ContentPacks::run();
+    expect(ContentPacks::verdict($plan, 'page:/gioi-thieu'))->toBe('update', $plan);
+    [$exit, $output] = ContentPacks::load();
+    expect($exit)->toBe(0, $output)
+        ->and(aboutLastBlock($this->siteId))->toMatchArray(['button_url_do' => ['k' => 'file', 'media' => $new->ulid]]);
+
+    [, $settled] = ContentPacks::run();
+    expect(ContentPacks::verdict($settled, 'page:/gioi-thieu'))->toBe('unchanged');
+});
+
+it('reads every file a load writes in one locked query, whatever the number of items naming them', function (): void {
+    profileButton($this->folder);
+    ContentPacks::in($this->siteId, fn () => StorefrontCards::media('product-a'));
+    ContentPacks::item($this->folder, 'posts.json', 'post:giai-thuong-mau', fn (array $item): array => ['image' => ['media' => 'header']] + $item);
+    ContentPacks::item($this->folder, 'taxonomies.json', 'tax:post_cat/tin-tuc', fn (array $item): array => ['cover' => ['media' => 'header']] + $item);
+    mediaLoad();
+    [$exit, $output] = ContentPacks::run();
+    expect($exit)->toBe(0, $output);
+
+    // every read of the library the writers make themselves to turn the pack's keys into rows (the
+    // loader, and the cover helper it once called per post); the usage bookkeeping the saves trigger
+    // (cover, gallery and block usage) reads by the rows already chosen and is not counted
+    $lookups = [];
+    DB::listen(function (QueryExecuted $query) use (&$lookups): void {
+        if (! str_contains(strtolower($query->sql), 'from "media"')) {
+            return;
+        }
+        $frames = array_values(array_filter(
+            array_map(fn (array $frame): string => (string) ($frame['file'] ?? ''), debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS)),
+            fn (string $file): bool => str_contains($file, '/app/Modules/'),
+        ));
+        $writer = $frames !== [] && in_array(basename($frames[0]), ['Applier.php', 'EntryCover.php'], true);
+        if ($writer && array_filter($frames, fn (string $file): bool => str_ends_with($file, '/ContentPack/Applier.php')) !== []) {
+            $lookups[] = $query->sql;
+        }
+    });
+    [$exit, $output] = ContentPacks::run(options: ['--apply' => true, '--plan' => ContentPacks::fingerprint($output)]);
+    expect($exit)->toBe(0, $output)
+        ->and($lookups)->toHaveCount(1)
+        ->and(strtolower($lookups[0]))->toContain('for key share');
+
+    ContentPacks::in($this->siteId, function (): void {
+        $header = Media::query()->where('original_filename', 'header.png')->value('id');
+        $post = Entry::query()->whereKey(EntryTranslation::query()->where('slug', 'giai-thuong-mau')->value('entry_id'))->firstOrFail();
+        expect($post->cover_media_id)->toBe($header)->and($post->meta)->not->toHaveKey('image_url');
+    });
 });

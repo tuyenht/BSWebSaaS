@@ -225,6 +225,27 @@ export function goneSpanOf(items) {
     return items.filter((it) => gone.has(it.key) || under(it.key)).map((it) => it.key);
 }
 
+// Whether an area shows no menu at all in the main language (the screen marks it "Chưa dùng trình đơn
+// nào"): it has no menu of its own, follows an area that has none, and is not the phone menu, which
+// shows the main menu while it has none of its own (PageChrome mobileMenu).
+export function areaEmptyOf(areas, area, main) {
+    const shown = (a, hops) => {
+        const s = (a && a.shows && a.shows[main]) || {};
+        if (s.menu) {
+            return true;
+        }
+        if (s.follows && hops > 0) {
+            return shown(areas.find((x) => x.key === s.follows), hops - 1);
+        }
+        return false;
+    };
+    // the website follows one hop only (MenuResolver), so the screen does too
+    if (shown(area, 1)) {
+        return false;
+    }
+    return !(area.key === 'handheld' && shown(areas.find((x) => x.key === 'primary'), 1));
+}
+
 // The rows the shared tree draws from the draft: each with its level, its place among its siblings
 // and its guide lines (the fields of a TreeRows entry). While a filter is on, the matches stand flat,
 // in order, and cannot be moved.
@@ -721,6 +742,53 @@ if (typeof window !== 'undefined' && window.Alpine) {
             },
             setCols(k, n) {
                 this.setOpt(k, 'mega', { type: 'columns', columns: parseInt(n, 10) || 3 });
+            },
+            // How the large panel is built: columns of the children ('cols') or a shared block ('block').
+            megaKind(it) {
+                return it && it.options.mega && it.options.mega.type === 'block' ? 'block' : 'cols';
+            },
+            setMegaKind(k, kind) {
+                this.setOpt(k, 'mega', kind === 'block' ? { type: 'block', block: null } : { type: 'columns', columns: 3 });
+            },
+            setMegaBlock(k, key) {
+                this.setOpt(k, 'mega', { type: 'block', block: key || null });
+            },
+            // The shared blocks a large panel may show (the "menu" region, plus any one already chosen).
+            panelBlocks() {
+                return (this.menu && this.menu.blocks) || [];
+            },
+            blockOf(key) {
+                return key ? this.panelBlocks().find((b) => b.key === key) || null : null;
+            },
+            blockLabel(b) {
+                return b.name + (b.draft ? t.blockDraft : '');
+            },
+            // «Dựng khối mới» / «Mở Khối dùng chung»: the shared blocks screen at the large panel region;
+            // unsaved rows ask first (save, or go without saving).
+            openBlocks() {
+                const url = cfg.blocks;
+                if (!url) {
+                    return;
+                }
+                const go = () => {
+                    if (window.Livewire && window.Livewire.navigate) {
+                        window.Livewire.navigate(url);
+                    } else {
+                        window.location.href = url;
+                    }
+                };
+                if (!this.dirty().n) {
+                    go();
+                    return;
+                }
+                this.ask = {
+                    title: t.blocksTitle,
+                    body: t.blocksBody,
+                    ok: t.leaveSave,
+                    alt: t.leaveDrop,
+                    run: async () => { await this.save(); if (!this.dirty().n) { go(); } },
+                    altRun: go,
+                };
             },
             pick(k) {
                 if (this.locked()) {
@@ -1355,7 +1423,16 @@ if (typeof window !== 'undefined' && window.Alpine) {
             areaRows() {
                 const all = this.d ? this.d.areas : [];
                 const list = all.filter((a) => !a.advanced || this.advOn);
-                return list.map((a, i) => ({ ...a, head: i === 0 || list[i - 1].group !== a.group }));
+                return list.map((a, i) => ({
+                    ...a,
+                    head: i === 0 || list[i - 1].group !== a.group,
+                    tip: fill(t.areaTip, { help: a.help, n: a.depth }),
+                    codeTip: fill(t.codeTip, { code: a.key }),
+                    empty: areaEmptyOf(all, a, cfg.main),
+                }));
+            },
+            get advCount() {
+                return this.d ? this.d.areas.filter((a) => a.advanced).length : 0;
             },
             areaValue(a, loc) {
                 const s = a.shows[loc] || {};
@@ -1465,7 +1542,7 @@ if (typeof window !== 'undefined' && window.Alpine) {
                 return out;
             },
             pvCols(it) {
-                const n = it.options.mega ? it.options.mega.columns : 3;
+                const n = it.options.mega && it.options.mega.type !== 'block' ? it.options.mega.columns : 3;
                 const kids = this.pvKids(it.key);
                 const cols = Array.from({ length: n }, () => []);
                 kids.forEach((k, i) => cols[i % n].push(k));

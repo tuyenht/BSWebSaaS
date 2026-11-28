@@ -766,6 +766,28 @@ final class StorefrontChrome
     }
 
     /**
+     * The page scripts the menu's large panels need (MenuResolver puts them on each panel's item), as
+     * the view flags the head reads.
+     *
+     * @return array<string, true>
+     */
+    public static function panelScripts(mixed $menu): array
+    {
+        $flags = [];
+        foreach (is_array($menu) ? $menu : [] as $item) {
+            if (is_array($item) && is_array($item['panel_scripts'] ?? null)) {
+                foreach ($item['panel_scripts'] as $flag => $on) {
+                    if (is_string($flag) && $on === true) {
+                        $flags[$flag] = true;
+                    }
+                }
+            }
+        }
+
+        return $flags;
+    }
+
+    /**
      * The visitor's saved text size (Vừa / Lớn / Cực lớn), applied before the first paint. It is
      * inlined in the head so it costs no request, and the storefront CSP allows exactly this text
      * by its hash (see textSizeBootHash()), so no other inline script can run.

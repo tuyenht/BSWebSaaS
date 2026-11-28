@@ -2,8 +2,8 @@
 
 namespace App\Modules\Forms\Models;
 
+use App\Modules\Forms\Support\FormDraft;
 use App\Modules\Shared\Concerns\HasUlidColumn;
-use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -67,14 +67,13 @@ final class Form extends Model
 
     /**
      * The confirmation message for the given locale from the per-locale `success_message` JSONB
-     * (vi fallback), or null when none is set — callers supply their own default.
+     * (site default language fallback), or null when none is set — callers supply their own default.
      */
     public function successMessageFor(string $locale): ?string
     {
-        $messages = Cast::arr($this->success_message);
-        $value = $messages[$locale] ?? $messages['vi'] ?? null;
+        $value = FormDraft::text($this->success_message, $locale);
 
-        return is_string($value) && $value !== '' ? $value : null;
+        return $value !== '' ? $value : null;
     }
 
     public function isSystem(): bool

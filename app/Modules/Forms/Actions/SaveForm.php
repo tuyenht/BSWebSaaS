@@ -43,7 +43,7 @@ final readonly class SaveForm
      */
     public function handle(?Form $form, array $draft, string $locale): Form
     {
-        $this->check($draft);
+        $this->check($draft, $form, $locale);
 
         return DB::transaction(function () use ($form, $draft, $locale): Form {
             $created = $form === null;
@@ -79,6 +79,118 @@ final readonly class SaveForm
 
             return $form;
         });
+    }
+
+    /**
+     * «Lưu» on the editor open in $locale, a language other than the site's main one: writes that
+     * language's texts only — the form's name and thank-you sentence, each field's label and its
+     * choices' labels. A text left empty removes that language's version, so visitors read the main
+     * language there. Nothing shared by every language changes: the switch, the emails, which fields
+     * there are, their kinds, order and settings, and the consent box. A field of the draft the form
+     * no longer has is skipped (its typed choice lines count as dropped).
+     *
+     * A choices box holds one line per value in $choiceValues[field key] (the choices as they were
+     * when the editor read them): line n is the label of the choice of value n, wherever that choice
+     * stands now. So when the main language reorders or removes choices while this language is open,
+     * no line lands on another choice: a removed choice's line is dropped, and a choice added since
+     * keeps what it has. $choiceSources[field key][n] is the main language's label value n had then:
+     * a choice of that value whose main-language label is no longer that one is another choice that
+     * took a retired value again, so its line is dropped too. A box with more lines than those values
+     * is refused (the caller says so first).
+     *
+     * Returns the form as stored and how many typed choice lines were dropped that way.
+     *
+     * @param  Draft  $draft
+     * @param  array<string, list<string>>  $choiceValues
+     * @param  array<string, list<string>>  $choiceSources
+     * @return array{form: Form, dropped: int}
+     */
+    public function translate(Form $form, array $draft, string $locale, string $source, array $choiceValues, array $choiceSources): array
+    {
+        if (mb_strlen($draft['name']) > FormDraft::MAX_NAME || mb_strlen($draft['success']) > FormDraft::MAX_SUCCESS || count($draft['fields']) > FormDraft::MAX_FIELDS) {
+            throw new InvalidArgumentException('A text cannot be stored.');
+        }
+
+        return DB::transaction(function () use ($form, $draft, $locale, $source, $choiceValues, $choiceSources): array {
+            $form = Form::query()->whereKey($form->getKey())->lockForUpdate()->firstOrFail();
+            $form->update([
+                'name' => self::withText($form->name, $locale, $draft['name']),
+                'success_message' => self::withText($form->success_message, $locale, $draft['success']),
+                'settings' => [...Cast::arr($form->settings), 'edited' => true],
+            ]);
+
+            /** @var array<string, FormField> $existing */
+            $existing = $form->fields()->get()->keyBy('key')->all();
+            $dropped = 0;
+            foreach ($draft['fields'] as $f) {
+                $field = $existing[$f['key']] ?? null;
+                if ($field === null || $f['key'] === Form::CONSENT_KEY) {
+                    $dropped += count(array_filter(FormDraft::translatedLines($f['choices']), fn (string $l): bool => $l !== ''));
+
+                    continue;
+                }
+                if (mb_strlen($f['label']) > FormDraft::MAX_NAME) {
+                    throw new InvalidArgumentException('A field label cannot be stored.');
+                }
+                $changes = ['label' => self::withText($field->label, $locale, $f['label'])];
+                if (FormFieldTypes::isChoice($field->type)) {
+                    $choices = FormFieldTypes::choices($field);
+                    $written = $choiceValues[$f['key']] ?? [];
+                    $sources = $choiceSources[$f['key']] ?? [];
+                    $lines = FormDraft::translatedLines($f['choices']);
+                    if (count($lines) > count($written) || array_filter($lines, fn (string $l): bool => mb_strlen($l) > FormDraft::MAX_NAME) !== []) {
+                        throw new InvalidArgumentException('The choices cannot be stored.');
+                    }
+                    $kept = [];
+                    foreach ($choices as $n => $choice) {
+                        $at = array_search($choice['value'], $written, true);
+                        if ($at !== false && ($sources[$at] ?? null) === FormDraft::own($choice['label'], $source)) {
+                            $choices[$n]['label'] = self::withText($choice['label'], $locale, $lines[$at] ?? '');
+                            $kept[$at] = true;
+                        }
+                    }
+                    foreach ($lines as $at => $line) {
+                        if ($line !== '' && ! isset($kept[$at])) {
+                            $dropped++;
+                        }
+                    }
+                    $changes['options'] = [...Cast::arr($field->options), 'choices' => $choices];
+                } else {
+                    // the main language made it a kind without choices meanwhile: the typed lines have no choice to land on
+                    $dropped += count(array_filter(FormDraft::translatedLines($f['choices']), fn (string $l): bool => $l !== ''));
+                }
+                $field->update($changes);
+            }
+
+            Audit::record('forms.form.saved', [
+                'auditable_type' => Form::class,
+                'auditable_id' => $form->id,
+                'meta' => ['key' => $form->key, 'created' => false, 'locale' => $locale],
+            ]);
+
+            return ['form' => $form, 'dropped' => $dropped];
+        });
+    }
+
+    /**
+     * $map with $locale's version set to $text, or removed when $text is empty.
+     *
+     * @return array<string, string>
+     */
+    private static function withText(mixed $map, string $locale, string $text): array
+    {
+        $out = [];
+        foreach (Cast::arr($map) as $code => $value) {
+            $out[(string) $code] = Cast::string($value);
+        }
+        $text = trim($text);
+        if ($text === '') {
+            unset($out[$locale]);
+        } else {
+            $out[$locale] = $text;
+        }
+
+        return $out;
     }
 
     /**
@@ -136,9 +248,19 @@ final readonly class SaveForm
     }
 
     /**
+     * @return list<array{value: string, label: array<string, string>}>
+     */
+    private function storedChoices(?Form $form, string $key): array
+    {
+        $field = $form?->fields()->where('key', $key)->first();
+
+        return $field === null ? [] : FormFieldTypes::choices($field);
+    }
+
+    /**
      * @param  Draft  $draft
      */
-    private function check(array $draft): void
+    private function check(array $draft, ?Form $form, string $locale): void
     {
         if (count($draft['fields']) > FormDraft::MAX_FIELDS) {
             throw new InvalidArgumentException('Too many fields.');
@@ -153,7 +275,7 @@ final readonly class SaveForm
                 || $field['key'] === Form::CONSENT_KEY
                 || isset($keys[$field['key']])
                 || trim($field['label']) === '' || mb_strlen($field['label']) > FormDraft::MAX_NAME
-                || count(FormDraft::lines($field['choices'])) > FormDraft::MAX_CHOICES
+                || (FormFieldTypes::isChoice($field['type']) && FormDraft::storedChoiceCount($field['choices'], $locale, fn (): array => $this->storedChoices($form, $field['key'])) > FormDraft::MAX_CHOICES)
                 || array_filter(FormDraft::lines($field['choices']), fn (string $c): bool => mb_strlen($c) > FormDraft::MAX_NAME) !== []
                 || ($field['type'] === FormFieldTypes::FILE && (! array_key_exists($field['accept'], LeadFileKinds::KINDS)
                     || $field['max_files'] < 1 || $field['max_files'] > FormFieldTypes::MAX_FILES))) {

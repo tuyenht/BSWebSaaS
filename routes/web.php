@@ -59,6 +59,7 @@ use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Settings\Permalinks as PermalinkSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
@@ -324,6 +325,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/advanced', AdvancedSettings::class)->middleware('can:settings.manage')->name('admin.settings.advanced');
         // What visitors see while the website is under maintenance (a signed-in member sees the site).
         Route::get('/settings/advanced/preview', MaintenancePreviewController::class)->middleware('can:settings.manage')->name('admin.settings.advanced.preview');
+        // The address format of pages, posts and products. settings.manage, checked by the component
+        // itself (no route gate: a member without it gets the board's no-permission card).
+        Route::get('/settings/permalinks', PermalinkSettings::class)->name('admin.settings.permalinks');
         // The site's redirects (old address → new one). settings.manage, checked by the component
         // itself (no route gate: a member without it gets the board's no-permission card).
         Route::get('/settings/redirects', RedirectSettings::class)->name('admin.settings.redirects');

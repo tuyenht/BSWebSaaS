@@ -4,8 +4,10 @@ namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Livewire\Concerns\EditsBlockList;
 use App\Modules\Admin\Livewire\Concerns\EditsButtonActions;
+use App\Modules\Admin\Livewire\Concerns\EditsJobCard;
 use App\Modules\Admin\Livewire\Concerns\EditsPageOrder;
 use App\Modules\Admin\Livewire\Concerns\EditsPendingChange;
+use App\Modules\Admin\Livewire\Concerns\PlacesSharedBlocks;
 use App\Modules\Admin\Livewire\Concerns\ShowsEntryRevisions;
 use App\Modules\Admin\Livewire\Concerns\StartsPageFromTemplate;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
@@ -42,7 +44,9 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\SchedulePastException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
+use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -55,6 +59,7 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\DisplayDate;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\EntryTags;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Support\HomePages;
@@ -66,6 +71,7 @@ use App\Modules\Cms\Validation\ExpiryTime;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\PlainText;
 use App\Modules\Shared\Support\Slugger;
@@ -132,8 +138,10 @@ final class Editor extends Component
     use AuthorizesRequests;
     use EditsBlockList;
     use EditsButtonActions;
+    use EditsJobCard;
     use EditsPageOrder;
     use EditsPendingChange;
+    use PlacesSharedBlocks;
     use ShowsEntryRevisions;
     use StartsPageFromTemplate;
     use WithMediaLibraryPicker;
@@ -143,6 +151,9 @@ final class Editor extends Component
 
     /** The states a translation row may hold (entry_translations_status_check). */
     private const array TRANSLATION_STATES = ['draft', 'pending', 'published', 'archived'];
+
+    /** A ulid as the site writes one (Crockford base 32, any case): a cover named otherwise is never looked up. */
+    private const string ULID_SHAPE = '/\A[0-9A-HJKMNP-TV-Z]{26}\z/i';
 
     /**
      * Cap on the "Giao cho" list. It rides inside the Livewire snapshot of every governed
@@ -156,7 +167,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverImageKey', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'focusKeyword', 'categoryIds', 'coverUlid', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -229,18 +240,48 @@ final class Editor extends Component
     public string $addressHost = '';
 
     /**
-     * Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. Locked:
-     * only a pick from this site's library (pickedSingleImage), «Bỏ ảnh», its «Hoàn tác» and the
-     * server's own loads write it, so a key typed into the wire never reaches the save.
+     * Featured/OG image: the ulid of the picked picture of this site's library, stored as the row's id
+     * in entries.cover_media_id (the save resolves it, FOR KEY SHARE, and drops the old
+     * meta.image_url). Locked: only a pick from this site's library (pickedSingleImage), «Bỏ ảnh», its
+     * «Hoàn tác», a copy kept on this device (checked) and the server's own loads write it, so a value
+     * typed into the wire never reaches the save. '' = no picture of the library (none, or a glyph,
+     * an outside address or a file in the Trash, kept as stored while the form leaves the cover alone).
      */
     #[Locked]
+    public string $coverUlid = '';
+
+    /** The cover was changed in this form since it was loaded or saved (a pick, «Bỏ ảnh», «Hoàn tác», a kept copy). */
+    #[Locked]
+    public bool $coverTouched = false;
+
+    /**
+     * Set on every open: a form opened before covers were named by their row has it false and holds
+     * its cover in coverImageKey (a storage key), taken once as its row's ulid (hydrate).
+     */
+    #[Locked]
+    public bool $coverById = false;
+
+    /** The old form's cover (a storage key); only a form opened before covers were named by their row holds one. */
+    #[Locked]
     public string $coverImageKey = '';
+
+    /** The cover's library row read in this request (the open reads it, the card draws it): one read. */
+    private ?Media $coverRow = null;
+
+    /** Nobody else changed the stored cover since this form read it: set by persist(), read by the held save too. */
+    private bool $coverStoredSame = true;
 
     /**
      * «Mô tả ảnh»: this language's words for the featured image (entry_translations.cover_alt), what
      * Google and a screen reader take from it; empty = the picture's own words, then the title.
      */
     public string $coverAlt = '';
+
+    /**
+     * «Từ khóa muốn lên top»: the words this language of the page should be found by
+     * (entry_translations.focus_keyword). The editor's own note: the website never shows it.
+     */
+    public string $focusKeyword = '';
 
     /**
      * «Mẫu hiển thị» of a post (board 07 «Thuộc tính bài»): '' = the look its category gives it, else one
@@ -321,7 +362,9 @@ final class Editor extends Component
     /**
      * What «Hoàn tác» on «Đã gỡ ảnh đại diện» puts back: the picture and this language's words for it.
      *
-     * @var array{key: string, alt: string}|null
+     * A message shown before covers were named by their row holds the picture's `key` instead.
+     *
+     * @var array{ulid?: string, key?: string, alt: string}|null
      */
     #[Locked]
     public ?array $coverUndo = null;
@@ -551,6 +594,7 @@ final class Editor extends Component
         $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
         $this->multiLocale = count(app(SiteLocale::class)->enabled()) > 1;
         $this->postPropsRead = true;
+        $this->coverById = true;
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -577,6 +621,7 @@ final class Editor extends Component
                 $this->placePageOrder($this->parentUlid === null ? null : $this->findPage($this->parentUlid)?->id);
             }
             $this->slugFresh = true;
+            $this->loadJobCard(null);
             $this->saved = $this->tracked();
             $this->guideDue = true;
 
@@ -602,15 +647,16 @@ final class Editor extends Component
             $this->seoTitle = $translation->seo_title ?? '';
             $this->seoDescription = $translation->seo_description ?? '';
             $this->coverAlt = $translation->cover_alt ?? '';
+            $this->focusKeyword = $translation->focus_keyword ?? '';
         }
 
-        $cover = data_get($entry->meta, 'image_url');
-        $this->coverImageKey = is_string($cover) ? $cover : '';
+        $this->loadCover($entry->cover_media_id, $entry->meta);
         if ($this->type === 'post') {
             $this->templateKey = TemplateCatalog::variant($entry->template_override) ?? '';
             $this->displayDate = $this->storedDisplayDate = DisplayDate::of($entry->meta);
             $this->tags = app(EntryTags::class)->names($entry, $this->locale);
             $this->tagsLoaded = $this->tags;
+            $this->loadJobCard($entry->meta);
         }
 
         // one read for the post's categories in order, the main one (position 0) among them
@@ -639,7 +685,7 @@ final class Editor extends Component
         // carries when it was last saved.
         $this->savedAt = self::iso($translation?->updated_at);
         // what visitors see, also while the form edits a pending change: the overwrite check compares the website
-        $this->storedPrint = self::printOf($translation, $entry->meta, $liveCategories, $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $liveCategories, $entry->template_override);
         $this->loadedAt = self::iso(CarbonImmutable::now());
         $this->mayPublish = $this->user()->can('publish', $entry);
         $this->frameRights($entry);
@@ -680,6 +726,7 @@ final class Editor extends Component
         if ($this->type === 'post') {
             $this->categoryIds = $this->categoryId !== null ? [$this->categoryId] : [];
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 
@@ -847,6 +894,7 @@ final class Editor extends Component
         $this->resetErrorBag(['categoryId', 'categoryIds', 'categoryIds.*']);
         if ($previous !== $this->categoryId) {
             $this->address = $this->previewAddress();
+            $this->jobFollowCategory();
         }
     }
 
@@ -1559,6 +1607,8 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
+        // on live content this is «Cập nhật» (or «Gửi duyệt» without the right to publish): a held save refused names that move
+        $this->changeAct = $this->mayPublish ? 'apply' : 'submit';
         $entry = $this->persist('publish');
         if (! $entry instanceof Entry || $this->saveFailed) {
             // nothing put on the website after a save refused in part (a new page's typed place)
@@ -1617,7 +1667,7 @@ final class Editor extends Component
     private function addressTaken(RouteConflictException $e, Entry $entry): void
     {
         if ($e->subPageOf($entry->id)) {
-            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->path]));
+            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->address($this->locale)]));
 
             return;
         }
@@ -1633,6 +1683,8 @@ final class Editor extends Component
     {
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
+        // the save this move starts with is what a held change refuses (nothing moved): «Chưa lưu được thay đổi»
+        $this->changeAct = 'save';
         $entry = $this->persist('transition', $key);
         if (! $entry instanceof Entry || ! $this->applyExpiry($entry)) {
             return;
@@ -1925,7 +1977,7 @@ final class Editor extends Component
     private function missingPublicFields(): array
     {
         $missing = [];
-        if ($this->coverImageKey === '') {
+        if ($this->coverUlid === '') {
             $missing[] = __('admin.wfb.missing_cover');
         }
         if ($this->prose ? EntryProseBody::isBlank($this->bodyHtml) : $this->blocks === []) {
@@ -1952,6 +2004,27 @@ final class Editor extends Component
     }
 
     /**
+     * Pictures dropped on the empty cover box («Kéo thả ảnh vào đây», design 07): the cover's «Chọn ảnh»
+     * opens on its device upload, which takes the dropped files the browser kept for it
+     * (window.__pendingPickerFiles, as the picker's own drop area does). Once they are in the library
+     * the member picks the cover there, as after any upload. Only for who may add files.
+     */
+    public function dropCover(): bool
+    {
+        $this->authorizeEditing();
+        abort_unless(Gate::allows('media.view') && Gate::allows('media.upload'), 403);
+        if ($this->coverRefused()) {
+            return false;
+        }
+        $this->blockImagePickerPath = '';
+        $this->openImagePicker('single');
+        $this->setPickerTab('upload');
+        $this->openPickerSource('device');
+
+        return true;
+    }
+
+    /**
      * «Bỏ ảnh»: the cover leaves the form (saved with «Lưu»), with «Hoàn tác» that puts the picture
      * and this language's words back as they were.
      */
@@ -1959,11 +2032,12 @@ final class Editor extends Component
     {
         $this->authorizeEditing();
         abort_unless(Gate::allows('media.view'), 403);
-        if ($this->coverRefused() || $this->coverImageKey === '') {
+        if ($this->coverRefused() || $this->coverUlid === '') {
             return;
         }
-        $undo = ['key' => $this->coverImageKey, 'alt' => $this->coverAlt];
-        $this->coverImageKey = '';
+        $undo = ['ulid' => $this->coverUlid, 'alt' => $this->coverAlt];
+        $this->coverUlid = '';
+        $this->coverTouched = true;
         // the words described the picture taken off: a new picture is described afresh
         $this->coverAlt = '';
         $this->sayCover(Cast::string(__('entries.ed.cover_removed')), $undo);
@@ -1979,10 +2053,13 @@ final class Editor extends Component
         $undo = $this->coverUndo;
         $this->coverToast = '';
         $this->coverUndo = null;
-        if ($undo === null || $this->coverRefused() || ! Media::query()->where('storage_key', $undo['key'])->exists()) {
+        // (a message shown before covers were named by their row holds the picture's key)
+        $row = $undo === null || $this->coverRefused() ? null : $this->libraryImage($undo['ulid'] ?? null, $undo['key'] ?? null);
+        if ($row === null) {
             return;
         }
-        $this->coverImageKey = $undo['key'];
+        $this->coverUlid = $row->ulid;
+        $this->coverTouched = true;
         $this->coverAlt = $undo['alt'];
     }
 
@@ -2013,11 +2090,13 @@ final class Editor extends Component
         if ($this->coverRefused() || ! str_starts_with($media->mime, 'image/')) {
             return;
         }
-        if ($media->storage_key !== $this->coverImageKey) {
+        if (strcasecmp($media->ulid, $this->coverUlid) !== 0) {
             // the words described the picture taken off: a new picture is described afresh
             $this->coverAlt = '';
         }
-        $this->coverImageKey = $media->storage_key;
+        $this->coverUlid = $media->ulid;
+        $this->coverRow = $media;
+        $this->coverTouched = true;
         $this->sayCover(Cast::string(__('entries.ed.cover_picked')), null);
     }
 
@@ -2047,7 +2126,7 @@ final class Editor extends Component
     }
 
     /**
-     * @param  array{key: string, alt: string}|null  $undo
+     * @param  array{ulid: string, alt: string}|null  $undo
      */
     private function sayCover(string $message, ?array $undo): void
     {
@@ -2065,34 +2144,171 @@ final class Editor extends Component
      */
     private function coverCard(MediaUrlResolver $urls): ?array
     {
-        if ($this->coverImageKey === '') {
+        $media = $this->coverMedia();
+        if ($media === null) {
             return null;
         }
-        $media = Media::query()->where('storage_key', $this->coverImageKey)->first(['id', 'original_filename', 'width', 'height']);
-        $w = $media?->width;
-        $h = $media?->height;
+        $w = $media->width;
+        $h = $media->height;
         $ratio = is_int($w) && is_int($h) && $w > 0 && $h > 0
             ? (abs($w / $h - 16 / 9) <= 16 / 9 * 0.02 ? 'ok' : 'warn')
             : null;
 
         return [
-            'url' => $urls->url($this->coverImageKey, 640),
-            'name' => is_string($media?->original_filename) && $media->original_filename !== '' ? $media->original_filename : '',
+            'url' => $urls->url($media->storage_key, 640),
+            'name' => is_string($media->original_filename) && $media->original_filename !== '' ? $media->original_filename : '',
             'ratio' => $ratio,
         ];
+    }
+
+    /**
+     * The library row of the form's cover (this site's, outside the Trash), read once per request;
+     * null without one or when it has left the library since.
+     */
+    private function coverMedia(): ?Media
+    {
+        if ($this->coverUlid === '') {
+            return null;
+        }
+        if ($this->coverRow === null || strcasecmp($this->coverRow->ulid, $this->coverUlid) !== 0) {
+            $this->coverRow = MediaRefs::rows([], [$this->coverUlid], [], ['original_filename'])->byUlid($this->coverUlid);
+        }
+
+        return $this->coverRow;
+    }
+
+    /** The storage key of the form's cover, '' without one (the history and the stale question name it by file). */
+    private function coverKey(): string
+    {
+        return $this->coverMedia()->storage_key ?? '';
+    }
+
+    /**
+     * The form takes a stored cover (an entry's or a pending change's shared fields) as EntryCover reads
+     * it: the picture cover_media_id names, else the old key in meta; its library row's ulid, or ''
+     * when it is no picture of the library (none, a glyph, an outside address, a file in the Trash).
+     * One read, only when the cover names a file.
+     */
+    private function loadCover(mixed $coverMediaId, mixed $meta): void
+    {
+        $refs = MediaRefs::rows([$coverMediaId], [], [EntryCover::metaValue($meta)], ['original_filename']);
+        $this->coverRow = $refs->byKey(EntryCover::resolve($coverMediaId, $meta, $refs));
+        $this->coverUlid = $this->coverRow->ulid ?? '';
+        $this->coverTouched = false;
+    }
+
+    /**
+     * A picture of this site's library outside the Trash, named by its ulid (checked for its shape)
+     * or, from a form or message made before covers were named by their row, by its storage key.
+     */
+    private function libraryImage(mixed $ulid, mixed $key = null): ?Media
+    {
+        $query = Media::query()->where('mime', 'like', 'image/%');
+        if (is_string($ulid)) {
+            if (preg_match(self::ULID_SHAPE, $ulid) !== 1) {
+                return null;
+            }
+            $query->where('ulid', strtoupper($ulid));
+        } elseif (is_string($key) && MediaRefs::looksLikeKey($key)) {
+            $query->where('storage_key', $key);
+        } else {
+            return null;
+        }
+
+        return $query->first(['id', 'ulid', 'storage_key', 'original_filename', 'width', 'height']);
+    }
+
+    /**
+     * A form opened before covers were named by their row holds its cover as a storage key
+     * (coverImageKey): taken once, on its first request after, as the row's ulid. It counts as changed
+     * when it is not the key the form read (its stored print), so a save keeps a cover it never touched.
+     */
+    public function hydrate(): void
+    {
+        if ($this->coverById) {
+            return;
+        }
+        $this->coverById = true;
+        $key = $this->coverImageKey;
+        $this->coverImageKey = '';
+        $row = $this->libraryImage(null, $key);
+        $this->coverRow = $row;
+        $this->coverUlid = $row->ulid ?? '';
+        $this->coverTouched = md5($key) !== ($this->storedPrint['cover'] ?? md5(''));
+        if (! $this->coverTouched) {
+            $this->saved['coverUlid'] = $this->coverUlid;
+            unset($this->saved['coverImageKey']);
+        }
+    }
+
+    /**
+     * The cover this save stores over the stored pair ($id, $meta): the picture the form names, by its
+     * id, the old meta.image_url dropped; none (no id, no meta.image_url); or, when the form left the
+     * cover as it read it and nobody else changed it since ($storedSame), the stored pair as it is (a
+     * glyph, an outside address, a file in the Trash), with only an old key of the same picture moved
+     * to its id. The picture is read FOR KEY SHARE in the save's transaction, so a purge of the file
+     * waits for it. Null when the form names a picture that is no longer one of this site's library
+     * (another site's, or gone since): said in a message that stays, the card emptied, nothing written.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array{0: int|null, 1: array<string, mixed>}|null
+     */
+    private function coverToStore(mixed $id, array $meta, bool $storedSame): ?array
+    {
+        $keep = ! $this->coverTouched && $storedSame;
+        if ($keep && EntryCover::named($id)) {
+            unset($meta['image_url']); // a set id decides alone: no old key is kept beside it
+        }
+        if ($this->coverUlid === '') {
+            if ($keep) {
+                return [MediaRefs::id($id), $meta];
+            }
+            unset($meta['image_url']);
+
+            return [null, $meta];
+        }
+        $row = preg_match(self::ULID_SHAPE, $this->coverUlid) === 1
+            ? Media::query()->where('ulid', strtoupper($this->coverUlid))->where('mime', 'like', 'image/%')->lock('for key share')->first(['id'])
+            : null;
+        if ($row === null) {
+            if ($keep) {
+                return [MediaRefs::id($id), $meta];
+            }
+            $this->coverUlid = '';
+            $this->coverRow = null;
+            $this->dispatch('bs-toast', text: Cast::string(__('entries.ed.cover_gone')), stay: true, close: Cast::string(__('admin.close')));
+
+            return null;
+        }
+        unset($meta['image_url']);
+
+        return [$row->id, $meta];
     }
 
     /**
      * The cover kept on this device put back: in the website's default language only (it is every
      * language's) and only a picture still in this site's library — the kept copy is the browser's word.
      */
-    private function restoreKeptCover(mixed $key): void
+    private function restoreKeptCover(mixed $ulid, mixed $key): void
     {
-        if (! is_string($key) || $key === $this->coverImageKey || $this->locale !== app(SiteLocale::class)->default()) {
+        // a copy kept before covers were named by their row holds the picture's key instead
+        $value = is_string($ulid) ? $ulid : $key;
+        if (! is_string($value) || $this->locale !== app(SiteLocale::class)->default() || ! Gate::allows('media.view')) {
             return;
         }
-        if ($key === '' || Media::query()->where('storage_key', $key)->where('mime', 'like', 'image/%')->exists()) {
-            $this->coverImageKey = $key;
+        if ($value === '') {
+            if ($this->coverUlid !== '') {
+                $this->coverUlid = '';
+                $this->coverTouched = true;
+            }
+
+            return;
+        }
+        $row = $this->libraryImage(is_string($ulid) ? $ulid : null, $key);
+        if ($row !== null && strcasecmp($row->ulid, $this->coverUlid) !== 0) {
+            $this->coverUlid = $row->ulid;
+            $this->coverRow = $row;
+            $this->coverTouched = true;
         }
     }
 
@@ -2127,10 +2343,11 @@ final class Editor extends Component
         $unit = $this->unit();
         $title = Cast::string(__($this->ulid === null ? 'entries.ed.h1_new' : 'entries.ed.h1_edit', ['unit' => $unit]));
         $listUrl = route('admin.entries.index', $this->sectionKey !== null ? ['section' => $this->sectionKey] : []);
-        // «Xem trước» is drawn with its link, or locked with the reason on a record not saved yet; a member
-        // without the preview right gets no button, so the guide has no step for it either
+        // «Xem trước» opens the saved version in «Xem trước trên website» on this screen (design 07), or is
+        // locked with the reason on a record not saved yet; a member without the preview right gets no
+        // button, so the guide has no step for it either
         $preview = $this->ulid !== null && $this->mayPreview
-            ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null]
+            ? ['url' => route('admin.entries.preview', ['ulid' => $this->ulid] + ($this->locale !== app(SiteLocale::class)->default() ? ['locale' => $this->locale] : [])), 'why' => null, 'dialog' => true]
             : ['url' => null, 'why' => $this->ulid === null ? Cast::string(__('admin.editor.preview_new')) : null];
 
         return view('admin::livewire.entries.editor', [
@@ -2162,6 +2379,11 @@ final class Editor extends Component
             'buttonPanel' => $buttonPanel,
             'availableTypes' => app(ComponentRegistry::class)->listedTypes(),
             'kinds' => $this->blockKinds(),
+            // «Khối dùng chung» (board 27): the picker, and what the cards of the blocks this layout places say
+            'sharedPicker' => $this->sharedBlocksOffered() ? [
+                'library' => Gate::allows('create', ContentBlock::class) ? route('admin.blocks.index') : null,
+            ] : null,
+            'refs' => $this->placedSharedBlocks(),
             'prosePreview' => $this->prose ? EntryProseBody::preview($this->bodyHtml) : '',
             'localeLabel' => Locales::label($this->locale),
             // «Quản lý ngôn ngữ» on the language bar: the site's languages, for a member who may change them
@@ -2179,6 +2401,7 @@ final class Editor extends Component
                 : __('entries.ed.body_placeholder_tr', ['lang' => Locales::label($this->locale)]),
             'schemas' => $schemas,
             'categoryCard' => $this->categoryCard(),
+            'jobCard' => $this->jobCard(),
             'urls' => $urls,
             'cover' => $this->coverCard($urls),
             'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
@@ -2213,7 +2436,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverImageKey', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'focusKeyword', 'coverUlid', 'coverTouched', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -2278,12 +2501,12 @@ final class Editor extends Component
     public function restoreKept(array $kept): void
     {
         $this->authorizeEditing();
-        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverAlt'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'focusKeyword', 'coverAlt'] as $field) {
             if (is_string($kept[$field] ?? null)) {
                 $this->{$field} = $kept[$field];
             }
         }
-        $this->restoreKeptCover($kept['coverImageKey'] ?? null);
+        $this->restoreKeptCover($kept['coverUlid'] ?? null, $kept['coverImageKey'] ?? null);
         // a post's own look and shown day, in the website's default language (they are every language's)
         if ($this->type === 'post' && ! $this->sharedLocked()) {
             $template = $kept['templateKey'] ?? null;
@@ -2294,6 +2517,9 @@ final class Editor extends Component
             if (is_string($day) && ($day === '' || DisplayDate::valid($day))) {
                 $this->displayDate = $day;
             }
+        }
+        if ($this->type === 'post') {
+            $this->restoreKeptJob($kept);
         }
         if ($this->type === 'post' && is_array($kept['categoryIds'] ?? null)) {
             $this->restoreCategories($kept['categoryIds']);
@@ -2324,7 +2550,7 @@ final class Editor extends Component
         // The whole row: the save writes through this same model, so the check costs no extra read.
         $translation = $entry->translations()->where('locale', $this->locale)->first();
 
-        return ['print' => self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
+        return ['print' => self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->storedCategories($entry) : [], $entry->template_override), 'translation' => $translation];
     }
 
     /**
@@ -2334,10 +2560,8 @@ final class Editor extends Component
      * @param  list<int>  $categoryIds  a post's categories, the main one first (none for a page)
      * @return array<string, string>
      */
-    private static function printOf(?EntryTranslation $translation, mixed $meta, array $categoryIds, ?string $template): array
+    private static function printOf(?EntryTranslation $translation, string $cover, mixed $meta, array $categoryIds, ?string $template): array
     {
-        $cover = is_array($meta) ? ($meta['image_url'] ?? null) : null;
-
         return [
             'title' => md5((string) $translation?->title),
             'slug' => md5((string) $translation?->slug),
@@ -2345,14 +2569,40 @@ final class Editor extends Component
             'excerpt' => md5((string) $translation?->excerpt),
             'seo_title' => md5((string) $translation?->seo_title),
             'seo_description' => md5((string) $translation?->seo_description),
-            'cover' => md5(is_string($cover) ? $cover : ''),
+            // the file's key (coverPrint): a form opened before covers had rows printed the key alone
+            'cover' => md5($cover),
             'category' => implode(',', $categoryIds),
             // last: a form opened before the field existed holds a print without it (see save())
             'cover_alt' => md5((string) $translation?->cover_alt),
             // after it, as later fields: a form opened before them holds a print without them (see save())
             'template' => md5((string) $template),
             'display_date' => md5(DisplayDate::of($meta)),
+            // «Thông tin tuyển dụng»: every language's boxes and label (another language's save changes them too),
+            // keys in a fixed order like the body's (the database hands the language maps back sorted)
+            'job' => md5((string) json_encode(self::keysSorted(is_array($meta) ? [$meta['facts'] ?? null, $meta['badge'] ?? null] : [null, null]))),
+            // after them, as a later field: a form opened before it holds a print without it (see save())
+            'focus_keyword' => md5((string) $translation?->focus_keyword),
         ];
+    }
+
+    /**
+     * The stored cover as the overwrite check compares it: the storage key of the file the pair names
+     * (by its id, the Trash included, else the old key in meta), so the same picture moved from its key
+     * to its row in another tab is no change; '#<id>' for an id that names no file of this website.
+     * The form's own cover row answers when it is that file, else one read on the media primary key.
+     */
+    private function coverPrint(mixed $coverMediaId, mixed $meta): string
+    {
+        $id = MediaRefs::id($coverMediaId);
+        if (! EntryCover::named($coverMediaId) || $id === null) {
+            return EntryCover::identity($coverMediaId, $meta);
+        }
+        if ($this->coverRow !== null && MediaRefs::id($this->coverRow->id) === $id) {
+            return $this->coverRow->storage_key;
+        }
+        $key = Media::withTrashed()->whereKey($id)->value('storage_key');
+
+        return is_string($key) ? $key : '#'.$id;
     }
 
     private static function keysSorted(mixed $value): mixed
@@ -2423,7 +2673,8 @@ final class Editor extends Component
         $prose = app(EntryProseBody::class);
         $storedBlocks = $this->normalizeBlocks($translation instanceof EntryTranslation ? ($translation->body['blocks'] ?? []) : []);
         $storedBody = $prose->read($storedBlocks);
-        $cover = data_get($entry->meta, 'image_url');
+        // the stored cover as EntryCover reads it (its row, else the old key); read only when it names a file
+        $cover = EntryCover::resolve($entry->cover_media_id, $entry->meta, MediaRefs::rows([$entry->cover_media_id]));
         $categories = [];
         $theirIds = array_values(array_filter(array_map(self::idOrNull(...), explode(',', $print['category'] ?? ''))));
         if (($print['category'] ?? '') !== ($this->storedPrint['category'] ?? '')) {
@@ -2448,13 +2699,15 @@ final class Editor extends Component
             'body' => [__('entries.ed.body_label'),
                 $this->prose ? EntryProseBody::preview($this->bodyHtml, 160) : __('entries.ed.stale_blocks', ['n' => count($this->blocks)]),
                 $storedBody !== null ? EntryProseBody::preview($storedBody['html'], 160) : __('entries.ed.stale_blocks', ['n' => count($storedBlocks)])],
+            'focus_keyword' => [__('entries.ed.keyword_label'), $this->focusKeyword, (string) $translation?->focus_keyword],
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
-            'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverImageKey), $this->coverName(is_string($cover) ? $cover : '')],
+            'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverKey()), $this->coverName($cover)],
             'cover_alt' => [__('entries.ed.cover_alt_label'), $this->coverAlt, (string) $translation?->cover_alt],
             'category' => [__('entries.ed.card_category'), $categoryNames($this->categoryIds), $categoryNames($theirIds)],
             'template' => [__('entries.rev.f_tpl'), $this->templateName($this->formTemplate($entry->template_override)), $this->templateName($entry->template_override)],
             'display_date' => [__('entries.ed.pd_label', ['doc' => $this->docNoun()]), $this->dayName($this->displayDate), $this->dayName(DisplayDate::of($entry->meta))],
+            'job' => [__('entries.ed.job_card'), $this->jobSummary(), $this->jobSummaryOf($entry->meta)],
         ];
 
         $rows = [];
@@ -2500,7 +2753,8 @@ final class Editor extends Component
         foreach (self::TRACKED as $field) {
             $value = $this->{$field};
             $values[$field] = match (true) {
-                is_array($value) => (string) json_encode($value),
+                // written as the browser's JSON.stringify writes it (admin-editor.js valueText)
+                is_array($value) => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_LINE_TERMINATORS),
                 is_scalar($value) => (string) $value,
                 default => '',
             };
@@ -2530,6 +2784,43 @@ final class Editor extends Component
         }
 
         return $count;
+    }
+
+    /**
+     * The fields with unsaved edits, by the names the form shows them under, once each and in the
+     * form's order; empty when nothing differs from what was loaded or saved (as changeCount counts,
+     * the block list judged again now).
+     *
+     * @return list<string>
+     */
+    private function unsavedNames(): array
+    {
+        $labels = [
+            'title' => $this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post',
+            'slug' => 'entries.ed.slug', 'excerpt' => 'admin.seo.excerpt_label', 'bodyHtml' => 'entries.ed.body_label',
+            'seoTitle' => 'admin.seo.title_label', 'seoDescription' => 'admin.seo.description_label',
+        ];
+        $blocks = $this->blocksHash() !== ($this->saved['blocks'] ?? '');
+        $names = [];
+        $choices = false;
+        foreach ($this->tracked() as $field => $value) {
+            if ($field === 'blocks' || ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value)) {
+                continue;
+            }
+            if (($this->saved[$field] ?? '') === $value && ! ($field === 'bodyHtml' && $blocks)) {
+                continue;
+            }
+            if (isset($labels[$field])) {
+                $names[] = Cast::string(__($labels[$field], ['doc' => $this->docNoun()]));
+            } else {
+                $choices = true;
+            }
+        }
+        if ($choices) {
+            $names[] = Cast::string(__('entries.refuse.reload_choices'));
+        }
+
+        return array_values(array_unique($names));
     }
 
     /** The list this entry belongs to: a post's content section, the pages list for a page. */
@@ -3072,32 +3363,34 @@ final class Editor extends Component
 
     /**
      * The save state beside the title while nothing is being typed: a new entry not saved yet,
-     * saved at a time, or a field to fix. The browser shows the typing states over it.
+     * saved at a time, or a field to fix. The browser shows the typing states over it. `short` is
+     * the phone's one bar line (board 07: «Đã lưu 09:40» · «Chưa lưu»).
      *
-     * @return array{key: string, icon: string, text: string, full: string, tip: string}
+     * @return array{key: string, icon: string, text: string, short: string, full: string, tip: string}
      */
     private function saveNote(): array
     {
         if ($this->saveFailed) {
             $text = (string) __('catalog.ed.sv_error');
 
-            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $at = $this->savedAt !== null ? app(SiteTime::class)->forDisplay(CarbonImmutable::parse($this->savedAt)) : null;
         if (! $at instanceof CarbonImmutable) {
             $text = (string) __('entries.ed.sv_new', ['unit' => Str::ucfirst($this->unit())]);
 
-            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $today = $at->isSameDay(app(SiteTime::class)->now());
         $time = $at->format('H:i');
         $full = (string) ($today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]));
         // the draft's own save reads «Đã lưu nháp …» (board 07); a button's save «Đã lưu …»
-        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $today ? $time : $at->format('d/m')]);
+        $when = $today ? $time : $at->format('d/m');
+        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $when]);
 
-        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
+        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'short' => (string) __('catalog.ed.sv_short', ['when' => $when]), 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
     }
 
     /**
@@ -3207,9 +3500,12 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = self::onFormFields(app(EntryContentRules::class)->rules());
+        // a shared block this entry stores now stays allowed once it is gone (read only if one is not found)
+        $rules = self::onFormFields(app(EntryContentRules::class)->rules($this->ulid !== null ? EntryContentRules::storedRefs($this->ulid) : []));
         // the featured image's words: one line of plain text (normalized before validation)
         $rules['coverAlt'] = ['nullable', 'string', 'max:'.EntryContentRules::COVER_ALT_MAX, $this->plainCoverAlt(...)];
+        // the words the page should be found by: one line of plain text (normalized before validation)
+        $rules['focusKeyword'] = ['nullable', 'string', 'max:'.EntryContentRules::FOCUS_KEYWORD_MAX, $this->plainFocusKeyword(...)];
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -3243,7 +3539,7 @@ final class Editor extends Component
             ? ['string', new ExpiryTime(app(SiteTime::class)->zone(), $this->formPublishAt())]
             : ['string'];
 
-        return $rules;
+        return [...$rules, ...$this->jobRules()];
     }
 
     /**
@@ -3325,6 +3621,7 @@ final class Editor extends Component
             'categoryId.exists' => __('entries.category_invalid'),
             'categoryIds.*' => __('entries.category_invalid'),
             'coverAlt.max' => __('entries.ed.cover_alt_too_long', ['max' => EntryContentRules::COVER_ALT_MAX]),
+            'focusKeyword.max' => __('entries.ed.keyword_too_long', ['max' => EntryContentRules::FOCUS_KEYWORD_MAX]),
             'templateKey.in' => __('entries.ed.tpl_invalid'),
             'displayDate.date_format' => __('entries.ed.pd_invalid'),
             'tags.max' => __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS]),
@@ -3336,6 +3633,14 @@ final class Editor extends Component
     {
         if (is_string($value) && PlainText::hasMarkup($value)) {
             $fail(__('entries.ed.cover_alt_markup'));
+        }
+    }
+
+    /** «Từ khóa muốn lên top» is words, never markup (EntryContentRules::focusKeyword, as a restored version is held). */
+    private function plainFocusKeyword(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (is_string($value) && PlainText::hasMarkup($value)) {
+            $fail(__('entries.ed.keyword_markup'));
         }
     }
 
@@ -3447,6 +3752,7 @@ final class Editor extends Component
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
         $this->coverAlt = PlainText::label($this->coverAlt);
+        $this->focusKeyword = PlainText::label($this->focusKeyword);
         $this->blocks = PlainText::linesIn($this->blocks);
 
         $filled = $this->fillBlankSlug();
@@ -3486,11 +3792,23 @@ final class Editor extends Component
         $filing = $this->categoryIds;
         $orderRefused = false;
 
+        $cover = null;
+        $this->coverStoredSame = true;
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
             // Opening the editor needs only `create`; what is saved must lie inside the member's
             // category limits (a page has no category, so a limited member writes no page).
             $this->authorize('fileUnder', [Entry::class, $this->type, $this->type === 'post' ? $this->categoryId : null]);
+            // the picture first: one gone from the library since the pick makes no entry
+            $cover = $this->coverToStore(null, [], true);
+            if ($cover === null) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                return null;
+            }
             $fields = [
                 'type' => $this->type,
                 'status' => 'draft',
@@ -3549,7 +3867,7 @@ final class Editor extends Component
                 if ($filled) {
                     $this->slug = '';
                 }
-                $this->addError('workflow', __('entries.change_err_change_stale'));
+                $this->changeRefused('change_stale');
 
                 return null;
             }
@@ -3566,13 +3884,22 @@ final class Editor extends Component
             if ($this->overwrite !== null) {
                 $this->overwrite += ['cover_alt' => md5('')];
             }
-            // a form opened before «Mẫu hiển thị» and «Ngày đăng hiện trên bài» could not change them: read as stored
-            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true]);
+            // a form opened before «Mẫu hiển thị», «Ngày đăng hiện trên bài», «Thông tin tuyển dụng» and «Từ khóa muốn lên top» could not change them: read as stored
+            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true, 'job' => true, 'focus_keyword' => true]);
             if ($this->storedPrint !== []) {
+                // a form opened before «Từ khóa muốn lên top» existed holds no words for it: it leaves the stored ones as they are
+                if (! array_key_exists('focus_keyword', $this->storedPrint)) {
+                    $this->focusKeyword = (string) $stored['translation']?->focus_keyword;
+                }
                 $this->storedPrint += $later;
             }
             if ($this->overwrite !== null) {
                 $this->overwrite += $later;
+            }
+            // in the stored print's order, so a field read as stored above compares as the same print
+            $this->storedPrint = array_replace(array_intersect_key($stored['print'], $this->storedPrint), $this->storedPrint);
+            if ($this->overwrite !== null) {
+                $this->overwrite = array_replace(array_intersect_key($stored['print'], $this->overwrite), $this->overwrite);
             }
             if ($stored['print'] !== $this->storedPrint && $stored['print'] !== $this->overwrite) {
                 if ($filled) {
@@ -3582,11 +3909,35 @@ final class Editor extends Component
 
                 return null;
             }
+            // a cover this form left alone keeps what is stored, unless another save changed it and this one is kept over it
+            $this->coverStoredSame = ($stored['print']['cover'] ?? null) === ($this->storedPrint['cover'] ?? null);
             if ($held) {
                 return $this->persistHeld($entry, $stored['translation'], $proseBody ?? $layoutBody ?? $this->blocks, $reparent, $filled);
             }
             // not held back: no change is open (one put on the website in another tab is gone from the bar too)
             $this->changeSeen = null;
+            // the picture before anything is written (the page's move below included): one gone from the
+            // library since the pick writes nothing
+            $cover = $this->coverToStore($entry->cover_media_id, Cast::arr($entry->meta), $this->coverStoredSame);
+            if ($cover === null) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                return null;
+            }
+            // «Thông tin tuyển dụng» as this save writes it, onto the card stored now, before anything is written
+            try {
+                $this->jobWritten(Cast::arr($cover[1]));
+            } catch (ValidationException $e) {
+                if ($filled) {
+                    $this->slug = '';
+                }
+                $this->saveFailed = true;
+
+                throw $e;
+            }
             // the move before anything is written, in one MovePage call (a new «Trang cha» at the place typed
             // in «Thứ tự», or the typed place alone): a refused one leaves the page as it was and the form as typed
             $placed = $reparent ? $this->moveToParent($entry, $this->typedPageIndex()) : ($this->type !== 'page' || $this->applyPageOrder($entry, false));
@@ -3613,24 +3964,25 @@ final class Editor extends Component
         $this->overwrite = null;
         $this->stale = null;
 
-        // Featured/OG image: store the picked media's storage_key in entry.meta['image_url'] (the
-        // storefront resolves it to an absolute og:image + card thumbnail). Merge so any other meta
-        // key survives; an empty pick clears it.
-        $meta = $entry->meta;
-        $coverBefore = $meta['image_url'] ?? null;
-        if ($this->coverImageKey !== '') {
-            $meta['image_url'] = $this->coverImageKey;
-        } else {
-            unset($meta['image_url']);
-        }
+        // Featured/OG image: the picked picture's row in cover_media_id (the storefront resolves it to
+        // an absolute og:image + card thumbnail), the old key in meta.image_url dropped in the same save
+        // (coverToStore). Any other meta key survives.
+        $coverBefore = [$entry->cover_media_id, $entry->meta];
+        [$coverId, $meta] = $cover;
+        $entry->cover_media_id = $coverId;
         // «Thuộc tính bài»: every language's, so set in the website's default language only
         if ($this->type === 'post' && ! $this->sharedLocked() && $this->postPropsRead) {
             $meta = DisplayDate::into($meta, $this->displayDate);
             $entry->template_override = $this->formTemplate($entry->template_override);
         }
+        // «Thông tin tuyển dụng»: this language's words, every language's boxes and deadline
+        /** @var array<string, mixed> $meta */
+        $meta = $this->jobMeta(Cast::arr($meta));
         $entry->meta = $meta;
-        $sharedChanged = $entry->isDirty(['meta', 'template_override']);
-        $coverChanged = ($meta['image_url'] ?? null) !== $coverBefore;
+        $sharedChanged = $entry->isDirty(['meta', 'template_override', 'cover_media_id']);
+        // the same picture moved from its key to its row is no new picture: the other languages' words stay
+        $coverChanged = ! EntryCover::same($coverBefore[0], $coverBefore[1], $coverId, $meta);
+        $hasCover = $coverId !== null || EntryCover::metaValue($meta) !== '';
         $entry->save();
 
         $translation = $current ?? $entry->translations()->firstOrNew(['locale' => $this->locale]);
@@ -3646,7 +3998,8 @@ final class Editor extends Component
             'excerpt' => $this->excerpt !== '' ? $this->excerpt : null,
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
-            'cover_alt' => $this->coverImageKey !== '' && $this->coverAlt !== '' ? $this->coverAlt : null,
+            'cover_alt' => $hasCover && $this->coverAlt !== '' ? $this->coverAlt : null,
+            'focus_keyword' => $this->focusKeyword !== '' ? $this->focusKeyword : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
         if ($coverChanged) {
@@ -3696,7 +4049,9 @@ final class Editor extends Component
         $this->loadedAt = $this->savedAt;
         // What this save stored is what the next one compares against (the written model holds it).
         // The main category just written is the form's own value, so it needs no second read.
-        $this->storedPrint = self::printOf($translation, $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->storedPrint = self::printOf($translation, $this->coverPrint($entry->cover_media_id, $entry->meta), $entry->meta, $this->type === 'post' ? $this->categoryIds : [], $entry->template_override);
+        $this->coverTouched = false;
+        $this->jobSaved($entry->meta);
         $this->mayPublish = $this->user()->can('publish', $entry);
         if ($wasNew) {
             $this->frameRights($entry);
@@ -3791,6 +4146,8 @@ final class Editor extends Component
             $this->dispatch('admin-editor-saved');
             $this->savedAt = self::iso(CarbonImmutable::now());
             $this->loadedAt = $this->savedAt;
+            $held = $this->changeMemo instanceof EntryDraft ? ($this->changeMemo->content['shared']['meta'] ?? null) : null;
+            $this->jobSaved(is_array($held) ? $held : null);
         }
         $this->resetSave();
 
@@ -4396,6 +4753,8 @@ final class Editor extends Component
             $this->expiresAt = $undo['value'];
         } elseif ($undo['field'] === 'displayDate' && $this->type === 'post' && ! $this->sharedLocked()) {
             $this->displayDate = $undo['value'];
+        } elseif ($undo['field'] === 'jobCard') {
+            $this->jobUndo($undo['value']);
         }
     }
 

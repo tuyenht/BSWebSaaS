@@ -37,8 +37,7 @@
 
     // A form's name in the member's language (its first name otherwise).
     $formName = function ($form) use ($locale): string {
-        $names = Cast::arr($form?->name);
-        $name = Cast::string($names[$locale] ?? $names['vi'] ?? (array_values($names)[0] ?? ''));
+        $name = \App\Modules\Forms\Support\FormDraft::text($form?->name, $locale);
 
         return $name !== '' ? $name : __('leads.form_untitled');
     };

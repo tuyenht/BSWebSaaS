@@ -3,10 +3,16 @@
 namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Exceptions\MediaRejectedException;
+use App\Modules\Media\Jobs\CountPdfPages;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\PdfPages;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Media\Support\MediaKeyPrefix;
+use App\Modules\Media\Support\MediaStorage;
+use App\Modules\Shared\Support\Cast;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -14,13 +20,24 @@ use Illuminate\Support\Facades\Storage;
  * real MIME is sniffed from the file's MAGIC BYTES (finfo) — never the client header or extension,
  * so a `.jpg` carrying PHP is rejected. Content is SHA-256 hashed → deduped within (site, collection,
  * hash) → stored to R2 under the opaque content-hash key (the source of truth; URL derived later by
- * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context.
+ * MediaUrlResolver). site_id is stamped by BelongsToSite from the current tenant context. A new row
+ * counts its size into the library's storage total (MediaStorage) as the action's last write; with
+ * the storage switch on, a file that does not fit is refused (never the platform's own content:
+ * $mayRefuse). The object is stored before its row; once the row is really created, the object is
+ * deleted again if that row rolls back (a refusal, the counter write failing, the request failing
+ * later on: MediaKey::dropOnRollBack), never before. A re-upload that takes a file back out of the
+ * Trash puts its object back first and restores the row last, so the Trash total's row is held only
+ * until the commit, never across a call to storage.
  *
  * GĐ1 allow-list excludes SVG (XSS surface; needs a dedicated sanitizer dependency — deferred).
  */
 final readonly class UploadMedia
 {
-    public function __construct(private MediaKeyPrefix $prefix) {}
+    public function __construct(
+        private MediaKeyPrefix $prefix,
+        private MediaStorage $storage,
+        private TrashMedia $trash,
+    ) {}
 
     /** Max upload size in KB (10 MB). */
     public const int MAX_KB = 10240;
@@ -38,8 +55,13 @@ final readonly class UploadMedia
      * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
      *                            media.delete.any right, resolved by the caller). The action holds no user
      *                            of its own, so the caller decides; false refuses with `in_trash`.
+     * @param  int|null  $folderId  the folder a new file goes in (resolved by the caller inside this site);
+     *                              a file already here keeps the folder it has
+     * @param  bool  $mayRefuse  false for the platform's own content (a content pack's images): counted like
+     *                           any upload but never refused for room, like a seed (EnsureMediaFromKey),
+     *                           so a pack never stops half-loaded on a website that is short of room
      */
-    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media
+    public function handle(UploadedFile $file, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false, ?int $folderId = null, bool $mayRefuse = true): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -63,18 +85,19 @@ final readonly class UploadMedia
         // withTrashed: the UNIQUE index doesn't know about soft-deletes — re-uploading a binned
         // file restores its master instead of dead-ending on the violation, but only for someone
         // allowed to restore from the Trash; anyone else is told so, and the row stays binned.
-        // Self-heal: if the master's object went missing, these same bytes go back under its key.
+        // Self-heal: if the master's object went missing, these same bytes go back under its key
+        // (kept on a rollback: the row naming it stays either way). The restore is the last write.
         $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
-            if ($existing->trashed()) {
-                if (! $mayRestore) {
-                    throw new MediaRejectedException('in_trash');
-                }
-                $existing->restore();
+            if ($existing->trashed() && ! $mayRestore) {
+                throw new MediaRejectedException('in_trash');
             }
             $disk = Storage::disk(MediaKey::disk());
             if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents, MediaKey::objectOptions($mime))) {
                 throw new MediaRejectedException('storage_failed');
+            }
+            if ($existing->trashed()) {
+                $this->trash->restore(new Collection([$existing]));
             }
 
             return $existing;
@@ -100,20 +123,47 @@ final readonly class UploadMedia
         // (the request transaction stays valid) and returns the winner. A double-submit / concurrent
         // upload is thus idempotent, never a 500 / aborted transaction. (site_id is in the unique key
         // but stamped by the trait, so the dedup attributes are collection + hash within this site.)
-        return Media::query()->createOrFirst(
-            ['collection' => $collection, 'hash' => $hash],
-            [
-                'slug' => $slug,
-                'storage_key' => $key,
-                'disk' => MediaKey::disk(),
-                'original_filename' => $file->getClientOriginalName(),
-                'mime' => $mime,
-                'size' => (int) $file->getSize(),
-                'width' => $width,
-                'height' => $height,
-                'created_by' => $createdBy,
-            ],
-        );
+        $create = function () use ($collection, $hash, $slug, $key, $file, $mime, $width, $height, $createdBy, $folderId, $mayRefuse): Media {
+            $media = Media::query()->createOrFirst(
+                ['collection' => $collection, 'hash' => $hash],
+                [
+                    'slug' => $slug,
+                    'storage_key' => $key,
+                    'disk' => MediaKey::disk(),
+                    'original_filename' => $file->getClientOriginalName(),
+                    'mime' => $mime,
+                    'size' => (int) $file->getSize(),
+                    'width' => $width,
+                    'height' => $height,
+                    'created_by' => $createdBy,
+                    'folder_id' => $folderId,
+                ],
+            );
+            // 8) Count it into the library's storage total — only a row really created (a concurrent
+            // identical upload that won is already counted, and its object is its own) — as the last
+            // write; the object goes with the row if the row rolls back.
+            if ($media->wasRecentlyCreated) {
+                MediaKey::dropOnRollBack($key);
+                $mayRefuse ? $this->storage->charge($media) : $this->storage->added($media);
+            }
+
+            return $media;
+        };
+
+        // In a savepoint of its own, whether the storage switch is on or not: a refusal, or any failed
+        // statement (the totals' row held past SiteCounters::LOCK_WAIT, say), really rolls the new row
+        // back, which drops the copy just stored. Without it the failure would only abort the request's
+        // transaction, and a web request that answers with an error still ends it with a COMMIT that
+        // PostgreSQL turns into a rollback while Laravel runs no rollback callback: the copy would stay.
+        $media = DB::transaction($create);
+
+        // a new PDF gets its pages counted once the upload has committed (a file already here keeps
+        // whatever count it has; media:pdf-pages fills older ones)
+        if ($media->wasRecentlyCreated && $media->mime === PdfPages::MIME) {
+            CountPdfPages::dispatch($media->site_id, Cast::int($media->getKey()));
+        }
+
+        return $media;
     }
 
     /**

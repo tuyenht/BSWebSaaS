@@ -20,6 +20,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -211,11 +212,13 @@ it('says on each file where it is used, as its detail panel counts it, and nothi
         Mediable::query()->create(['media_id' => $blocks->id, 'mediable_type' => 'site_setting', 'mediable_id' => $setting->id, 'collection' => BlockMediaUsage::COLLECTION]);
         Mediable::query()->create(['media_id' => $blocks->id, 'mediable_type' => 'site_setting', 'mediable_id' => $setting->id, 'collection' => BranchList::COLLECTION]);
     });
-    // the other site uses its own file, and names this site's id: neither counts here
+    // the other site uses its own file, which does not count here; it cannot name this site's id
+    // (the same-site key refuses it)
     app(Tenancy::class)->enter(2, function () use ($theirs, $gallery): void {
         $product = Product::query()->create(['status' => 'published']);
         ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $theirs->id, 'position' => 0]);
-        Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $gallery->id]);
+        expect(fn () => DB::transaction(fn () => Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $gallery->id])))
+            ->toThrow(QueryException::class, 'taxonomies_cover_media_id_same_site_foreign');
     });
 
     app(Tenancy::class)->enter(1, function () use ($me, $gallery, $cover, $brand, $blocks, $unused): void {
@@ -425,4 +428,70 @@ it('lays each list row out on two lines while the folder column sits beside a fi
     $dims = $xpath->query('//tbody/tr/td')->item(4);
     expect((string) $dims?->attributes?->getNamedItem('class')?->nodeValue)->toContain($band.'block')
         ->and($html)->toContain('@min-[56.25rem]/tvm:hidden '.$band.'hidden!');
+});
+
+it('counts each «Loại tệp», «Định dạng» and «Tình trạng» choice with every other condition on, only while the filters are open', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    $folder = app(Tenancy::class)->enter(1, fn () => MediaFolder::query()->create(['name' => 'Công trình', 'slug' => 'cong-trinh', 'position' => 1]));
+    $used = mfFile(1, 'dung.png', ['folder_id' => $folder->id]);
+    mfFile(1, 'chua-dung.jpg', ['mime' => 'image/jpeg', 'folder_id' => $folder->id]);
+    mfFile(1, 'bang-gia.pdf', ['mime' => 'application/pdf', 'width' => null, 'height' => null, 'folder_id' => $folder->id]);
+    mfFile(1, 'ngoai.webp', ['mime' => 'image/webp']);
+    $binned = mfFile(1, 'da-xoa.gif', ['mime' => 'image/gif']);
+    app(Tenancy::class)->enter(1, fn () => $binned->delete());
+    mfFile(2, 'cua-site-b.png', ['mime' => 'application/pdf']);
+    app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0, 'cover_media_id' => $used->id]));
+
+    app(Tenancy::class)->enter(1, function () use ($me): void {
+        $page = Livewire::actingAs($me)->test(Library::class);
+        // closed: no counts read
+        expect($page->viewData('groupCounts'))->toBe([]);
+
+        $page->set('tally', true);
+        expect($page->viewData('groupCounts'))->toBe([
+            'kinds' => ['img' => 3, 'pdf' => 1],
+            'formats' => ['jpg' => 1, 'png' => 1, 'webp' => 1, 'gif' => 0, 'pdf' => 1],
+            'uses' => ['used' => 1, 'unused' => 3],
+        ]);
+
+        // in a folder, with a format chosen: «Định dạng» still counts every format there, the other groups only the PNG
+        $page->call('setFolder', 'cong-trinh')->set('formats', ['png']);
+        expect($page->viewData('groupCounts'))->toBe([
+            'kinds' => ['img' => 1, 'pdf' => 0],
+            'formats' => ['jpg' => 1, 'png' => 1, 'webp' => 0, 'gif' => 0, 'pdf' => 1],
+            'uses' => ['used' => 1, 'unused' => 0],
+        ]);
+        // shown beside each choice in the Filter sheet
+        $countAfter = fn (string $label, string $n): string => '/>'.preg_quote(e($label), '/').'<\/span>\s*(?:<!--.*?-->\s*)*<span class="shrink-0 text-small font-normal text-text-muted">'.$n.'<\/span>/';
+        expect($page->html())->toMatch($countAfter(__('media.lib.kind_pdf'), '0'))
+            ->toMatch($countAfter('JPG', '1'))
+            ->toMatch($countAfter(__('media.lib.use_used'), '1'));
+
+        // the Trash counts its own files and has no «Tình trạng»
+        $page->set('formats', [])->call('setFolder', '~trash');
+        expect($page->viewData('groupCounts'))->toBe([
+            'kinds' => ['img' => 1, 'pdf' => 0],
+            'formats' => ['jpg' => 0, 'png' => 0, 'webp' => 0, 'gif' => 1, 'pdf' => 0],
+        ]);
+
+        $page->set('tally', false);
+        expect($page->viewData('groupCounts'))->toBe([]);
+    });
+});
+
+it('reads the type, format and use counts in one statement each, and none while the filters are shut', function (): void {
+    $me = mfMember('admin', 'Bảo Ngọc');
+    foreach (range(1, 30) as $i) {
+        mfFile(1, "f-{$i}.png", ['mime' => $i % 3 === 0 ? 'application/pdf' : 'image/png']);
+    }
+    $ours = fn (array $sql): array => array_values(array_filter($sql, fn (string $q): bool => str_contains($q, "count(*) filter (where mime <> 'application/pdf')")
+        || str_contains($q, 'count(*) filter (where mime in (') || str_starts_with($q, 'select count(*) as n, (select count(*) from "media"')));
+
+    app(Tenancy::class)->enter(1, function () use ($me, $ours): void {
+        $page = Livewire::actingAs($me)->test(Library::class);
+        expect($ours(mfSql(fn () => $page->call('setView', 'list'))))->toBe([]);
+        expect($ours(mfSql(fn () => $page->set('tally', true))))->toHaveCount(3);
+        expect($ours(mfSql(fn () => $page->call('older', (string) $page->viewData('olderUlid')))))->toHaveCount(3); // still open
+        expect($ours(mfSql(fn () => $page->set('tally', false))))->toBe([]);
+    });
 });

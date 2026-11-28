@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Support;
 use App\Modules\Admin\Support\Categories\CategorySections;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\ContentBlock;
@@ -31,7 +32,9 @@ use Illuminate\Support\Facades\DB;
  * pictures (mediables collection `branch`, written with the branch list; role `content`, kind
  * `site`, labelled "Chi nhánh / Nhà máy") and a floating-contact channel's own icon picture
  * (mediables collection `contact_icon`, written on that screen's save; role `content`, kind `site`,
- * labelled with the screen's title "Nút liên hệ nổi"). Rich-text body images (a URL in the HTML, no media_id) are
+ * labelled with the screen's title "Nút liên hệ nổi") and the picture drawn under section headings
+ * (mediables collection `heading_mask`, written with that setting; role `content`, kind `site`,
+ * labelled "Hoa văn dưới tiêu đề"). Rich-text body images (a URL in the HTML, no media_id) are
  * intentionally out of scope here — they can't be resolved back to a master.
  *
  * Lives in Admin (not Media) on purpose: it reaches into Catalog + Cms, and Catalog already depends
@@ -42,11 +45,12 @@ final readonly class MediaUsageLocator
 {
     /**
      * The collections of the library's "in use" rows (mediables) that mean "used": a block's
-     * picture or file (content), a branch or factory picture (branch) and a floating-contact
-     * channel's own icon picture (contact_icon). Every reader here counts all three, so a picture
-     * named only by the branch list or the floating contact is never listed as unused.
+     * picture or file (content), a branch or factory picture (branch), a floating-contact channel's
+     * own icon picture (contact_icon) and the heading mask picture (heading_mask). Every reader here
+     * counts all four, so a picture named only by the branch list, the floating contact or the
+     * heading decoration is never listed as unused.
      */
-    private const array COLLECTIONS = [BlockMediaUsage::COLLECTION, BranchList::COLLECTION, FloatingContactInput::ICON_COLLECTION];
+    private const array COLLECTIONS = [BlockMediaUsage::COLLECTION, BranchList::COLLECTION, FloatingContactInput::ICON_COLLECTION, HeadingDecorInput::MASK_COLLECTION];
 
     public function __construct(private CategorySections $sections) {}
 
@@ -119,6 +123,7 @@ final readonly class MediaUsageLocator
         $owners = ['entry' => [], 'site_setting' => [], 'taxonomy' => [], ContentBlockMediaReconciler::OWNER => []];
         $branch = false;
         $floating = false;
+        $headingMask = false;
         $rows = Mediable::query()
             ->where('media_id', $media->id)->whereIn('collection', self::COLLECTIONS)->whereIn('mediable_type', array_keys($owners))
             ->get(['mediable_type', 'mediable_id', 'collection']);
@@ -132,6 +137,12 @@ final readonly class MediaUsageLocator
             if ($row->collection === FloatingContactInput::ICON_COLLECTION) {
                 // A channel's own icon picture, named by the floating contact (storefront.floating_contact).
                 $floating = $floating || $row->mediable_type === 'site_setting';
+
+                continue;
+            }
+            if ($row->collection === HeadingDecorInput::MASK_COLLECTION) {
+                // The picture drawn under section headings, named by the heading decoration (theme.heading_decor).
+                $headingMask = $headingMask || $row->mediable_type === 'site_setting';
 
                 continue;
             }
@@ -162,6 +173,14 @@ final readonly class MediaUsageLocator
                 'role' => 'content',
                 'label' => __('admin.fc.title'),
                 'url' => route('admin.settings.floating-contact'),
+            ];
+        }
+        if ($headingMask) {
+            $usages[] = [
+                'kind' => 'site',
+                'role' => 'content',
+                'label' => __('media.usage_heading_mask'),
+                'url' => null,
             ];
         }
         if ($owners['taxonomy'] !== []) {
@@ -238,7 +257,7 @@ final readonly class MediaUsageLocator
             Mediable::query()->toBase()->whereIn('media_id', $ids)->where('collection', $content)->where('mediable_type', ContentBlockMediaReconciler::OWNER)
                 ->whereIn('mediable_id', ContentBlock::query()->select('id'))
                 ->groupBy('media_id')->selectRaw('media_id as k, count(distinct mediable_id) as n'),
-            // the site's own block slots, its branch list and the floating contact: one place each
+            // the site's own block slots, its branch list, the floating contact and the heading mask: one place each
             Mediable::query()->toBase()->whereIn('media_id', $ids)->whereIn('collection', self::COLLECTIONS)->where('mediable_type', 'site_setting')
                 ->groupBy('media_id')->selectRaw('media_id as k, count(distinct collection) as n'),
         ];
@@ -352,6 +371,8 @@ final readonly class MediaUsageLocator
         // raw import before the next reconcile) still keeps its file out of the Trash, the meta of a
         // post in the Trash too, so restoring it still finds its picture.
         $coverKeys = $liveOwners ? null : Entry::withTrashed()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
+        // … and the covers named by id (NOT IN with a NULL in the list matches nothing, so no NULLs)
+        $coverIds = $liveOwners ? null : Entry::withTrashed()->whereNotNull('cover_media_id')->select('cover_media_id');
         $blockMediaIds = $liveOwners
             ? Mediable::query()->whereIn('collection', [BlockMediaUsage::COLLECTION, EntryCoverUsage::COLLECTION])->where('mediable_type', 'entry')
                 ->whereIn('mediable_id', Entry::query()->select('id'))->select('media_id')
@@ -371,9 +392,10 @@ final readonly class MediaUsageLocator
         }
 
         if ($used) {
-            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
+            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $coverIds, $blockMediaIds, $categoryMediaIds, $brandMediaIds): void {
                 $q->whereIn('id', $galleryMediaIds)
                     ->when($coverKeys !== null, fn (Builder $q) => $q->orWhereIn('storage_key', $coverKeys))
+                    ->when($coverIds !== null, fn (Builder $q) => $q->orWhereIn('id', $coverIds))
                     ->orWhereIn('id', $blockMediaIds)
                     ->orWhereIn('id', $categoryMediaIds)
                     ->orWhereIn('id', $brandMediaIds);
@@ -384,6 +406,7 @@ final readonly class MediaUsageLocator
 
         $query->whereNotIn('id', $galleryMediaIds)
             ->when($coverKeys !== null, fn (Builder $q) => $q->whereNotIn('storage_key', $coverKeys))
+            ->when($coverIds !== null, fn (Builder $q) => $q->whereNotIn('id', $coverIds))
             ->whereNotIn('id', $blockMediaIds)
             ->whereNotIn('id', $categoryMediaIds)
             ->whereNotIn('id', $brandMediaIds);

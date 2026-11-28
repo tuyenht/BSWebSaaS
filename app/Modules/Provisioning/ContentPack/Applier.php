@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\ContentPack;
 use App\Modules\Admin\Support\Entries\SectionListViews;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
+use App\Modules\Admin\Support\Settings\HeadingDecorInput;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Support\ProductGallery;
 use App\Modules\Catalog\Support\ProductSearchWords;
@@ -25,13 +26,16 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\BlockMediaUsage;
+use App\Modules\Cms\Support\BlockUsageIndex;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCover;
 use App\Modules\Cms\Support\HomePages;
 use App\Modules\Cms\Support\PageRules;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaRefs;
 use App\Modules\Provisioning\Support\FirstOwner;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Storefront\Support\ThankYouPages;
@@ -41,6 +45,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\ContentSectionCategory;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Rendering\LayoutSlots;
 use App\Modules\Theme\Theming\StorefrontSettings;
 use Illuminate\Support\Carbon;
@@ -51,7 +56,10 @@ use Illuminate\Support\Carbon;
  * exactly the plan's `desired` state through the platform's own writers: RouteSync for every
  * address (301 + chain collapse), CategoryRelinker after a category rename, assignCategories() for
  * filing, RecordEntryRevision before and after an entry write (staff can restore the earlier text
- * from the editor's history), the media reconciler after a body write. Any exception rolls the
+ * from the editor's history), the media reconciler after a body write. Every file the writes name
+ * (a post's card image, a category's intro picture, a product's gallery, a download button's
+ * document, a brand image) is read once for the whole load and stored by its library row: the cover
+ * and gallery ids, the button's `media` ulid, the brand image on the site profile. Any exception rolls the
  * whole load back. The loader writes no person: actor null, no audit row per item, except the dates it
  * changes (publish time, end time, display day: the model records each, as the content pack's).
  */
@@ -61,6 +69,9 @@ final class Applier
     private array $ids = [];
 
     private string $locale = '';
+
+    /** @var array<string, Media> storage key → this website's live row, for every file the plan's writes name */
+    private array $media = [];
 
     public function __construct(
         private readonly RouteSync $routes,
@@ -72,6 +83,7 @@ final class Applier
         private readonly PermalinkConfig $permalinks,
         private readonly SectionResolver $sections,
         private readonly BlockMediaUsage $blockUsage,
+        private readonly BlockUsageIndex $blockPlaces,
         private readonly FirstOwner $owner,
     ) {}
 
@@ -87,6 +99,8 @@ final class Applier
             }
         }
 
+        $this->media = $this->mediaRows($plan, $planner);
+
         $written = 0;
         $settingsWritten = false;
         foreach ($plan->items as $planned) {
@@ -99,7 +113,7 @@ final class Applier
             }
 
             match ($planned->item->kind) {
-                'setting' => $this->setting($planned),
+                'setting' => $this->setting($planned, $planner),
                 'profile' => $this->profile($planned),
                 'taxonomy' => $this->taxonomy($planned, $planner),
                 'section' => $this->section($planned),
@@ -118,6 +132,140 @@ final class Applier
         return $written;
     }
 
+    /**
+     * Every file the plan's writes name by its storage key, read in ONE query for the whole load:
+     * this website's rows outside the Trash (the Media scopes: site_id and deleted_at), FOR KEY SHARE
+     * so a purge of any of them waits for the load's transaction. No query when none is named.
+     *
+     * @return array<string, Media> storage key → row
+     */
+    private function mediaRows(Plan $plan, Planner $planner): array
+    {
+        $keys = [];
+        foreach ($plan->items as $planned) {
+            if (! $planned->writes()) {
+                continue;
+            }
+            $desired = $planned->desired;
+            $kind = $planned->item->kind;
+            if ($kind === 'post' || $kind === 'page') {
+                $image = $desired['image'] ?? null;
+                if (MediaRefs::looksLikeKey($image)) {
+                    $keys[] = $image;   // a glyph or an outside address names no file
+                }
+                array_push($keys, ...self::fileKeys($desired['translations'] ?? null));
+            } elseif ($kind === 'taxonomy') {
+                $keys[] = $desired['cover'] ?? null;
+            } elseif ($kind === 'product') {
+                array_push($keys, ...Cast::strings($desired['images'] ?? []));
+            } elseif ($planned->item->key === Planner::BRAND_ITEM) {
+                foreach (Planner::BRAND_IMAGES as $slot) {
+                    $keys[] = $planner->mintedKey($desired[$slot] ?? null);
+                }
+            }
+        }
+        $keys = array_values(array_unique(array_filter($keys, fn (mixed $key): bool => is_string($key) && $key !== '')));
+        if ($keys === []) {
+            return [];
+        }
+
+        $rows = [];
+        foreach (Media::query()->whereIn('storage_key', $keys)->lock('for key share')->get(['id', 'ulid', 'storage_key', 'mime']) as $row) {
+            $rows[$row->storage_key] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The storage key of every download button's file in a value, in the form the plan writes
+     * (`{"k": "file", "file": <storage key>}`).
+     *
+     * @return list<string>
+     */
+    private static function fileKeys(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+        if (($value['k'] ?? null) === 'file') {
+            return is_string($value['file'] ?? null) ? [$value['file']] : [];
+        }
+        $keys = [];
+        foreach ($value as $child) {
+            array_push($keys, ...self::fileKeys($child));
+        }
+
+        return $keys;
+    }
+
+    /**
+     * A body with every download button naming its document by its library row (`media`, the row's
+     * ulid) in place of the storage key the plan holds. The plan read the document as one of this
+     * website's; one that left the library while the load ran stops the load, never in silence.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @return array<array-key, mixed>
+     */
+    private function filesByRow(array $value, string $at): array
+    {
+        if (($value['k'] ?? null) === 'file' && is_string($value['file'] ?? null)) {
+            $row = $this->media[$value['file']] ?? null;
+            if ($row === null || ! in_array($row->mime, ButtonLink::DOCUMENT_MIMES, true)) {
+                throw new PackRejected("Refused: plan changed, run the dry run again (a download file of {$at} left the library while the load ran; nothing was changed).");
+            }
+            unset($value['file']);
+            $value['media'] = $row->ulid;
+
+            return $value;
+        }
+
+        return array_map(fn (mixed $child): mixed => is_array($child) ? $this->filesByRow($child, $at) : $child, $value);
+    }
+
+    /**
+     * The brand setting with each image the pack writes (Planner::BRAND_IMAGES) moved to the
+     * site profile as its picture, the way the settings screen stores one (SetBrandImages): the
+     * profile column names the row and the address leaves the setting. Only an address the plan
+     * wrote for a picture of this website moves; any other value stays as it is. An image the item
+     * owns (Planner::brandImagesOwned) that its value leaves out or states null ends with none: the
+     * profile stops naming a picture there, as the address left the setting before brand images
+     * moved to the profile (the picture itself stays in the library). An image the item does not
+     * own is never touched.
+     *
+     * @param  array<array-key, mixed>  $value
+     * @param  array<string, mixed>  $desired
+     * @param  list<string>|null  $managed
+     * @return array<array-key, mixed>
+     */
+    private function brandImages(array $value, array $desired, ?array $managed, Planner $planner): array
+    {
+        $ids = [];
+        foreach (Planner::brandImagesOwned($managed) as $slot) {
+            if (($desired[$slot] ?? null) === null) {
+                $ids[SiteProfile::IMAGE_COLUMNS[$slot]] = null;
+
+                continue;
+            }
+            $key = $planner->mintedKey($desired[$slot]);
+            $row = $key === null ? null : ($this->media[$key] ?? null);
+            if ($row !== null && str_starts_with($row->mime, 'image/')) {
+                $ids[SiteProfile::IMAGE_COLUMNS[$slot]] = $row->id;
+                unset($value[$slot]);
+            }
+        }
+        if ($ids === []) {
+            return $value;
+        }
+        $profile = SiteProfile::query()->first();
+        if ($profile === null && array_filter($ids) !== []) {
+            $profile = new SiteProfile;
+        }
+        $profile?->fill($ids)->save();
+
+        return $value;
+    }
+
     private function flushSettings(): void
     {
         $this->settings->forget();
@@ -130,7 +278,7 @@ final class Applier
         return $this->ids[$key] ?? throw new PackRejected("Refused: {$key} is needed by another item but does not exist on the site.");
     }
 
-    private function setting(PlanItem $planned): void
+    private function setting(PlanItem $planned, Planner $planner): void
     {
         [$group, $name] = explode('.', $planned->item->anchor(), 2);
         $row = SiteSetting::query()->where('group_name', $group)->where('key', $name)->first();
@@ -145,16 +293,23 @@ final class Applier
                 }
             }
         }
+        if ($planned->item->key === Planner::BRAND_ITEM) {
+            $value = $this->brandImages($value, $planned->desired, $managed, $planner);
+        }
 
         $saved = SiteSetting::query()->updateOrCreate(['group_name' => $group, 'key' => $name], ['value' => $value]);
         if ($planned->item->key === 'setting:storefront.layout_blocks') {
             $this->blockUsage->sync('site_setting', Cast::int($saved->getKey()), LayoutSlots::blockLists($saved->value));
+            $this->blockPlaces->syncSiteSetting($saved, $saved->value);
         }
         if ($planned->item->key === 'setting:storefront.footer') {
             BranchList::syncUsage(Cast::int($saved->getKey()), Cast::arr($saved->value)['factories'] ?? null);
         }
         if ($planned->item->key === 'setting:storefront.floating_contact') {
             FloatingContactInput::syncIconUsage(Cast::int($saved->getKey()), $saved->value);
+        }
+        if ($planned->item->key === 'setting:theme.heading_decor') {
+            HeadingDecorInput::syncMaskUsage(Cast::int($saved->getKey()), $saved->value);
         }
     }
 
@@ -186,11 +341,9 @@ final class Applier
             'detail_template' => Cast::stringOrNull($desired['detail_template'] ?? null),
         ];
         // The intro picture: the media row holding the stored file (a pack that names none keeps the live one).
-        if (is_string($desired['cover'] ?? null)) {
-            $cover = Media::query()->where('storage_key', $desired['cover'])->value('id');
-            if ($cover !== null) {
-                $attributes['cover_media_id'] = Cast::int($cover);
-            }
+        $cover = is_string($desired['cover'] ?? null) ? ($this->media[$desired['cover']] ?? null) : null;
+        if ($cover !== null) {
+            $attributes['cover_media_id'] = $cover->id;
         }
 
         if ($planned->recordId === null) {
@@ -230,11 +383,12 @@ final class Applier
         $this->paths->refreshBranch($taxonomy->id);
 
         // The category's own block slots: written to its meta (other keys stay) and listed in the
-        // usage index, as the admin does when it saves them.
+        // usage indexes (the pictures, and where shared blocks are placed), as the admin does when it saves them.
         $layout = Cast::arr($desired['layout_blocks'] ?? null);
         if ($layout !== []) {
             Taxonomy::query()->whereKey($taxonomy->id)->update(['meta->'.LayoutSlots::META_KEY => $layout]);
             $this->blockUsage->sync('taxonomy', $taxonomy->id, LayoutSlots::blockLists($layout));
+            $this->blockPlaces->syncTaxonomy($taxonomy, $layout);
         }
 
         // A slug change in any language, a new parent, or both move the posts and products under the
@@ -324,14 +478,18 @@ final class Applier
     }
 
     /**
-     * A post's meta with what the pack manages (the card image, the short facts, the badge) set or removed;
-     * every other key staff or the editor put there is kept.
+     * A post's cover and meta with what the pack manages (the card image, the short facts, the badge) set
+     * or removed; every other key staff or the editor put there is kept. The card image is the post's one
+     * cover (as EntryCover::stored writes it): a key of this website's picture is written as its row in
+     * cover_media_id with no meta.image_url beside it, a glyph or a key with no live file stays in the
+     * meta with no id, and an image the pack unsets leaves neither. The file comes from the load's one
+     * read of its files (FOR KEY SHARE, so a purge of it waits).
      *
      * @param  array<array-key, mixed>  $meta
      * @param  array<string, mixed>  $desired
-     * @return array<array-key, mixed>
+     * @return array{cover_media_id: int|null, meta: array<array-key, mixed>}
      */
-    private function postMeta(array $meta, array $desired): array
+    private function postCover(array $meta, array $desired): array
     {
         foreach (['image' => 'image_url', 'facts' => 'facts', 'badge' => 'badge'] as $from => $to) {
             $value = $desired[$from] ?? null;
@@ -341,8 +499,14 @@ final class Applier
                 unset($meta[$to]);
             }
         }
+        $key = EntryCover::metaValue($meta);
+        $row = MediaRefs::looksLikeKey($key) ? ($this->media[$key] ?? null) : null;
+        if ($row === null) {
+            return ['cover_media_id' => null, 'meta' => $meta];
+        }
+        unset($meta['image_url']);
 
-        return $meta;
+        return ['cover_media_id' => $row->id, 'meta' => $meta];
     }
 
     private function entry(PlanItem $planned, Planner $planner): void
@@ -368,8 +532,7 @@ final class Applier
                 'author_id' => $this->owner->id(),   // a pack item has no typist: the website's first owner
                 'status' => $status,
                 'published_at' => $this->publishedAt($planned->item, $status),
-                'meta' => $isPost ? $this->postMeta([], $desired) : [],
-            ] + $parent);
+            ] + ($isPost ? $this->postCover([], $desired) : ['meta' => []]) + $parent);
         } else {
             $entry = Entry::withTrashed()->findOrFail($planned->recordId);
             if ($entry->trashed()) {
@@ -382,8 +545,7 @@ final class Applier
             if ($expired && $status === 'published') {
                 $status = $entry->status;
             }
-            $meta = $isPost ? $this->postMeta($entry->meta, $desired) : $entry->meta;
-            $entry->fill(['status' => $status, 'meta' => $meta] + $parent);
+            $entry->fill(['status' => $status] + ($isPost ? $this->postCover(Cast::arr($entry->meta), $desired) : []) + $parent);
             if ($status === 'published' && ! $expired && $entry->published_at === null) {
                 $entry->published_at = $this->publishedAt($planned->item, $status);
             }
@@ -412,10 +574,12 @@ final class Applier
             $entry->translations()->updateOrCreate(['locale' => $locale], [
                 'title' => Cast::string($row['title'] ?? null),
                 'slug' => $slug,
-                'body' => Cast::arr($row['body'] ?? null),
+                'body' => $this->filesByRow(Cast::arr($row['body'] ?? null), $planned->item->key),
                 'excerpt' => Cast::stringOrNull($row['excerpt'] ?? null),
                 'seo_title' => Cast::stringOrNull($row['seo_title'] ?? null),
                 'seo_description' => Cast::stringOrNull($row['seo_description'] ?? null),
+                // the editor's own note, never shown on the website; an item without one has none
+                'focus_keyword' => Cast::stringOrNull($row['focus_keyword'] ?? null),
                 'status' => Cast::string($row['status'] ?? null, $status),
             ] + ($isPost ? ['author_name' => Cast::stringOrNull($row['author'] ?? null)] : []));
 
@@ -539,11 +703,10 @@ final class Applier
 
         $images = Cast::strings($desired['images'] ?? []);
         if ($images !== Cast::strings($planned->current['images'] ?? [])) {
-            $media = Media::query()->whereIn('storage_key', $images)->pluck('id', 'storage_key');
             $ids = [];
             foreach ($images as $key) {
-                if (isset($media[$key])) {
-                    $ids[] = Cast::int($media[$key]);
+                if (isset($this->media[$key])) {
+                    $ids[] = $this->media[$key]->id;
                 }
             }
             app(ProductGallery::class)->sync($product, $ids);

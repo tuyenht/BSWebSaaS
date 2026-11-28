@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Media\Models\Media;
 use App\Modules\Provisioning\Actions\PromoteAnVinhProductPostsToCatalog;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -159,6 +160,39 @@ it('promotes product-posts to Product rows at the identical route, with no redir
     // End-to-end proof the URL truly still resolves — same path, now serving the product.
     $html = $this->get("http://anvinh-promo-a.platform.test/san-pham/{$slugs[0]}")->assertOk()->getContent();
     expect($html)->toContain('Jig kiểm số 1');
+});
+
+it('gives the product the cover a post names by its row, and none when that file is gone', function (): void {
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-id.platform.test', 2);
+
+    $photo = app(Tenancy::class)->enter($site->id, function () use ($slugs): Media {
+        $photo = Media::query()->create([
+            'collection' => 'library', 'slug' => 'jig-moi', 'hash' => str_repeat('d', 64),
+            'storage_key' => 'a-vinh/library/jig-moi-dddddddddddd.jpg', 'disk' => 'r2', 'mime' => 'image/jpeg', 'size' => 2048,
+        ]);
+        // the editor moved the first post's cover to its row (the old key gone); the second names, past
+        // the model, a file now in the Trash (a purged one the same-site key no longer lets it name)
+        $first = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', $slugs[0]))->firstOrFail();
+        $first->update(['cover_media_id' => $photo->id, 'meta' => []]);
+        $binned = Media::query()->create([
+            'collection' => 'library', 'slug' => 'jig-cu', 'hash' => str_repeat('e', 64),
+            'storage_key' => 'a-vinh/library/jig-cu-eeeeeeeeeeee.jpg', 'disk' => 'r2', 'mime' => 'image/jpeg', 'size' => 2048,
+        ]);
+        $second = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', $slugs[1]))->firstOrFail();
+        DB::table('entries')->where('id', $second->id)->update(['cover_media_id' => $binned->id]);
+        $binned->delete();
+
+        return $photo;
+    });
+
+    app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
+
+    app(Tenancy::class)->enter($site->id, function () use ($slugs, $photo): void {
+        $product = fn (string $slug): Product => Product::query()->findOrFail(ProductTranslation::query()->where('slug', $slug)->value('product_id'));
+        expect($product($slugs[0])->images()->pluck('media_id')->all())->toBe([$photo->id])
+            ->and($product($slugs[1])->images()->count())->toBe(0)   // the id decides alone: its old key is never read
+            ->and(Media::query()->count())->toBe(1);                   // no row made from the second post's old key
+    });
 });
 
 it('is idempotent — a second run creates no duplicates', function (): void {

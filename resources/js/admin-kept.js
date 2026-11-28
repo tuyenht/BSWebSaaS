@@ -72,9 +72,12 @@ export function prune(now = Date.now()) {
 
 /** What a save would send, read from the form's $wire (same fields «Khôi phục» puts back). */
 export function valuesOf(w) {
-    const values = { title: w.title, slug: w.slug, excerpt: w.excerpt, seoTitle: w.seoTitle, seoDescription: w.seoDescription, coverImageKey: w.coverImageKey, coverAlt: w.coverAlt, categoryId: w.categoryId };
+    const values = { title: w.title, slug: w.slug, excerpt: w.excerpt, seoTitle: w.seoTitle, seoDescription: w.seoDescription, focusKeyword: w.focusKeyword, coverUlid: w.coverUlid, coverAlt: w.coverAlt, categoryId: w.categoryId };
     if (Array.isArray(w.categoryIds)) {
         values.categoryIds = [...w.categoryIds];
+    }
+    if (Array.isArray(w.jobFacts)) {
+        Object.assign(values, { jobFacts: JSON.parse(JSON.stringify(w.jobFacts)), jobDeadline: w.jobDeadline, jobDeadlineAccent: w.jobDeadlineAccent, jobBadge: w.jobBadge });
     }
     if (w.prose) {
         values.bodyHtml = w.bodyHtml;

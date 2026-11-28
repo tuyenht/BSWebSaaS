@@ -29,9 +29,13 @@
         'near' => __('media.drw.alt_near', ['n' => \App\Modules\Media\Models\Media::ALT_RECOMMENDED_LENGTH, 'max' => \App\Modules\Media\Models\Media::ALT_MAX_LENGTH]),
     ];
     $groupIcons = ['product' => 'ri-shopping-bag-3', 'cover' => 'ri-image', 'content' => 'ri-file-text', 'brand' => 'ri-image'];
+    $pages = $m->pageCount();
+    $pagesN = $pages !== null ? number_format($pages, 0, ',', '.') : null;
     $dims = $m->width !== null && $m->height !== null
         ? __('media.drw.dims_px', ['w' => number_format($m->width, 0, ',', '.'), 'h' => number_format($m->height, 0, ',', '.')])
-        : '—';
+        : ($pages !== null ? trans_choice('media.lib.pages', $pages, ['n' => $pagesN]) : '—');
+    // a PDF not counted (yet) is named «PDF» alone, never given a made-up count
+    $fileLabel = $d['pdf'] && $pages !== null ? trans_choice('media.drw.pdf_pages', $pages, ['n' => $pagesN]) : strtoupper($m->extLabel());
 @endphp
 <div id="media-detail-guard">
     @if ($d['canEdit'])
@@ -75,7 +79,7 @@
                      class="h-auto max-h-full w-auto max-w-full object-contain">
             @else
                 <span class="flex flex-col items-center gap-2 text-body font-semibold text-text-muted">
-                    <x-bs-admin::icon :name="$d['pdf'] ? 'ri-file-pdf-2' : 'ri-file'" class="size-16" />{{ $d['pdf'] ? __('media.drw.pdf') : strtoupper($m->extLabel()) }}
+                    <x-bs-admin::icon :name="$d['pdf'] ? 'ri-file-pdf-2' : 'ri-file'" class="size-16" />{{ $fileLabel }}
                 </span>
             @endif
         </div>
