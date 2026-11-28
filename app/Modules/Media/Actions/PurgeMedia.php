@@ -6,7 +6,9 @@ namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaStorage;
+use App\Modules\Media\Support\PurgedObjects;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,9 +22,9 @@ use Illuminate\Support\Facades\DB;
  * back out of the Trash a moment before (after the caller listed it) is kept. Each goes one by one,
  * so MediaObserver still drops its attachments and its stored file (and refuses support staff
  * signed in for a member); their sizes come off both totals as the last write. The stored files are
- * deleted only after the caller's transaction commits (MediaObserver): when anything fails first —
- * the totals' row held past SiteCounters::LOCK_WAIT, say — the rows go back into the Trash and their
- * files are still there. The work runs in a savepoint of its own, so a failed statement really rolls
+ * deleted only after the caller's transaction commits (MediaObserver, then PurgedObjects: one last
+ * look and one delete for the whole batch): when anything fails first — the totals' row held past
+ * SiteCounters::LOCK_WAIT, say — the rows go back into the Trash and their files are still there. The work runs in a savepoint of its own, so a failed statement really rolls
  * it back, with the deletes it queued, even when the caller goes on and commits: a web request turns
  * the error into an error page inside its tenant transaction, which then ends with a COMMIT that
  * PostgreSQL treats as a rollback, and Laravel would still run the queued deletes. Who may delete for
@@ -30,6 +32,9 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class PurgeMedia
 {
+    /** Files loaded at a time by purgeAll(). */
+    public const int CHUNK = 200;
+
     public function __construct(private MediaStorage $storage) {}
 
     /**
@@ -51,7 +56,8 @@ final readonly class PurgeMedia
             return ['files' => 0, 'bytes' => 0];
         }
 
-        return DB::transaction(function () use ($rows): array {
+        // one savepoint, and one after-commit delete of the stored files for the whole page (PurgedObjects)
+        return DB::transaction(fn (): array => app(PurgedObjects::class)->batch(function () use ($rows): array {
             // a row restored meanwhile no longer matches once its lock is taken (the newest version is re-checked)
             $state = Media::onlyTrashed()->whereKey($rows->modelKeys())->orderBy('id')->lockForUpdate()
                 ->toBase()->get(['id', 'size'])->keyBy('id');
@@ -69,6 +75,33 @@ final readonly class PurgeMedia
             $this->storage->purged($bytes);
 
             return ['files' => $gone, 'bytes' => $bytes];
-        });
+        }));
+    }
+
+    /**
+     * Deletes for good every file in the Trash that $trashed matches, CHUNK at a time by id, so a large
+     * Trash is never loaded whole. All pages share one savepoint and one after-commit delete: when one
+     * page fails, none is deleted and the caller sees the error, as with a single purge().
+     *
+     * @param  Builder<Media>  $trashed  files in the Trash (Media::onlyTrashed()…)
+     * @return array{files: int, bytes: int} how many files were deleted, and their size
+     */
+    public function purgeAll(Builder $trashed, int $chunk = self::CHUNK): array
+    {
+        $chunk = max(1, $chunk);
+
+        // one savepoint, and one after-commit delete of the stored files for all the pages
+        return DB::transaction(fn (): array => app(PurgedObjects::class)->batch(function () use ($trashed, $chunk): array {
+            $done = ['files' => 0, 'bytes' => 0];
+            $after = 0;
+            do {
+                $page = (clone $trashed)->where($trashed->qualifyColumn('id'), '>', $after)->orderBy($trashed->qualifyColumn('id'))->limit($chunk)->get();
+                $part = $this->purge($page);
+                $done = ['files' => $done['files'] + $part['files'], 'bytes' => $done['bytes'] + $part['bytes']];
+                $after = Cast::int($page->last()?->id, $after);
+            } while ($page->count() === $chunk);
+
+            return $done;
+        }));
     }
 }
