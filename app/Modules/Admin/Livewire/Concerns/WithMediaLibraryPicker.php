@@ -719,7 +719,7 @@ trait WithMediaLibraryPicker
         abort_unless(Gate::allows('media.purge'), 403);
         app(SupportSession::class)->forbid();   // support staff never delete a member's files for good
 
-        app(PurgeMedia::class)->handle(Media::onlyTrashed()->get());
+        app(PurgeMedia::class)->purgeAll(Media::onlyTrashed()); // a page at a time: a whole Trash is never loaded at once
         $this->pickerSelected = [];
         session()->flash('media-status', __('media.picker_trash_emptied'));
     }

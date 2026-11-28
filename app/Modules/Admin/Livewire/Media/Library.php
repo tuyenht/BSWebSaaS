@@ -1024,9 +1024,10 @@ final class Library extends Component
         app(SupportSession::class)->forbid();
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets());
-        // one by one, so the observer drops attachments and the stored file; the message counts what
-        // was really deleted (a file taken back out of the Trash meanwhile is kept)
-        $done = app(PurgeMedia::class)->purge($query->get());
+        // one by one, so the observer drops attachments and the stored file, a page of files at a time
+        // (a whole Trash is never loaded at once); the message counts what was really deleted (a file
+        // taken back out of the Trash meanwhile is kept)
+        $done = app(PurgeMedia::class)->purgeAll($query);
         if ($this->single) {
             $this->closeDetail(); // the open file is gone for good
         } else {

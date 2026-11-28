@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\File;
 /** The chokepoints: the file => "function: call" it may make on a media row, once each. */
 const MEDIA_LIFECYCLE_CHOKEPOINTS = [
     'app/Modules/Media/Actions/TrashMedia.php' => ['trash: $media->delete', 'restore: $media->restore'],
-    'app/Modules/Media/Actions/PurgeMedia.php' => ['purge: $media->forceDelete'],
+    'app/Modules/Media/Actions/PurgeMedia.php' => ['deleteTrashed: $media->forceDelete'],
 ];
 
 /**
