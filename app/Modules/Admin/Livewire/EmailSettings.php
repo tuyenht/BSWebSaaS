@@ -6,6 +6,8 @@ use App\Modules\Admin\Livewire\Concerns\ShowsSettingsToast;
 use App\Modules\Admin\Livewire\Concerns\TracksSavedState;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Models\MailDaily;
+use App\Modules\Admin\Support\Mail\MailDnsCheck;
+use App\Modules\Admin\Support\Mail\MailDnsProviders;
 use App\Modules\Admin\Support\Mail\MailQuotaGate;
 use App\Modules\Admin\Support\Mail\MailSendContext;
 use App\Modules\Admin\Support\MailBrand;
@@ -92,7 +94,7 @@ final class EmailSettings extends Component
     public const array TABS = ['send', 'sign'];
 
     /** The mailbox providers whose address cannot carry a website's own «info@…» (no suggestion from them). */
-    private const array PUBLIC_MAILBOXES = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.com.vn', 'outlook.com', 'hotmail.com', 'live.com', 'icloud.com'];
+    private const array PUBLIC_MAILBOXES = MailRelay::PUBLIC_MAILBOXES;
 
     /** The parts before @ «Gửi thông báo tới» suggests on the website's domain, in the board's order. */
     private const array NOTIFY_PREFIXES = ['info', 'contact'];
@@ -472,11 +474,26 @@ final class EmailSettings extends Component
             $cfg['checked_at'] = now()->utc()->toIso8601String();
         }
         $repo->put('email', 'config', $cfg);
+        $this->startDnsCheck();
         $this->relayChecked = $this->testResult === 'ok';
         if (! $this->relayChecked) {
             return;
         }
         $this->notify(__('admin.em_rl_ok_toast'));
+    }
+
+    /**
+     * Checks the SPF / DKIM / DMARC records of the setup just saved and checked (MailDnsCheck), and
+     * tells «Nâng cao — các dòng xác thực tên miền»: started, or refused by the website's press limit.
+     */
+    private function startDnsCheck(): void
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            return;
+        }
+        $wait = app(MailDnsCheck::class)->start($current->id());
+        $this->dispatch($wait === null ? 'em-dns-started' : 'em-dns-refused');
     }
 
     /** True once written (a form that fails its checks stops at validation). */
@@ -1581,6 +1598,8 @@ final class EmailSettings extends Component
             'keySaved' => ! $platform && $this->keySaved(),
             'quota' => $platform ? null : $this->platformQuota(),
             'sender' => $platform ? null : $this->senderView($siteName, $platformFrom),
+            // what «Nâng cao — các dòng xác thực tên miền» shows the check of: the setup on screen
+            'dns' => ['domain' => $this->provider === 'other' ? $this->fromDomain() : '', 'provider' => MailDnsProviders::of($this->relay, $this->smtpHost)],
         ]);
         $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
         $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
