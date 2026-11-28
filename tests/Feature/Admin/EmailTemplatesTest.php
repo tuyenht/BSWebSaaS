@@ -345,7 +345,8 @@ it('keeps the invitation\'s link in plain sight from inside it too, and in the p
         // a filler that draws nothing is not link words
         Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'team_invite')
             ->call('save', 'Mời', "<p>Chào</p><p><a href=\"{accept_url}\">\u{3164}</a></p>")
-            ->assertHasErrors(['tplBody']);
+            ->assertHasErrors(['tplBody'])
+            ->assertSee(__('admin.mt_err_required_var', ['vars' => '{accept_url}']));
     });
 });
 
@@ -355,7 +356,7 @@ it('takes braces around a number or a name in other words as plain text', functi
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'team_invite')
-            ->call('save', 'Chọn {1} hoặc {2}', '<p>Bước {1}, {giá}</p>'.MAIL_TPL_INVITE_BODY)
+            ->call('save', 'Chọn {1} hoặc {2}', '<p>Bước {1}, {_x}</p>'.MAIL_TPL_INVITE_BODY)
             ->assertHasNoErrors();
     });
 });
