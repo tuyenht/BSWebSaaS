@@ -6,6 +6,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
+use Dom\HTMLDocument;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
@@ -333,6 +334,21 @@ it('shows a fault with a short reference and support, and nothing internal', fun
         ->toContain('bsSession(')
         ->toMatch('/<b aria-label="[^"]+">['.ErrorReference::ALPHABET.']{3}-['.ErrorReference::ALPHABET.']{3}<\/b>/u');
     assertNoLeak($html);
+});
+
+it('draws no trail on an error page inside the frame, so nothing repeats its heading', function (): void {
+    errorMember('editor', ['entries.view']);
+    $member = errorMember('media-only', ['media.view']);
+    $trails = fn (string $html): int => count(HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelectorAll('nav[aria-label="'.__('admin.breadcrumb').'"]'));
+
+    $fault = (string) $this->actingAs($member)->get('http://a.test/admin/_fault/boom')->assertStatus(500)->getContent();
+    $busy = (string) $this->actingAs($member)->get('http://a.test/admin/_fault/busy')->assertStatus(429)->getContent();
+    $noperm = (string) $this->actingAs($member)->get('http://a.test/admin/content')->assertForbidden()->getContent();
+
+    foreach (['e500' => $fault, 'rate' => $busy, 'noperm' => $noperm] as $page => $html) {
+        expect($html)->toContain('data-te-page="'.$page.'"')->toContain('bsSession(') // inside the frame…
+            ->and($trails($html))->toBe(0, $page);                                     // …with no trail
+    }
 });
 
 it('writes the reference on the page to the log, and gives a later abort(500) its own', function (): void {

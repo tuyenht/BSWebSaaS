@@ -88,6 +88,17 @@ final class AdminNav
     ];
 
     /**
+     * Top-level screens whose trail steps aside below 600px and on a short landscape screen: the
+     * screens the shell board (shell-screens.js) marks `lvl1` or heads with a short main button
+     * («Thêm», «Tải lên», «Mời»), whose way back on a phone is the menu. The lists that draw their
+     * own trail (content, products) hide it themselves.
+     */
+    private const TOP_LEVEL_SCREENS = [
+        'admin.media.index', 'admin.taxonomies.index', 'admin.users.index',
+        'admin.forms.index', 'admin.forms.show', 'admin.form-builder.index',
+    ];
+
+    /**
      * The same menu as items(), cut into the sidebar's headed groups (Content · Tools · System).
      * A group with no visible entry is left out, so a heading never stands alone.
      *
@@ -160,6 +171,12 @@ final class AdminNav
         }
 
         return $title === null || $title === '' ? [] : [['label' => $title, 'url' => null]];
+    }
+
+    /** Whether this request is one of the top-level screens, whose trail is hidden on phones. */
+    public function onTopLevelScreen(): bool
+    {
+        return request()->routeIs(...self::TOP_LEVEL_SCREENS);
     }
 
     /**

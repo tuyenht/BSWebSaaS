@@ -8,6 +8,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Dom\Element;
 use Dom\HTMLDocument;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Spatie\Permission\PermissionRegistrar;
@@ -409,4 +410,77 @@ it('writes the footer from the brand config and drops the built-by line when it 
         ->assertOk()
         ->assertSee('Bộ Khung Thử', false)
         ->assertDontSee('Phát triển bởi', false);
+});
+
+it('shows the board\'s two initials on the account button and on every avatar, diacritics kept', function (): void {
+    $user = User::factory()->create(['name' => 'Nguyễn Ngọc Ánh']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+    $chip = platformShellOne($dom, 'header button[x-ref="userButton"] > span');
+    expect(trim((string) $chip->textContent))->toBe('NÁ')
+        ->and(trim(Blade::render('<x-bs-admin::avatar name="trần thị ổi" />')))->toContain('<span aria-hidden="true">TỔ</span>')
+        ->and(Blade::render('<x-bs-admin::avatar name="" />'))->toContain('<span aria-hidden="true">U</span>');
+});
+
+/** The top bar's icon buttons: the ones drawn by the shared x-bs-admin::topbar-button (board 01 .tb-ib). */
+function topbarIconButtons(HTMLDocument $dom): array
+{
+    return array_values(array_filter(
+        iterator_to_array($dom->querySelectorAll('header button')),
+        fn (Element $b): bool => in_array('active:bg-topbar-press', platformShellClasses($b), true),
+    ));
+}
+
+it('draws the top bar\'s icon buttons with one shared button on both planes', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+    $site = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $console = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
+
+    // a website: search (phone) and its ✕, language, fullscreen, light/dark, the bell; the console: the last four
+    expect(topbarIconButtons($site))->toHaveCount(6)
+        ->and(topbarIconButtons($console))->toHaveCount(4);
+    foreach ([$site, $console] as $dom) {
+        foreach (topbarIconButtons($dom) as $button) {
+            expect(platformShellClasses($button))->toContain('rounded-lg', 'text-topbar-fg-strong', 'hover:bg-topbar-hover', 'transition-colors');
+        }
+        // the bell is one of them, on the same frame on both planes
+        expect(platformShellClasses(platformShellOne($dom, 'header button[x-ref="bell"]')))->toContain('active:bg-topbar-press', 'size-control');
+    }
+    // the language button is the wide one (.tb-lb)
+    expect(platformShellClasses(platformShellOne($site, 'header button[title="'.__('admin.language').'"]')))->toContain('min-w-control', 'px-2');
+});
+
+it('leads a console screen with the shell trail, hidden on phones on a top-level screen', function (): void {
+    app()->setLocale('vi');
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $trail = function (string $path) use ($host, $operator): ?Element {
+        $html = (string) $this->actingAs($operator->fresh())->withSession(['locale' => 'vi'])->get("http://{$host}{$path}")->assertOk()->getContent();
+
+        return platformShellDom($html)->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+    };
+
+    // ⌂ › Nhật ký hệ thống, shown at every width (the board keeps it on a phone)
+    $audit = $trail('/audit');
+    expect($audit)->not->toBeNull()
+        ->and(trim((string) $audit?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.platform_audit'))
+        ->and(platformShellClasses($audit))->not->toContain('max-[599.98px]:hidden');
+
+    // a top-level list: the trail steps aside below 600px and on a short landscape screen
+    $tenants = $trail('/tenants');
+    expect(trim((string) $tenants?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.platform_tenants'))
+        ->and(platformShellClasses($tenants))->toContain('max-[599.98px]:hidden', '[@media(max-height:500px)]:hidden');
+
+    // a page outside the menu is named by its title; a settings screen draws its own trail
+    expect(trim((string) $trail('/notifications')?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.notifications'))
+        ->and($trail('/settings/email'))->toBeNull();
 });

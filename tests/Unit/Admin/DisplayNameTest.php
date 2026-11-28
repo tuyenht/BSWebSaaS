@@ -22,3 +22,23 @@ it('normalizes stray whitespace', function (): void {
     expect(DisplayName::short('  An   Vinh   Owner  '))->toBe('An Vinh')
         ->and(DisplayName::short('   '))->toBe('');
 });
+
+it('takes an avatar\'s two letters from the last two words of a Vietnamese name', function (): void {
+    expect(DisplayName::initials('Nguyễn Ngọc Anh'))->toBe('NA')
+        ->and(DisplayName::initials('Ngọc Anh'))->toBe('NA')
+        ->and(DisplayName::initials('An Vinh Owner'))->toBe('VO');
+});
+
+it('keeps the diacritics of an avatar\'s letters and writes them in upper case', function (): void {
+    expect(DisplayName::initials('đặng ánh'))->toBe('ĐÁ')
+        ->and(DisplayName::initials('Trần Thị Ổi'))->toBe('TỔ')
+        // a letter typed as a base plus combining marks (decomposed) is still one letter
+        ->and(DisplayName::initials("Tr\u{0061}\u{0302}\u{0300}n \u{0041}\u{0301}nh"))->toBe('TÁ');
+});
+
+it('gives a one-word name its first two letters and an empty name none', function (): void {
+    expect(DisplayName::initials('Tuyền'))->toBe('TU')
+        ->and(DisplayName::initials('Ổ'))->toBe('Ổ')
+        ->and(DisplayName::initials('  An   Vinh  '))->toBe('AV')
+        ->and(DisplayName::initials('   '))->toBe('');
+});

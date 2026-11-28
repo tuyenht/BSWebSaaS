@@ -310,6 +310,26 @@ it('draws no shell trail on the dashboard, and one trail only where the screen d
     }
 });
 
+it('hides the shell trail on phones on a top-level screen and keeps it elsewhere', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $classes = function (string $path) use ($owner): array {
+        $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test'.$path)->assertOk()->getContent();
+        $trail = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+        expect($trail)->not->toBeNull($path);
+
+        return explode(' ', (string) $trail?->getAttribute('class'));
+    };
+
+    // the board's top-level screens (lvl1 or a short main button): the way back on a phone is the menu
+    foreach (['/admin/media', '/admin/users', '/admin/taxonomies?section=posts'] as $path) {
+        expect($classes($path))->toContain('max-[599.98px]:hidden', '[@media(max-height:500px)]:hidden');
+    }
+    // the others keep it at every width
+    foreach (['/admin/notifications', '/admin/roles'] as $path) {
+        expect($classes($path))->not->toContain('max-[599.98px]:hidden');
+    }
+});
+
 it('names a page outside the menu by its title, and the account by its own title', function (): void {
     app()->setLocale('vi');
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');

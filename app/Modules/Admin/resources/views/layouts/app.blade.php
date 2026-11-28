@@ -93,8 +93,13 @@
             // resolved), re-synced after each wire:navigate via the morph-updated data-active-group.
             $navItems = collect($navSections)->flatMap(fn ($section) => $section->items);
             $activeGroup = $navItems->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
-            // The page's trail (⌂ › entry › child) from the same menu, shown above the page.
-            $trail = app(\App\Modules\Admin\Navigation\AdminNav::class)->trail($navItems, isset($title) ? (string) $title : null);
+            // The page's trail (⌂ › entry › child) from the same menu, shown above the page. An error
+            // page inside the frame has none: its board keeps only the menu and the top bar, and its
+            // heading already says where the reader is. On a top-level screen the trail gives its room
+            // to the screen below 600px (and on a short landscape screen): the way back is the menu.
+            $shellNav = app(\App\Modules\Admin\Navigation\AdminNav::class);
+            $trail = empty($errorFrame) ? $shellNav->trail($navItems, isset($title) ? (string) $title : null) : [];
+            $trailTop = $trail !== [] && $shellNav->onTopLevelScreen();
             // The current page's row (its group's only while that group is closed or the rail is collapsed): white
             // ink, the active fill and an inset bar on the left — told apart by shape, not only by
             // color, now that resting items are white/.85. Links also carry aria-current="page".
@@ -244,19 +249,17 @@
                                data-placeholders="{{ __('admin.search_placeholder') }}|{{ __('admin.search_placeholder_2') }}|{{ __('admin.search_placeholder_3') }}|{{ __('admin.search_placeholder_4') }}|{{ __('admin.search_placeholder_5') }}"
                                class="admin-search-input field w-full rounded-lg border border-topbar-search-border bg-topbar-search ps-9 pe-3 text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus">
                     </span>
-                    <button type="button" x-show="open" x-cloak @click="hide()" aria-label="{{ __('admin.close') }}"
-                            class="grid size-control any-pointer-coarse:size-hit shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:hidden">
-                        <x-bs-admin::icon name="x" class="size-5" />
-                    </button>
+                    <x-bs-admin::topbar-button display="grid sm:hidden" :label="__('admin.close')" x-show="open" x-cloak @click="hide()">
+                        <x-bs-admin::icon name="x" />
+                    </x-bs-admin::topbar-button>
             </div>
 
             {{-- Right cluster: (phone) search · language · fullscreen · light/dark · notifications · user.
                  Below 768px the language and light/dark buttons step out: the user menu carries both. --}}
             <div class="ms-auto flex items-center gap-1">
-                <button type="button" id="admin-search-trigger" @click="$dispatch('bs-top-search-open')" aria-label="{{ __('admin.search') }}" title="{{ __('admin.search') }}"
-                        class="grid size-control any-pointer-coarse:size-hit place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:hidden">
-                    <x-bs-admin::icon name="search" class="size-5" />
-                </button>
+                <x-bs-admin::topbar-button display="grid sm:hidden" id="admin-search-trigger" :label="__('admin.search')" @click="$dispatch('bs-top-search-open')">
+                    <x-bs-admin::icon name="search" />
+                </x-bs-admin::topbar-button>
                 @include('admin::partials.topbar-tools')
                 @include('admin::partials.topbar-user')
             </div>
@@ -267,7 +270,7 @@
             @include('admin::partials.session-guard')
             {{-- One trail per page: none on the dashboard, nor where the screen draws its own header or trail. --}}
             @if ($trail !== [])
-                <x-bs-admin::breadcrumb :items="$trail" class="mb-2" />
+                <x-bs-admin::breadcrumb :items="$trail" :class="$trailTop ? 'mb-2 max-[599.98px]:hidden [@media(max-height:500px)]:hidden' : 'mb-2'" />
             @endif
             {{ $slot }}
         </main>

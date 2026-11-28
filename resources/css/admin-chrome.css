@@ -134,6 +134,7 @@
     --color-topbar-user: #24304d;
     --color-topbar-user-fg: #eef2fa;
     --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
+    --color-topbar-press: rgb(255 255 255 / 0.08);    /* a pressed icon button keeps the hover fill (board 01) */
 
     /* sidebar (dark preset under a dark scheme) — a fixed night navy, not the brand */
     --color-sidebar-bg: #111a30;
@@ -182,6 +183,7 @@
     --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
     --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
     --color-topbar-hover: rgb(255 255 255 / 0.14);
+    --color-topbar-press: rgb(0 0 0 / 0.2);       /* pressed icon button on the brand bar (board 01) */
     --color-topbar-search: rgb(255 255 255 / 0.05);
     --color-topbar-search-fg: #ffffff;
     --color-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
@@ -203,6 +205,7 @@
         --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
         --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
         --color-topbar-hover: rgb(255 255 255 / 0.14);
+        --color-topbar-press: rgb(0 0 0 / 0.2);       /* pressed icon button on the brand bar (board 01) */
         /* The search field and the avatar stay light on the brand bar, as the board draws them. */
         --color-topbar-search: #f3f3f9;
         --color-topbar-search-fg: var(--color-text);

@@ -145,8 +145,9 @@ it('renders the sidebar with headings, the current page marked, and no link with
         ->assertSee(__('admin.platform_settings'))
         ->getContent();
 
-    // aria-current sits on the audit link only.
-    expect(substr_count($html, 'aria-current="page"'))->toBe(1)
+    // aria-current sits on the audit link only, besides the page's own crumb in the trail (⌂ › Nhật ký).
+    expect(substr_count($html, 'aria-current="page"'))->toBe(2)
+        ->and($html)->toMatch('~<main[^>]*>.*?<nav[^>]*aria-label="'.preg_quote(__('admin.breadcrumb'), '~').'".*?aria-current="page"~s')
         ->and($html)->toMatch('~<a href="'.preg_quote(route('platform.audit.index'), '~').'"[^>]*aria-current="page"~');
 
     // Screens the design still waits on have no route, so nothing points at them.
