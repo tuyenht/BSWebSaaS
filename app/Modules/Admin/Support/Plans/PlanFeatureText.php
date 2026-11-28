@@ -26,6 +26,7 @@ final class PlanFeatureText
         'rbac.category_scopes' => 'scopes',
         'users.max' => 'users',
         'mail.platform_daily' => 'mail',
+        'permalinks.custom' => 'permalinks',
     ];
 
     /** The smallest value a limit takes on this screen (a plan always lets a customer have one website in one language). */

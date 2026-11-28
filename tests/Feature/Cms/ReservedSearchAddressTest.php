@@ -3,6 +3,7 @@
 use App\Modules\Catalog\Actions\ChangeProductStatus;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
@@ -10,7 +11,6 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
-use App\Modules\Provisioning\Actions\ReflowSitePermalinks;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -93,14 +93,18 @@ it('lets a post at /tim-kiem move along its workflow back to live', function ():
 });
 
 it('leaves content already at /tim-kiem unchanged in a permalink reflow', function (): void {
-    app(Tenancy::class)->enter(1, function (): void {
+    $post = app(Tenancy::class)->enter(1, function (): Entry {
         $post = reservedEntry('post');
         $product = Product::query()->create(['status' => 'published', 'published_at' => now()->subDay()]);
         $product->translations()->create(['locale' => 'en', 'name' => 'Old product', 'slug' => 'tim-kiem']);
         SiteRoute::query()->create(['locale' => 'en', 'path' => '/tim-kiem', 'product_id' => $product->id]);
 
-        $summary = collect(app(ReflowSitePermalinks::class)->handle(dryRun: false));
+        return $post;
+    });
 
+    $summary = collect(app(ReflowSitePermalinks::class)->handle(1, dryRun: false));
+
+    app(Tenancy::class)->enter(1, function () use ($post, $summary): void {
         expect($summary->firstWhere('type', 'post')['status'] ?? null)->toBe('unchanged')
             ->and($summary->firstWhere('type', 'product')['status'] ?? null)->toBe('unchanged')
             ->and(SiteRoute::query()->where('entry_id', $post->id)->value('path'))->toBe('/tim-kiem');
