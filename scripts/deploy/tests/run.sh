@@ -164,6 +164,35 @@ return new class extends Migration {
         DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
     }
 };"; git -C "$SRC" add -A && gitc -m conidx; CONIDX=$(git -C "$SRC" rev-parse HEAD)
+branch t-multiline; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        DB::statement('ALTER  TABLE sites ADD CONSTRAINT sites_x_check CHECK (id > 0) NOT VALID,
+            add   column extra text');
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m multiline; MULTILINE=$(git -C "$SRC" rev-parse HEAD)
+branch t-conn; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        Schema::connection('pgsql_admin')->table('sites', fn (\$t) => \$t->text('extra')->nullable());
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m conn; CONN=$(git -C "$SRC" rev-parse HEAD)
+branch t-newtable; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        Schema::create('counters', fn (\$t) => \$t->id());
+        DB::statement('ALTER TABLE counters ENABLE ROW LEVEL SECURITY');
+        DB::statement('ALTER TABLE counters FORCE ROW LEVEL SECURITY');
+        DB::statement('ALTER TABLE counters SET (autovacuum_vacuum_scale_factor = 0.01)');
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS counters_type_idx ON counters (type)');
+    }
+    public function down(): void { Schema::dropIfExists('counters'); DB::statement('ALTER TABLE sites DROP COLUMN x'); }
+};"; git -C "$SRC" add -A && gitc -m newtable; NEWTABLE=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
@@ -461,6 +490,12 @@ fresh "$RAWALTER"; release "${CC_REL[@]}"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp"' "a raw lower-case alter table add column beside CONCURRENTLY is refused too"
 fresh "$CONIDX"; release "${CC_REL[@]}"; launch
 ok '! says "tách làm hai tệp" && says "OK   migration mới (theo thứ tự tên)"' "a constraint change beside a CONCURRENTLY index passes the check"
+fresh "$MULTILINE"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp"' "a column added after a constraint, across lines and with extra spaces, is refused"
+fresh "$CONN"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp"' "Schema::connection(...)->table beside CONCURRENTLY is refused"
+fresh "$NEWTABLE"; release "${CC_REL[@]}"; launch
+ok '! says "tách làm hai tệp" && says "OK   migration mới (theo thứ tự tên)"' "a new table with row security, a storage setting and a CONCURRENTLY index passes (down() is not read)"
 echo "== pre-reload one-off: a stop at the reload, then resume at 7"
 fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan fake:pre")" = 1 ]' "octane:reload fails after the pre-reload one-off applied"

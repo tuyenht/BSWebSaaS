@@ -212,12 +212,17 @@ mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonad
     echo "${f# }"
 }
 mig_colchange() { # mig_colchange <git dir> <commit> <name>: true when the file changes the columns of an existing
-    # table (Schema::table/rename/drop, or a raw ALTER TABLE other than a constraint change)
-    local t
-    t=$(mig_scan "$@")
-    printf '%s' "$t" | grep -qE 'Schema::(table|rename|drop|dropIfExists|dropColumns)\(' && return 0
-    printf '%s' "$t" | sed -E 's/ALTER TABLE( ONLY| IF EXISTS)*[[:space:]]+[^[:space:]]+[[:space:]]+(ADD|DROP|VALIDATE|RENAME)[[:space:]]+CONSTRAINT//Ig' \
-        | grep -qiE 'ALTER TABLE'
+    # table that stays (the cached-plan error needs a table whose result columns change): Schema::table, dropColumns,
+    # whenTableHasColumn/whenTableDoesntHaveColumn (also through Schema::connection(…)), or raw SQL that adds, drops,
+    # alters or renames a COLUMN. Matched in bash on the whole file, newlines folded: no pipe, so no early exit of
+    # grep under pipefail. Row security, storage settings, constraints, a new or dropped table do not count
+    local t r=1
+    t=$(mig_scan "$@"); t=${t//$'\n'/ }
+    shopt -s nocasematch
+    [[ $t =~ Schema::(connection\([^\)]*\)->)?(table|dropColumns|whenTableHasColumn|whenTableDoesntHaveColumn)\( ]] && r=0
+    [[ $t =~ (ADD|DROP|ALTER|RENAME)[[:space:]]+COLUMN[[:space:]] ]] && r=0
+    shopt -u nocasematch
+    return $r
 }
 env_names() { # env_names <git dir> <commit>: env('X') names in config/bootstrap + keys of .env.example
     { git -C "$1" grep -ohE "env\(['\"][A-Z][A-Z0-9_]*" "$2" -- config bootstrap 2>/dev/null | sed -E "s/^env\(['\"]//"
