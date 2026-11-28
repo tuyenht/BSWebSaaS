@@ -41,7 +41,7 @@
     // A button marked `aria-disabled="true"` (kept focusable so a tap can say why it is off) looks off
     // as the boards draw it (`.sx-btn[aria-disabled="true"]`): faded, with the not-allowed cursor.
     $neutral = $variant === 'outline' && in_array($color, ['neutral', 'secondary'], true);
-    $base = 'hit-area inline-flex items-center justify-center '.($neutral ? 'gap-1.5' : 'gap-2 text-center').' rounded font-medium leading-tight transition-colors disabled:opacity-60 disabled:pointer-events-none aria-disabled:opacity-60 aria-disabled:cursor-not-allowed aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
+    $base = 'hit-area inline-flex items-center justify-center '.($neutral ? 'gap-1.5' : 'gap-2 text-center').' rounded font-medium leading-tight transition-colors disabled:opacity-60 disabled:pointer-events-none aria-disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:filter-none aria-pressed:border-primary-text aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-text';
 
     $sizes = $icon ? [
         'sm' => 'size-control-row shrink-0 text-caption',

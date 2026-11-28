@@ -9,7 +9,9 @@
 it('fades a button marked aria-disabled and gives it the not-allowed cursor, as the boards draw it', function (string $markup): void {
     expect((string) $this->blade($markup))
         ->toContain('aria-disabled:opacity-60')
-        ->toContain('aria-disabled:cursor-not-allowed');
+        ->toContain('aria-disabled:cursor-not-allowed')
+        // `.sx-btn[aria-disabled="true"]{filter:none}`: a solid button that is off does not darken on hover
+        ->toContain('aria-disabled:filter-none');
 })->with([
     'solid' => '<x-bs-admin::button aria-disabled="true">Lưu</x-bs-admin::button>',
     'outline' => '<x-bs-admin::button variant="outline" color="secondary" aria-disabled="true">Mục con</x-bs-admin::button>',
