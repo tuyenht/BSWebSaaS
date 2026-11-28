@@ -161,9 +161,9 @@ it('gives the platform console a menu button that drives the drawer, the laid-ov
         ->and($backdrop->getAttribute('x-transition:leave'))->toBe('platform-fade');
 
     // With a sidebar, the topbar logo is the phone/tablet way home; the sidebar carries it from 1024px.
-    $home = platformShellOne($dom, 'header > a[href="'.route('platform.dashboard').'"]');
+    $home = platformShellOne($dom, 'header > a[href="'.route('platform.tenants.index').'"]');
     expect(platformShellClasses($home))->toContain('lg:hidden')
-        ->and($aside->querySelector('a[href="'.route('platform.dashboard').'"]'))->toBeInstanceOf(Element::class);
+        ->and($aside->querySelector('a[href="'.route('platform.tenants.index').'"]'))->toBeInstanceOf(Element::class);
 });
 
 it('keeps the logo and a way home in the topbar at every width when the operator may see no console screen', function (): void {
@@ -194,7 +194,7 @@ it('keeps the logo and a way home in the topbar at every width when the operator
         ->and($dom->querySelector('[aria-controls="platform-sidebar"]'))->toBeNull()
         ->and($dom->querySelector('div.platform-shell'))->toBeNull(); // no rail padding on the content
 
-    $home = platformShellOne($dom, 'header > a[href="'.route('platform.dashboard').'"]');
+    $home = platformShellOne($dom, 'header > a[href="'.route('platform.tenants.index').'"]');
     expect(platformShellClasses($home))->not->toContain('lg:hidden')
         ->and($home->firstElementChild)->toBeInstanceOf(Element::class); // the logo (or the initials chip)
 });
@@ -249,7 +249,7 @@ it('gives the platform console logo and footer link a 44px hit area and caption-
 
     $dom = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
 
-    expect(platformShellClasses(platformShellOne($dom, 'header a[href="'.route('platform.dashboard').'"]')))->toContain('hit-area')
+    expect(platformShellClasses(platformShellOne($dom, 'header a[href="'.route('platform.tenants.index').'"]')))->toContain('hit-area')
         ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer')))->toContain('text-caption')->not->toContain('text-xs')
         ->and(platformShellClasses(platformShellOne($dom, 'div.admin-content > footer a[href]')))->toContain('hit-area', 'inline-block');
 });

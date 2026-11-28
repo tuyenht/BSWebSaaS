@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Errors\AdminErrorPages;
 use App\Modules\Admin\Livewire\Concerns\FocusesAuthField;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
@@ -109,8 +110,8 @@ final class TwoFactorChallenge extends Component
         ]);
 
         // Back to the page that sent the visitor to sign in (a protected page, or an invitation
-        // link) — the session's intended URL, set on this host only — else the dashboard.
-        return $this->redirectIntended(route(AdminPlane::prefix().'.dashboard'), navigate: false);
+        // link) — the session's intended URL, set on this host only — else the plane's first page.
+        return $this->redirectIntended(AdminErrorPages::home(), navigate: false);
     }
 
     /**

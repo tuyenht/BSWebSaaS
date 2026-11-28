@@ -106,7 +106,7 @@
                x-effect="$el.inert = mobile && ! open">
             {{-- Brand (from config — white-label safe) --}}
             <div class="flex h-(--topbar-height) shrink-0 items-center px-4">
-                <a href="{{ route('platform.dashboard') }}" wire:navigate class="sidebar-brand-link flex w-full items-center justify-center gap-2.5 text-sidebar-brand">
+                <a href="{{ route('platform.tenants.index') }}" wire:navigate class="sidebar-brand-link flex w-full items-center justify-center gap-2.5 text-sidebar-brand">
                     <x-bs-admin::brand-logo />
                 </a>
             </div>
@@ -166,7 +166,7 @@
                 </button>
             @endif
             {{-- The 28px mark gets a 44px hit area through a transparent extension; the bar keeps its layout. --}}
-            <a href="{{ route('platform.dashboard') }}" wire:navigate @class(['hit-area flex shrink-0 items-center', 'lg:hidden' => $hasNav])>
+            <a href="{{ route('platform.tenants.index') }}" wire:navigate @class(['hit-area flex shrink-0 items-center', 'lg:hidden' => $hasNav])>
                 {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
                 <x-bs-admin::brand-logo context="topbar" />
             </a>
