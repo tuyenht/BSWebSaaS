@@ -28,6 +28,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\View;
 use Tests\Fixtures\StorefrontCards;
 
@@ -793,4 +794,53 @@ it('keeps the builder preview of blocks that read data on one budget, however ma
 
     // measured 29/11: 14 for one of each kind (a static block alone costs 11), the same for three
     expect($few)->toBeLessThanOrEqual(14)->and($many)->toBe($few);
+});
+
+it('keeps the builder preview of the blocks that list the website’s posts and products on one budget, however many rows they show, at a visitor’s cost per block', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    app(Tenancy::class)->enter(1, function (): void {
+        $news = StorefrontCards::category('Tin tức', 'tin-tuc');
+        $catalog = StorefrontCards::category('Sản phẩm', 'san-pham');
+        StorefrontCards::catalog($catalog);
+        $photo = StorefrontCards::media('qb-sp');
+        foreach (range(1, 12) as $n) {
+            StorefrontCards::post($news, 'Bài số '.$n, 'bai-so-'.$n, CarbonImmutable::parse('2026-10-01 08:00', 'UTC')->addHours($n), [], 'Tóm tắt.');
+            StorefrontCards::product('Sản phẩm số '.$n, 'san-pham-so-'.$n, $catalog, $photo, CarbonImmutable::parse('2026-10-01 08:00', 'UTC')->addHours($n));
+        }
+    });
+    // «Bài viết mới nhất», a category's list of posts and a product grid
+    $data = static fn (int $rows): array => [
+        ['type' => 'latest_posts', 'props' => ['heading' => 'Mới nhất', 'limit' => $rows]],
+        ['type' => 'entry_grid', 'props' => ['heading' => 'Tin tức', 'taxonomy_slug' => 'tin-tuc', 'limit' => $rows]],
+        ['type' => 'product_grid', 'props' => ['heading' => 'Sản phẩm', 'limit' => $rows]],
+    ];
+
+    $static = qbBuilderCount($editor, $home, [['type' => 'cta', 'props' => ['heading' => 'Tĩnh']]], 'Tĩnh');
+    $few = qbBuilderCount($editor, $home, $data(3), 'san-pham-so-10"');
+    $many = qbBuilderCount($editor, $home, $data(12), 'san-pham-so-1"');
+    $twice = qbBuilderCount($editor, $home, [...$data(3), ...$data(3)], 'san-pham-so-10"');
+
+    $visitor = function (string $path, array $blocks): int {
+        app(Tenancy::class)->enter(1, fn () => StorefrontCards::page($path, 'Khối', $blocks));
+        test()->get('http://a.test'.$path)->assertOk();
+        qbBuilderFresh();
+        $count = countQueries(fn () => test()->get('http://a.test'.$path)->assertOk());
+        qbBuilderFresh();
+
+        return $count;
+    };
+    $vStatic = $visitor('/tinh', [['type' => 'cta', 'props' => ['heading' => 'Tĩnh']]]);
+    $vFew = $visitor('/mot-lan', $data(3));
+    $vTwice = $visitor('/hai-lan', [...$data(3), ...$data(3)]);
+
+    // measured 29/11: the frame 11 / 24 / 24 / 37 (a static block; one of each kind at 3 rows; at 12
+    // rows; two of each), a visitor's page 10 / 23 / 36. Flat in the rows; each of these blocks reads
+    // its own rows (13 for one of each kind), on a visitor's page just the same, so the frame adds
+    // its one read and nothing per block.
+    expect($few)->toBeLessThanOrEqual(24)
+        ->and($many)->toBe($few)
+        ->and($twice - $few)->toBe($few - $static)
+        ->and($few - $vFew)->toBe($static - $vStatic)
+        ->and($twice - $vTwice)->toBe($static - $vStatic);
 });
