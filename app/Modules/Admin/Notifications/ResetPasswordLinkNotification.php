@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Notifications;
 
 use App\Modules\Admin\Notifications\Concerns\QueuesTenantMail;
+use App\Modules\Admin\Support\Mail\MailTemplateMail;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Bus\Queueable;
@@ -63,6 +64,15 @@ final class ResetPasswordLinkNotification extends Notification implements Should
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyTenantMailer();
+
+        // The website's (or the platform's) wording of «Đặt lại mật khẩu» when it has one.
+        $templated = app(MailTemplateMail::class)->message('reset', [
+            '{customer_name}' => Cast::string(data_get($notifiable, 'name')),
+            '{reset_url}' => $this->resetUrl,
+        ]);
+        if ($templated !== null) {
+            return $templated;
+        }
 
         return (new MailMessage)
             ->subject(__('auth.reset_email_subject'))

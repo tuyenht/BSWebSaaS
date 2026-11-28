@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Livewire\Users\Concerns;
 
+use App\Modules\Admin\Support\Mail\MailTemplates;
 use App\Modules\Admin\Support\Members\InvitationDirectory;
 use App\Modules\Admin\Support\Members\MemberDirectory;
 use App\Modules\Cms\Actions\InviteMemberWithCategories;
@@ -60,6 +61,12 @@ trait ManagesInvitations
             return;
         }
         if ($this->carriesTrashedRole($invitation)) {
+            return;
+        }
+        // a new link would replace the old one and reach nobody: «Lời mời thành viên» is off
+        if (app(MailTemplates::class)->isOff('team_invite')) {
+            $this->say(__('admin.members.inv_mail_off'), 'error');
+
             return;
         }
         // the roles in full: the grant check reads each one's guard and permissions

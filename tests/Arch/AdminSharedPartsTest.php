@@ -35,6 +35,10 @@ const ADMIN_HAND_BUILT_PARTS = [
     'dashboard/card-error.blade.php' => [0, 1, 0],
     // the error line under the signature's link address field (inside its small link box)
     'email-settings-sign.blade.php' => [0, 1, 0],
+    // the template editor's question before another language or the list (the shared unsaved dialog's
+    // look, .sx-ud): the draft lives in the browser, which the shared dialog (it counts wire:model
+    // fields and calls the page's own save) does not read
+    'email-templates.blade.php' => [1, 0, 0],
     // error lines under the button editor's fields
     'entries/partials/button-action.blade.php' => [0, 9, 0],
     'entries/partials/workflow-status.blade.php' => [1, 0, 0],
