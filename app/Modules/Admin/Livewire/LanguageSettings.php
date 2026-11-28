@@ -15,6 +15,7 @@ use App\Modules\Tenancy\Actions\ConfigureSiteLocale;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocales;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -219,7 +220,7 @@ final class LanguageSettings extends Component
             $this->notify(match ($e->reason) {
                 'limit_reached' => __('admin.lng.err_limit', ['max' => $max]),
                 'default_locked' => __('admin.lng.err_default'),
-                'prefix_in_use' => __('admin.lng.err_prefix', ['section' => $e->section]),
+                'prefix_in_use' => __('admin.lng.err_prefix', ['section' => $this->sectionLabel($e->section)]),
                 default => __('admin.lng.err_invalid'),
             }, 'error');
 
@@ -425,6 +426,16 @@ final class LanguageSettings extends Component
         }
 
         return $out;
+    }
+
+    /** A permalink section's name as Settings › Permalinks shows it, never its raw key. */
+    private function sectionLabel(?string $key): string
+    {
+        return match ($key) {
+            null, 'pages' => __('admin.pl.pages'),
+            'products' => __('admin.pl.products'),
+            default => ContentSection::query()->firstWhere('key', $key)?->localizedLabel() ?? __('admin.pl.pages'),
+        };
     }
 
     private function notify(string $message, string $tone = 'success'): void

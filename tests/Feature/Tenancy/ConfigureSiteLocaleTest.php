@@ -220,3 +220,16 @@ it('refuses a new default language whose code a permalink section uses as the pr
         expect(SiteLocale::query()->firstWhere('is_default', true)->locale)->toBe('vi');
     });
 });
+
+it('refuses a public language whose code a section has staged as its prefix', function (): void {
+    app(Tenancy::class)->enter(localeSite(), function (): void {
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 3]);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'projects', 'value' => [
+            'pattern' => 'flat',
+            'pending' => ['pattern' => 'base', 'base' => 'da', 'started_at' => now()->toIso8601String()],
+        ]]);
+
+        expect(localeChangeRefusal('da', enabled: true, public: true))->toBe('prefix_in_use')
+            ->and(SiteLocale::query()->where('locale', 'da')->exists())->toBeFalse();
+    });
+});
