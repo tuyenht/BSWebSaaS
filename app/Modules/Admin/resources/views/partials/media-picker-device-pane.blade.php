@@ -5,7 +5,7 @@
      onPickerMediaUploaded listener lands on the library tab so the new masters are pickable. --}}
 @php
     $ext = array_keys(\App\Modules\Media\Actions\UploadMedia::MIME_EXT);
-    $max = (\App\Modules\Media\Actions\UploadMedia::MAX_KB / 1024).' MB';
+    $max = \App\Modules\Shared\Support\Bytes::megabytes(\App\Modules\Media\Actions\UploadMedia::MAX_KB * 1024, 0);
     // the sentence for each reason a file is refused (board 13); one with no sentence here keeps the server's
     $upMsgs = [];
     foreach (['unsupported_type', 'unsupported_svg', 'too_large', 'image_too_large', 'file_invalid', 'upload_session_invalid', 'upload_missing', 'storage_failed', 'unexpected'] as $code) {

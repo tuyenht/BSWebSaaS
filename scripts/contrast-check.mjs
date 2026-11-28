@@ -348,6 +348,8 @@ const ROWS = [
         { item: 'Màu ngữ nghĩa', role: `${hue} solid — chữ trắng (nút, badge${hue === 'danger' ? ', số đếm sidebar' : ''})`, fg: WHITE, bg: [`--color-${hue}`], min: 4.5 }
     )),
     { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ (nút, badge)', fg: '--color-on-warning', bg: ['--color-warning'], min: 4.5 },
+    // The editor's «Trạng thái duyệt» panel (on the editor's card): its warning notes sit on a 15% tint, not the 10% soft one.
+    { item: 'Màu ngữ nghĩa', role: 'warning — ghi chú nền 15% trên thẻ (khung Trạng thái duyệt)', fg: '--color-warning-text', bg: ['--color-surface', ['--color-warning-base', 0.15]], min: 4.5 },
 
     // The input's own boundary, against its fill and against the page around it.
     { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-input', bgs: [['--color-surface'], ['--color-bg']], min: 3 },

@@ -3,7 +3,7 @@
      picker's upload panes). Files are addressed by ulid, folders by slug. --}}
 @php
     use Illuminate\Support\Js;
-    use App\Modules\Admin\Livewire\Media\Library;
+    use App\Modules\Shared\Support\Bytes;
     use App\Modules\Admin\Support\MediaLibraryDirectory as Dir;
     use App\Modules\Tenancy\Context\SiteTime;
 
@@ -90,7 +90,7 @@
     $foot = $totals['n'] > $rows->count()
         ? __('media.lib.foot_range', ['from' => $num($firstN), 'to' => $num($firstN + $rows->count() - 1), 'n' => $num($totals['n'])])
         : __('media.lib.foot_n', ['n' => $num($totals['n'])]);
-    $foot .= ($trash ? __('media.lib.foot_in_trash') : '').' · '.Library::bytes($totals['bytes']);
+    $foot .= ($trash ? __('media.lib.foot_in_trash') : '').' · '.Bytes::size($totals['bytes']);
     $extOf = fn ($m): string => strtoupper(match ($m->mime) { 'image/jpeg' => 'jpg', 'application/pdf' => 'pdf', default => \Illuminate\Support\Str::after($m->mime, '/') });
     // a PDF shows its page count where a picture shows its size; uncounted (yet) = «—», never a guess
     $dims = fn ($m): string => $m->width ? $m->width.' × '.$m->height
@@ -459,7 +459,7 @@
                                         <span data-use="{{ $chip['tone'] }}" class="mx-2.5 mt-2 flex min-w-0 items-start gap-1 text-start text-[calc(0.875rem+var(--user-text-boost))] leading-[1.4] font-medium text-balance [overflow-wrap:anywhere] {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="mt-[0.1em] size-[1.1em] shrink-0" /><span class="min-w-0">{{ $chip['text'] }}</span></span>
                                         <span class="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
                                             <span class="flex min-w-0 text-body font-medium text-text"><span class="truncate">{{ $dot ? substr($name, 0, $dot) : $name }}</span><span class="shrink-0">{{ $dot ? substr($name, $dot) : '' }}</span></span>
-                                            <span class="truncate text-small text-text-muted">{{ $dims($m) }} · {{ Library::bytes((int) $m->size) }}</span>
+                                            <span class="truncate text-small text-text-muted">{{ $dims($m) }} · {{ Bytes::size((int) $m->size) }}</span>
                                         </span>
                                     </button>
                                     @if ($canPick)
@@ -519,12 +519,12 @@
                                             <td class="max-w-0 py-1.5 pe-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/3/2/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:max-w-none @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pe-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pb-0">
                                                 <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
                                                 @php $upDay = $siteTime->forDisplay($m->created_at)?->format('d/m/Y'); @endphp
-                                                <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }} · {{ $chip['text'] }}</span>
+                                                <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Bytes::size((int) $m->size) }} · {{ $chip['text'] }}</span>
                                                 <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:hidden!">{{ $dims($m) }} · {{ $upDay }}</span>
                                             </td>
                                             <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/3/3/4] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $extOf($m) }}</td>
                                             <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/4/3/5] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $dims($m) }}</td>
-                                            <td class="hidden py-1.5 ps-3 text-end whitespace-nowrap @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/5/3/6] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:text-start @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ Library::bytes((int) $m->size) }}</td>
+                                            <td class="hidden py-1.5 ps-3 text-end whitespace-nowrap @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/5/3/6] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:text-start @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ Bytes::size((int) $m->size) }}</td>
                                             <td class="hidden py-1.5 ps-3 @min-[37.5rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/6/3/7] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0"><span data-use="{{ $chip['tone'] }}" class="inline-flex min-h-6 max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold leading-[1.4] [overflow-wrap:anywhere] @min-[48rem]/tv:whitespace-nowrap {{ $chipFill[$chip['tone']] }} {{ $chipInk[$chip['tone']] }}"><x-bs-admin::icon :name="$chip['icon']" class="size-[1.1em] shrink-0" />{{ $chip['text'] }}</span></td>
                                             <td class="hidden py-1.5 whitespace-nowrap @min-[56.25rem]/tvm:table-cell @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:block @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:2/7/3/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pt-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:whitespace-normal @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[overflow-wrap:anywhere]">{{ $upDay }}</td>
                                             <td class="py-1.5 ps-3 text-end whitespace-nowrap @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/8/3/9] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:ps-0"><x-bs-admin::button size="sm" variant="outline" color="secondary" wire:click="openDetail({{ Js::from($m->ulid) }})">{{ __('media.lib.details') }}</x-bs-admin::button></td>
@@ -685,7 +685,7 @@
     @if ($canPurge)
         <x-bs-admin::confirm-dialog model="askPurgeOpen" :title="$purgeAll ? __('media.lib.ask_purge_all_title') : __('media.lib.ask_purge_title', ['n' => $num($purge['n'])])" icon="ri-delete-bin-2" danger
             :ok="__('media.lib.ask_purge_ok', ['n' => $num($purge['n'])])" confirm="confirmPurge" cancel="cancelPurge">
-            <x-bs-admin::confirm-line icon="ri-delete-bin-2">{{ __('media.lib.ask_purge_l1', ['n' => $num($purge['n']), 'size' => Library::bytes($purge['bytes'])]) }}</x-bs-admin::confirm-line>
+            <x-bs-admin::confirm-line icon="ri-delete-bin-2">{{ __('media.lib.ask_purge_l1', ['n' => $num($purge['n']), 'size' => Bytes::size($purge['bytes'])]) }}</x-bs-admin::confirm-line>
             <x-bs-admin::confirm-line icon="ri-image-2">{{ __('media.lib.ask_purge_l2') }}</x-bs-admin::confirm-line>
         </x-bs-admin::confirm-dialog>
     @endif
