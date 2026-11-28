@@ -193,6 +193,29 @@ return new class extends Migration {
     }
     public function down(): void { Schema::dropIfExists('counters'); DB::statement('ALTER TABLE sites DROP COLUMN x'); }
 };"; git -C "$SRC" add -A && gitc -m newtable; NEWTABLE=$(git -C "$SRC" rev-parse HEAD)
+branch t-escapes; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        DB::statement(\"ALTER TABLE sites\\n\\tADD\\tCOLUMN\\textra text\");
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m escapes; ESCAPES=$(git -C "$SRC" rev-parse HEAD)
+branch t-recreate; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        Schema::connection(config('database.admin'))->rename('sites', 'sites_old');
+        Schema::create('sites', fn (\$t) => \$t->id());
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m recreate; RECREATE=$(git -C "$SRC" rev-parse HEAD)
+# a big file: under pipefail a grep -q that stops early used to kill its writer and lose the flags
+branch t-big; { printf '%s\n' '<?php' 'return new class extends Migration {' '    public $withinTransaction = false;' '    public function up(): void {' \
+    "        Schema::table('sites', fn (\$t) => \$t->text('extra')->nullable());"
+    for i in $(seq 1 6000); do printf "        DB::statement('SELECT %d');\n" "$i"; done
+    printf '%s\n' "        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');" '    }' '};'; } > "$SRC/database/migrations/2300_01_01_000000_add_col_and_idx.php"
+git -C "$SRC" add -A && gitc -m big; BIG=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
@@ -496,6 +519,14 @@ fresh "$CONN"; release "${CC_REL[@]}"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp"' "Schema::connection(...)->table beside CONCURRENTLY is refused"
 fresh "$NEWTABLE"; release "${CC_REL[@]}"; launch
 ok '! says "tách làm hai tệp" && says "OK   migration mới (theo thứ tự tên)"' "a new table with row security, a storage setting and a CONCURRENTLY index passes (down() is not read)"
+fresh "$ESCAPES"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "tách làm hai tệp"' "a column change written with PHP \\n and \\t escapes is refused"
+fresh "$RECREATE"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "tách làm hai tệp"' "a table renamed and created again under its name (through a nested connection call) is refused"
+FL=$(for i in $(seq 1 30); do bash "$HERE/../deploy.sh" flags "$SRC" "$BIG" | awk -F'\t' '$1=="2300_01_01_000000_add_col_and_idx" {print $2}'; done | sort -u | tr '\n' ';')
+ok '[ "$FL" = "raw nonadd table concurrent;" ]' "a 200 KB migration gets the same flags on 30 runs (no flag lost to an early grep exit)"
+fresh "$BIG"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "tách làm hai tệp"' "the 200 KB column change beside CONCURRENTLY is refused"
 echo "== pre-reload one-off: a stop at the reload, then resume at 7"
 fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan fake:pre")" = 1 ]' "octane:reload fails after the pre-reload one-off applied"
