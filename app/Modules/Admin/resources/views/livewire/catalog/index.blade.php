@@ -155,26 +155,17 @@
 @endphp
 <div class="catalog-index flex flex-col gap-3">
 
-    <header class="flex flex-col gap-1">
-        <nav aria-label="{{ __('admin.breadcrumb') }}" class="hidden text-caption text-text-muted min-[600px]:block">
-            <div class="flex items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="hit-area inline-flex items-center gap-1 transition-colors hover:text-primary-text">
-                    <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
-                </a>
-                <x-bs-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
-                <span class="font-medium">{{ $title }}</span>
-            </div>
-        </nav>
-        <x-bs-admin::title-row :title="$title">
-            @if ($canManage)
-                <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.catalog.create')"
-                    :label="__('catalog.create_new')" :short="__('admin.list.add_short')">
-                    <x-bs-admin::icon name="ri-add" class="size-4" />
-                </x-bs-admin::button>
-            @endif
-        </x-bs-admin::title-row>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ __('catalog.desc') }}</p>
-    </header>
+    <x-bs-admin::screen-head :title="$title" top
+        :crumb="[['label' => $title, 'url' => route('admin.catalog.index')], ['label' => __('admin.list')]]"
+        :desc="__('catalog.desc')" :mdesc="__('catalog.mdesc')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('products', $title)">
+        @if ($canManage)
+            <x-bs-admin::button color="primary" class="shrink-0" :href="route('admin.catalog.create')" data-guide="add"
+                :label="__('catalog.create_new')" :short="__('admin.list.add_short')">
+                <x-bs-admin::icon name="ri-add" class="size-4" />
+            </x-bs-admin::button>
+        @endif
+    </x-bs-admin::screen-head>
 
     @if ($failed)
         <x-bs-admin::card flush role="alert" data-state="error" class="min-w-0 p-6 text-center">
@@ -198,7 +189,7 @@
         </x-bs-admin::card>
     @else
     <div class="min-w-0 min-[600px]:rounded-md min-[600px]:border min-[600px]:border-border min-[600px]:bg-surface min-[600px]:pb-4 min-[600px]:shadow-card">
-        <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('catalog.groups_label')" />
+        <x-bs-admin::group-row :groups="$groups" :active="$tab" model="tab" :label="__('catalog.groups_label')" data-guide="tabs" />
 
         {{-- What shows on each product follows the list's own width: below 600 the member's card choice, 600–899
              every detail, from 900 their column choice (both kept in their own preferences). --}}
@@ -245,7 +236,7 @@
             <div class="flex flex-col gap-3 pb-3 min-[600px]:px-4 min-[600px]:pt-4 min-[900px]:pt-3 @min-[56.25rem]/lt:flex-row @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:items-center">
                 <div class="min-w-0 text-body @min-[56.25rem]/lt:min-w-[19em] @min-[56.25rem]/lt:max-w-[30em] @min-[56.25rem]/lt:flex-[999_1_19em] @min-[56.25rem]/lt:[&:has(+[data-below='1'])]:max-w-none">
                     <x-bs-admin::search id="catalog-search" :label="__('catalog.search_label')" :placeholder="__('catalog.search_hint')"
-                        :clear-label="__('catalog.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" />
+                        :clear-label="__('catalog.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" data-guide="search" />
                 </div>
                 <x-bs-admin::tool-row class="@min-[56.25rem]/lt:min-w-0 @min-[56.25rem]/lt:flex-[1_1_auto] @min-[56.25rem]/lt:flex-wrap @min-[56.25rem]/lt:gap-3">
                     @if ($canManage && $pageUlids !== [])
@@ -418,7 +409,7 @@ JS, ['@ULID@' => (string) Js::from($product->ulid)]) : '{}';
                                 @endif
                                 <div class="min-w-0 flex-1">
                                     <div @if ($quickEdit) x-show="! editing" @endif>
-                                    <x-bs-admin::list.name :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null" :act="$canManage && $trashed ? 'trashedNote' : null"
+                                    <x-bs-admin::list.name data-guide="row-open" :href="$canManage && ! $trashed ? route('admin.catalog.edit', ['ulid' => $product->ulid]) : null" :act="$canManage && $trashed ? 'trashedNote' : null"
                                             :quick-edit="$quickEdit ? __('catalog.quick_edit_named', ['name' => $name]) : null">{{ $name }}</x-bs-admin::list.name>
                                     </div>
                                     @if ($quickEdit)

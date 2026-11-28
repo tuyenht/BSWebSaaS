@@ -1,13 +1,14 @@
 <div>
-    <div class="mb-4">
-        <h1 class="text-lg font-semibold text-heading">{{ __('admin.platform_sites') }}</h1>
-    </div>
+    <x-bs-admin::screen-head class="mb-4" :title="__('admin.platform_sites')" top
+        :crumb="[['label' => __('admin.platform_sites')]]"
+        :desc="__('admin.psites.desc')" :mdesc="__('admin.psites.mdesc')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('sites', __('admin.platform_sites'))" />
 
     {{-- Filters --}}
     <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder_4') }}"
+        <input type="search" data-guide="search" aria-label="{{ __('admin.search_placeholder_4') }}" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder_4') }}"
                class="field w-full rounded border border-border bg-surface-muted px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text focus:bg-surface sm:max-w-xs">
-        <select wire:model.live="status"
+        <select data-guide="filter" aria-label="{{ __('admin.status') }}" wire:model.live="status"
                 class="field w-full rounded border border-border bg-surface-muted px-3 text-text transition-colors focus:border-primary-text focus:bg-surface sm:max-w-[200px]">
             <option value="">{{ __('admin.all_statuses') }}</option>
             <option value="active">{{ __('admin.status_active') }}</option>
@@ -38,7 +39,7 @@
                         <td class="px-4 py-3 text-body-muted">{{ $site->siteType?->key ?? '—' }}</td>
                         <td class="px-4 py-3 text-body-muted">{{ $site->status ? __('admin.status_'.$site->status) : '—' }}</td>
                         <td class="px-4 py-3 text-end">
-                            <a href="{{ route('platform.sites.show', $site->ulid) }}" wire:navigate
+                            <a href="{{ route('platform.sites.show', $site->ulid) }}" wire:navigate data-guide="row-open"
                                class="font-medium text-accent transition-colors hover:underline">{{ __('admin.view') }}</a>
                         </td>
                     </tr>

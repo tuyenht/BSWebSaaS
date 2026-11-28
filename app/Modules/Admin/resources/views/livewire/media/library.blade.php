@@ -165,21 +165,17 @@
      x-on:media-upload-opened.window="$nextTick(() => document.getElementById('media-up-h')?.focus())"
      x-on:keydown.slash.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName) && ! $event.target.isContentEditable) { $event.preventDefault(); document.getElementById('media-search')?.focus() }">
 
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
-            <h1 class="text-xl font-semibold text-text-strong">{{ __('media.lib.title') }}</h1>
-            <p class="mt-1 text-sm text-text-muted">
-                <span class="max-[599.98px]:hidden">{{ __('media.lib.desc_long') }}</span><span class="min-[600px]:hidden">{{ __('media.lib.desc_short') }}</span>
-            </p>
-        </div>
+    <x-bs-admin::screen-head :title="__('media.lib.title')" top :crumb="[['label' => __('media.lib.title')]]"
+        :desc="__('media.lib.desc_long')" :mdesc="__('media.lib.desc_short')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('media', __('media.lib.title'))">
         @if ($canUpload && ! $uploadOpen && ! $failed && ($counts['all'] + $counts['trash']) > 0)
             @if ($storageFull)
-                <x-bs-admin::button color="primary" aria-disabled="true" class="opacity-60" :title="__('media.lib.st_up_tip')" aria-describedby="tv-full"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
+                <x-bs-admin::button color="primary" aria-disabled="true" class="opacity-60" :title="__('media.lib.st_up_tip')" aria-describedby="tv-full" data-guide="add"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
             @else
-                <x-bs-admin::button color="primary" wire:click="openUpload"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
+                <x-bs-admin::button color="primary" wire:click="openUpload" data-guide="add"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
             @endif
         @endif
-    </div>
+    </x-bs-admin::screen-head>
 
     @if ($uploadOpen && $canUpload)
         {{-- data-upload-folder: where a file added now goes (the device pane reads it as each file is added) --}}
@@ -335,9 +331,9 @@
                         <div class="min-w-0 flex-1 text-body">
                             <x-bs-admin::search id="media-search" :label="__('media.lib.search_label')" :placeholder="__('media.lib.search_hint')"
                                 :clear-label="__('media.lib.search_clear')" clear-action="clearSearch" :clear-on="$searching"
-                                maxlength="{{ Dir::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" />
+                                maxlength="{{ Dir::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" data-guide="search" />
                         </div>
-                        <x-bs-admin::sort-menu class="hidden min-[900px]:block" copy="wide" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
+                        <x-bs-admin::sort-menu data-guide="sort" class="hidden min-[900px]:block" copy="wide" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
                         <div class="inline-flex shrink-0 gap-3 rounded-full bg-primary/7 p-0.5" role="radiogroup" aria-label="{{ __('media.lib.view_label') }}">
                             <button type="button" role="radio" aria-checked="{{ $view === 'grid' ? 'true' : 'false' }}" aria-label="{{ __('media.lib.view_grid') }}" title="{{ __('media.lib.view_grid') }}" wire:click="setView('grid')"
                                     class="flex size-control items-center justify-center rounded-full text-text-muted transition-colors hover:bg-primary/12 aria-checked:bg-primary/16 aria-checked:text-primary-text aria-checked:shadow-[inset_0_0_0_1px_currentColor] any-pointer-coarse:size-hit"><x-bs-admin::icon name="ri-grid" class="size-4" /></button>
@@ -355,7 +351,7 @@
                             :active="$conditions + ($trash ? 1 : 0)" tally="tally" :active-narrow="$conditions + ($trash ? 1 : 0) + ($folderChip ? 1 : 0)"
                             :split-at="['wide' => '@max-[47.99rem]/tv:hidden', 'narrow' => '@min-[48rem]/tv:hidden']"
                             :results="__('media.lib.f_see', ['n' => $num($totals['n'])])" clear="clearFilters" />
-                        <x-bs-admin::sort-menu class="min-[900px]:hidden" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
+                        <x-bs-admin::sort-menu data-guide="sort" class="min-[900px]:hidden" :options="$sortOptions" :active="$sort" :lit="$sort !== 'new'" set="setSort" />
                     </x-bs-admin::tool-row>
                 </div>
 
@@ -447,7 +443,7 @@
                                 @php $name = $m->original_filename ?: $m->slug ?: $extOf($m); @endphp
                                 @php $dot = strrpos($name, '.'); @endphp
                                 <div wire:key="mt-{{ $m->ulid }}" role="listitem" @class(['relative min-w-0 rounded-md border bg-surface', 'border-primary-text ring-2 ring-primary/30' => $on, 'border-border' => ! $on])>
-                                    <button type="button" class="flex w-full min-w-0 flex-col text-start" id="mopen-{{ $m->ulid }}" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}" title="{{ $name }}">
+                                    <button type="button" data-guide="row-open" class="flex w-full min-w-0 flex-col text-start" id="mopen-{{ $m->ulid }}" wire:click="openDetail({{ Js::from($m->ulid) }})" aria-label="{{ __('media.lib.open', ['name' => $name]) }}" title="{{ $name }}">
                                         <span class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-t-md bg-surface-muted">
                                             @if (str_starts_with($m->mime, 'image/'))
                                                 <img src="{{ $urls->url($m->storage_key, 320) }}" alt="" loading="lazy" decoding="async" @if ($m->width) width="{{ $m->width }}" height="{{ $m->height }}" @endif class="size-full object-cover">
@@ -517,7 +513,7 @@
                                                 </button>
                                             </td>
                                             <td class="max-w-0 py-1.5 pe-3 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:[grid-area:1/3/2/8] @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:max-w-none @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pe-0 @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:pb-0">
-                                                <button type="button" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
+                                                <button type="button" data-guide="row-open" id="mopen-{{ $m->ulid }}" class="block max-w-full truncate text-start font-medium text-text hover:text-primary-text" wire:click="openDetail({{ Js::from($m->ulid) }})" title="{{ $name }}">{{ $name }}</button>
                                                 @php $upDay = $siteTime->forDisplay($m->created_at)?->format('d/m/Y'); @endphp
                                                 <span class="block truncate text-small text-text-muted @min-[37.5rem]/tvm:hidden">{{ $extOf($m) }} · {{ $dims($m) }} · {{ Library::bytes((int) $m->size) }} · {{ $chip['text'] }}</span>
                                                 <span class="hidden truncate text-small text-text-muted @min-[37.5rem]/tvm:block @min-[56.25rem]/tvm:hidden @min-[48rem]/tv:@min-[37.5rem]/tvm:@max-[56.25rem]/tvm:hidden!">{{ $dims($m) }} · {{ $upDay }}</span>

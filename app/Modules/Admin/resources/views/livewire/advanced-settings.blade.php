@@ -23,7 +23,7 @@
     $whenBad = $errors->has('reopen');
     $fieldLook = 'w-full min-w-0 rounded-md border bg-surface px-2.5 text-text placeholder:text-placeholder';
 @endphp
-<x-bs-admin::settings-shell active="advanced" card="none" :unsaved="$changes" :invalid="count($errors->keys())" live-errors first-error="adv-first-error">
+<x-bs-admin::settings-shell active="advanced" :guide="false" card="none" :unsaved="$changes" :invalid="count($errors->keys())" live-errors first-error="adv-first-error">
     <x-slot:aside>
         {{-- «Hướng dẫn»: the screen's questions and answers in a dialog (board 31's help). --}}
         <div x-data="{ help: false }">

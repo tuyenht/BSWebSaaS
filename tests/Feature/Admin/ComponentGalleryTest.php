@@ -72,7 +72,7 @@ it('renders button + badge variants with Velzon-mirrored admin tokens', function
         ->assertSee('border-accent');        // outline (the brand navy as ink goes through the accent role)
 });
 
-it('renders the new presentational primitives (alert, avatar, page-header, pagination)', function (): void {
+it('renders the new presentational primitives (alert, avatar, screen head, pagination)', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
     $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
@@ -80,6 +80,7 @@ it('renders the new presentational primitives (alert, avatar, page-header, pagin
         ->assertSee('Alerts')
         ->assertSee('Avatars')
         ->assertSee('Pagination')
+        ->assertSee('data-screen-head', false)     // the shared screen head
         ->assertSee('role="alert"', false)         // alert a11y role
         ->assertSee('aria-current="page"', false); // pagination current page
 });

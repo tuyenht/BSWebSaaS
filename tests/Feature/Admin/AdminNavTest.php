@@ -270,16 +270,24 @@ function shellTrailCount(string $html): int
     return count(HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelectorAll('nav[aria-label="'.__('admin.breadcrumb').'"]'));
 }
 
-it('leads a menu page with the shell trail from the active menu entry and its child', function (): void {
+it('leads a menu page with one trail from the active menu entry and its child, the shell\'s or the screen head\'s', function (): void {
     app()->setLocale('vi');
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
     $posts = app(Tenancy::class)->enter(1, fn () => ContentSection::query()->where('key', 'posts')->firstOrFail());
     expect($posts->taxonomy_id)->not->toBeNull();
 
-    // a leaf: ⌂ › Thư viện ảnh & tệp
-    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/media')->assertOk()->getContent();
+    // a leaf: ⌂ › Khối dùng chung
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/blocks')->assertOk()->getContent();
     $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
     $trail = $dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+    expect(shellTrailCount($html))->toBe(1)
+        ->and($trail?->querySelector('a[aria-label="'.__('admin.dashboard').'"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
+        ->and(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('blocks.title'));
+
+    // a screen on the shared screen head draws the same trail in its head, and the shell none: ⌂ › Thư viện ảnh & tệp
+    $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/media')->assertOk()->getContent();
+    $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+    $trail = $dom->querySelector('[data-screen-head] > nav[aria-label="'.__('admin.breadcrumb').'"]');
     expect(shellTrailCount($html))->toBe(1)
         ->and($trail?->querySelector('a[aria-label="'.__('admin.dashboard').'"]')?->getAttribute('href'))->toBe(route('admin.dashboard'))
         ->and(trim((string) $trail?->querySelector('[aria-current="page"]')?->textContent))->toBe('Thư viện ảnh & tệp');
@@ -287,7 +295,7 @@ it('leads a menu page with the shell trail from the active menu entry and its ch
     // a child: ⌂ › Tin tức › Chuyên mục, the entry linking to its own list
     $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test/admin/taxonomies?section=posts')->assertOk()->getContent();
     $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
-    $trail = $dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+    $trail = $dom->querySelector('[data-screen-head] > nav[aria-label="'.__('admin.breadcrumb').'"]');
     $label = app(Tenancy::class)->enter(1, fn (): string => $posts->localizedLabel());
     expect(shellTrailCount($html))->toBe(1)
         ->and(trim((string) $trail?->querySelector('a.underline')?->textContent))->toBe($label)
@@ -302,7 +310,7 @@ it('draws no shell trail on the dashboard, and one trail only where the screen d
 
     expect(shellTrailCount($get('/admin')))->toBe(0);
 
-    foreach (['/admin/settings/email', '/admin/content?section=posts'] as $path) {
+    foreach (['/admin/settings/email', '/admin/content?section=posts', '/admin/media'] as $path) {
         $dom = HTMLDocument::createFromString($get($path), LIBXML_NOERROR);
         expect($dom->querySelectorAll('nav[aria-label="'.__('admin.breadcrumb').'"]'))->toHaveCount(1, $path)
             ->and($dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]'))->toBeNull()

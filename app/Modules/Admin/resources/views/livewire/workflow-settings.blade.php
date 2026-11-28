@@ -46,24 +46,16 @@
     <script type="application/json" data-wf-state>@json($state)</script>
 
     <div class="flex max-w-295 flex-col gap-4">
-        {{-- Breadcrumb, title, description, reload --}}
-        <div class="flex flex-wrap items-start gap-4">
-            <div class="flex min-w-0 flex-[1_1_20rem] flex-col">
-                <nav aria-label="{{ __('admin.breadcrumb') }}" class="flex flex-wrap items-center gap-1 text-caption text-text-muted">
-                    <span>{{ __('admin.wf.crumb_settings') }}</span>
-                    <x-bs-admin::icon name="ri-arrow-right-s" :class="$glyph" />
-                    <span aria-current="page" class="text-text-strong">{{ __('admin.workflow_settings') }}</span>
-                </nav>
-                <h1 class="mt-1.5 mb-1 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong">{{ __('admin.workflow_settings') }}</h1>
-                <p class="m-0 text-small leading-relaxed text-text-muted [text-wrap:pretty]">{{ __('admin.wf.desc') }}</p>
-            </div>
-            <div class="flex flex-wrap gap-2 min-[37.5rem]:mt-5.5">
-                <x-bs-admin::button variant="outline" color="secondary" wire:click="$refresh" wire:loading.attr="disabled" wire:target="$refresh">
-                    <x-bs-admin::icon name="ri-refresh" :class="$glyph" />
-                    <span>{{ __('admin.wf.reload') }}</span>
-                </x-bs-admin::button>
-            </div>
-        </div>
+        {{-- The shared screen head: the trail, the name, «Hướng dẫn», «Tải lại», the line about the screen --}}
+        <x-bs-admin::screen-head :title="__('admin.workflow_settings')"
+            :crumb="[['label' => __('admin.wf.crumb_settings'), 'url' => route('admin.settings')], ['label' => __('admin.workflow_settings')]]"
+            :desc="__('admin.wf.desc')"
+            :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('workflow', __('admin.workflow_settings'))">
+            <x-bs-admin::button variant="outline" color="secondary" wire:click="$refresh" wire:loading.attr="disabled" wire:target="$refresh" data-guide="reload">
+                <x-bs-admin::icon name="ri-refresh" :class="$glyph" />
+                <span>{{ __('admin.wf.reload') }}</span>
+            </x-bs-admin::button>
+        </x-bs-admin::screen-head>
 
         {{-- Why the last save was refused: stays until a save goes through or it is closed --}}
         @if ($saveError !== '')
@@ -212,7 +204,7 @@
                                     </span>
 
                                     <span class="wf-c3">
-                                        <button wire:ignore.self type="button" role="switch" class="switch-row"
+                                        <button wire:ignore.self type="button" role="switch" class="switch-row" data-guide="row-switch"
                                                 x-show="row({{ $k }}).template" {!! $hidden(! $has) !!}
                                                 aria-checked="{{ $row['active'] ? 'true' : 'false' }}" x-bind:aria-checked="row({{ $k }}).active ? 'true' : 'false'"
                                                 aria-label="{{ __('admin.wf.switch_label', ['name' => $row['label'], 'state' => $stateWord]) }}" x-bind:aria-label="switchLabel({{ $k }})"
@@ -229,7 +221,7 @@
                                         <span wire:ignore.self class="wf-narrow" x-show="row({{ $k }}).template" {!! $hidden(! $has) !!}>
                                             <x-bs-admin::button variant="outline" color="secondary" size="sm" x-on:click="openPick({{ $k }})">{{ __('admin.wf.view_steps_short') }}</x-bs-admin::button>
                                         </span>
-                                        <x-bs-admin::button variant="outline" color="secondary" size="sm" class="wf-change" x-on:click="openPick({{ $k }})">
+                                        <x-bs-admin::button variant="outline" color="secondary" size="sm" class="wf-change" data-guide="row-pick" x-on:click="openPick({{ $k }})">
                                             <x-bs-admin::icon wire:ignore.self name="ri-add" class="{{ $smallGlyph }}" x-show="! row({{ $k }}).template" :style="$has ? 'display: none' : null" />
                                             <x-bs-admin::icon wire:ignore.self name="ri-repeat-2" class="{{ $smallGlyph }}" x-show="row({{ $k }}).template" :style="$has ? null : 'display: none'" />
                                             <span wire:ignore x-text="row({{ $k }}).template ? @js(__('admin.wf.change')) : @js(__('admin.wf.choose'))">{{ $has ? __('admin.wf.change') : __('admin.wf.choose') }}</span>

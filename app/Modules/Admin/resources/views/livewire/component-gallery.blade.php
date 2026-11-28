@@ -312,14 +312,12 @@
         </div>
     </x-bs-admin::card>
 
-    {{-- Page header --}}
-    <x-bs-admin::card title="Page header">
-        <x-bs-admin::page-header title="Người dùng" subtitle="Quản lý thành viên của website.">
-            <x-slot:breadcrumbs>Dashboard / Người dùng</x-slot:breadcrumbs>
-            <x-slot:actions>
-                <x-bs-admin::button size="sm" color="primary">Thêm thành viên</x-bs-admin::button>
-            </x-slot:actions>
-        </x-bs-admin::page-header>
+    {{-- Screen head --}}
+    <x-bs-admin::card title="Screen head">
+        <x-bs-admin::screen-head title="Thành viên" :crumb="[['label' => 'Thành viên']]" :guide="false"
+            desc="Mời đồng nghiệp cùng quản trị website và chọn nhóm quyền cho từng người." mdesc="Người cùng quản trị website.">
+            <x-bs-admin::button color="primary">Mời thành viên</x-bs-admin::button>
+        </x-bs-admin::screen-head>
     </x-bs-admin::card>
 
     {{-- Pagination --}}

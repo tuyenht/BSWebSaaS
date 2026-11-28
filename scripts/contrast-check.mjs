@@ -332,7 +332,7 @@ const ROWS = [
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Footer', fg: '--color-footer-fg', bg: ['--color-bg'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (page-header, trang Nội dung)', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (screen-head)', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Tab chưa chọn (x-bs-admin::tabs, trang Nội dung)', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Đầu cột bảng — x-bs-admin::table', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách) · bộ đếm Jodit', fg: '--color-text-muted', bg: ['--color-surface-muted'], min: 4.5 },

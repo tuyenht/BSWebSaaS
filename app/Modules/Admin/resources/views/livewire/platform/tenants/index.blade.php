@@ -66,10 +66,10 @@
     $hiddenCols = count(Index::COLS) - count($cols);
 @endphp
 <div class="flex flex-col gap-4">
-    <header class="flex flex-col gap-1">
-        <h1 class="m-0 text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('admin.platform_tenants') }}</h1>
-        <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.customers_desc') }}</p>
-    </header>
+    <x-bs-admin::screen-head :title="__('admin.platform_tenants')" top
+        :crumb="[['label' => __('admin.platform_tenants')]]"
+        :desc="__('admin.customers_desc')" :mdesc="__('admin.customers_mdesc')"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('customers', __('admin.platform_tenants'))" />
 
     @if ($roleStrip !== null)
         <p role="note" class="m-0 flex items-start gap-2 rounded border border-border bg-surface-muted px-3.5 py-2.5 text-body text-text [overflow-wrap:anywhere]">
@@ -87,7 +87,7 @@
             <div class="min-w-0 flex-[1_1_12rem] text-body min-[900px]:max-w-[30em]">
                 <x-bs-admin::search id="customers-search" :label="__('admin.customers_search_label')"
                     :placeholder="__('admin.customers_search_placeholder', ['code' => CustomerCode::format(123)])"
-                    maxlength="{{ CustomerDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" aria-describedby="customers-search-hint" />
+                    maxlength="{{ CustomerDirectory::SEARCH_MAX }}" wire:model.live.debounce.300ms="search" aria-describedby="customers-search-hint" data-guide="search" />
                 {{-- always in the page, so a screen reader hears the line when it appears --}}
                 <p id="customers-search-hint" role="status" class="m-0 empty:hidden">@if ($searchNoLetters)<span class="mt-1.5 flex items-start gap-1.5 text-small text-text-muted"><x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" /><span>{{ __('admin.customers_search_no_letters') }}</span></span>@endif</p>
             </div>
@@ -176,7 +176,7 @@
                         @endphp
                         <x-bs-admin::list.row wire:key="kh-{{ $t->ulid }}">
                             <x-bs-admin::list.cell col="main">
-                                <x-bs-admin::list.name :href="$href">{{ $t->name }}</x-bs-admin::list.name>
+                                <x-bs-admin::list.name :href="$href" data-guide="row-open">{{ $t->name }}</x-bs-admin::list.name>
                                 @if ($owner !== '' || $ownerEmail !== '')
                                     <p class="list-sub m-0">{{ $owner }}@if ($owner !== '' && $ownerEmail !== '') · @endif<span class="list-sub-em">{!! $email($ownerEmail) !!}</span></p>
                                 @endif

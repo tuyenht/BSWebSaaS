@@ -41,7 +41,7 @@
         <x-bs-admin::settings-shell active="domains" card="snug">
             @if (! ($failed ?? false) && $manage && $limit > 0)
                 <x-slot:aside>
-                    <x-bs-admin::button wire:click="openAdd" class="shrink-0" :label="__('admin.domains_add')" :short="__('admin.domains_add_short')"
+                    <x-bs-admin::button wire:click="openAdd" data-guide="add" class="shrink-0" :label="__('admin.domains_add')" :short="__('admin.domains_add_short')"
                         :aria-disabled="$addLocked ? 'true' : null" :aria-describedby="$full ? 'tm-lim-why' : null">
                         <x-bs-admin::icon name="ri-add" :class="$glyph" />
                     </x-bs-admin::button>

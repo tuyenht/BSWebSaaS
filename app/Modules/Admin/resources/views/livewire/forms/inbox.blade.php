@@ -185,14 +185,16 @@
 <div class="leads group/kl @container/kl flex flex-col gap-4 max-[599.98px]:gap-2" data-open="{{ $opened ? '1' : '0' }}"
      x-on:leads-export-ready.window="window.location.assign($event.detail.url)">
 
-    <header class="flex flex-col gap-1">
-        <div class="flex items-start gap-3">
-            <h1 class="m-0 min-w-0 flex-auto self-center text-[calc(1.25rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ __('leads.title') }}</h1>
-            {{-- ⋮ «Việc khác» of the whole list, beside the title on every width, for whoever manages
-                 leads: «Tải danh sách về máy», never of the Trash (the file holds no lead in it), and
-                 «Thời hạn lưu giữ liên hệ». Support staff signed in for a member never take that file:
-                 the item stays, with why; they may open the period but not shorten it. --}}
-            @if ($canManage && ! $failed)
+    <x-bs-admin::screen-head :title="__('leads.title')" top :crumb="[['label' => __('leads.title')]]"
+        :desc="__('leads.desc')" :mdesc="__('leads.mdesc')"
+        :desc-link="auth()->user()?->can('forms.manage') ? ['label' => __('form_builder.title'), 'url' => route('admin.form-builder.index'), 'icon' => 'ri-file-list-3'] : null"
+        :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('leads', __('leads.title'))">
+        @if ($canManage && ! $failed)
+            <x-slot:more>
+                {{-- ⋮ «Việc khác» of the whole list, beside the title on every width, for whoever manages
+                     leads: «Tải danh sách về máy», never of the Trash (the file holds no lead in it), and
+                     «Thời hạn lưu giữ liên hệ». Support staff signed in for a member never take that file:
+                     the item stays, with why; they may open the period but not shorten it. --}}
                 <x-bs-admin::list.actions head name="" :label="__('leads.more')" :title="__('leads.more_title')">
                     <x-slot:menu>
                         @if ($inTrash)
@@ -205,10 +207,9 @@
                         <x-bs-admin::list.menu-item icon="ri-time" wire:click="openRetention">{{ __('leads.ret_title') }}</x-bs-admin::list.menu-item>
                     </x-slot:menu>
                 </x-bs-admin::list.actions>
-            @endif
-        </div>
-        <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere] [text-wrap:pretty]">{{ __('leads.desc') }}</p>
-    </header>
+            </x-slot:more>
+        @endif
+    </x-bs-admin::screen-head>
 
     {{-- A switched-off form: visitors cannot send it; its leads stay. «Bật lại» for whoever may change forms. --}}
     @foreach ($failed ? [] : $offForms as $off)
@@ -255,12 +256,12 @@
 
         {{-- The list. Below 940px (the screen's own width) it gives way to the lead once one is opened. --}}
         <section aria-label="{{ __('leads.list_label') }}" class="{{ $card }} @container/lt flex flex-col @max-[58.74rem]/kl:group-data-[open=1]/kl:hidden">
-            <x-bs-admin::group-row class="px-2" :groups="$groups" :active="$tab" model="tab" :label="__('leads.groups_label')" />
+            <x-bs-admin::group-row class="px-2" :groups="$groups" :active="$tab" model="tab" :label="__('leads.groups_label')" data-guide="tabs" />
 
             <div class="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
                 <div class="min-w-0 flex-[1_1_13.75rem]">
                     <x-bs-admin::search id="leads-search" :label="__('leads.search_label')" :placeholder="__('leads.search_hint')"
-                        :clear-label="__('leads.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" />
+                        :clear-label="__('leads.search_clear')" clear-action="$set('search', '')" :clear-on="trim($search) !== ''" wire:model.live.debounce.300ms="search" data-guide="search" />
                 </div>
                 @if ($canManage && $rowUlids !== [] && ! $inTrash)
                     <div class="min-w-0">
@@ -380,7 +381,7 @@
                     <div class="flex items-start gap-2 @max-[58.74rem]/kl:hidden">
                         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                             @if ($d['tel'])
-                                <x-bs-admin::button color="primary" :href="$d['tel']" :navigate="false"><x-bs-admin::icon name="ri-phone" class="size-4" /> {{ __('leads.call', ['phone' => $d['phone']]) }}</x-bs-admin::button>
+                                <x-bs-admin::button color="primary" :href="$d['tel']" :navigate="false" data-guide="call"><x-bs-admin::icon name="ri-phone" class="size-4" /> {{ __('leads.call', ['phone' => $d['phone']]) }}</x-bs-admin::button>
                                 <x-bs-admin::button variant="outline" color="secondary" :href="$d['zalo']" :navigate="false" target="_blank" rel="noopener"><x-bs-admin::icon name="ri-chat-3" class="size-4" /> {{ __('leads.zalo') }}</x-bs-admin::button>
                             @endif
                             @if ($d['mailto'])
@@ -531,7 +532,7 @@
     @if ($d !== null && $opened)
         <div data-sticky-savebar class="sticky bottom-0 z-5 flex flex-wrap gap-2 rounded-b-md border-t border-border bg-surface px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] @min-[58.75rem]/kl:hidden">
             @if ($d['tel'])
-                <x-bs-admin::button color="primary" class="min-h-12 min-w-[min(100%,max-content)] flex-1" :href="$d['tel']" :navigate="false"><x-bs-admin::icon name="ri-phone" class="size-4" /> {{ __('leads.call', ['phone' => $d['phone']]) }}</x-bs-admin::button>
+                <x-bs-admin::button color="primary" class="min-h-12 min-w-[min(100%,max-content)] flex-1" :href="$d['tel']" :navigate="false" data-guide="call"><x-bs-admin::icon name="ri-phone" class="size-4" /> {{ __('leads.call', ['phone' => $d['phone']]) }}</x-bs-admin::button>
                 <x-bs-admin::button variant="outline" color="secondary" class="min-h-12" :href="$d['zalo']" :navigate="false" target="_blank" rel="noopener" :aria-label="__('leads.zalo_aria')"><x-bs-admin::icon name="ri-chat-3" class="size-4" /> {{ __('leads.zalo_short') }}</x-bs-admin::button>
                 @if ($d['mailto'])
                     <x-bs-admin::button variant="outline" color="secondary" class="min-h-12" :href="$d['mailto']" :navigate="false" :aria-label="__('leads.email_aria')"><x-bs-admin::icon name="ri-mail-send" class="size-4" /> {{ __('leads.email_short') }}</x-bs-admin::button>

@@ -16,7 +16,8 @@
 <div class="@container">
 @if ($state !== 'data')
     <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-        <x-bs-admin::page-header :title="$label !== '' ? __('categories.title', ['section' => $label]) : $u('crumb')" class="!mb-0" />
+        <x-bs-admin::screen-head :title="$label !== '' ? __('categories.title', ['section' => $label]) : $u('crumb')"
+            :crumb="$label !== '' ? [['label' => $label, 'url' => $listUrl], ['label' => $u('crumb')]] : [['label' => $u('crumb')]]" :guide="false" />
         <x-bs-admin::card>
             <div class="mx-auto flex max-w-xl flex-col items-center gap-3 py-8 text-center">
                 <span class="inline-flex size-12 items-center justify-center rounded-full bg-surface-muted text-text-muted"><x-bs-admin::icon name="ri-lock-2" class="size-6" /></span>
@@ -84,15 +85,15 @@
     @endphp
     <div x-ignore wire:ignore.self data-bs-lazy="bsCategories" x-data="bsCategories(@js($config))" x-on:category-cover-picked.window="coverPicked($event.detail)"
         class="mx-auto flex w-full max-w-[1400px] flex-col gap-4">
-        <header class="flex flex-col gap-1">
-            <x-bs-admin::title-row :title="__('categories.title', ['section' => $label])">
-                <x-bs-admin::button class="shrink-0" x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$offWhy"
-                    :label="$u('add')" :short="__('admin.list.add_short')">
-                    <x-bs-admin::icon name="ri-add" class="size-4" />
-                </x-bs-admin::button>
-            </x-bs-admin::title-row>
-            <p class="m-0 text-body text-text-muted [overflow-wrap:anywhere]">{{ $products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel]) }}</p>
-        </header>
+        <x-bs-admin::screen-head :title="__('categories.title', ['section' => $label])"
+            :crumb="[['label' => $label, 'url' => $listUrl], ['label' => $u('crumb')]]"
+            :desc="$products ? $u('desc_products') : $u('desc_posts', ['section' => $lowerLabel])"
+            :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('cats', __('categories.title', ['section' => $label]))">
+            <x-bs-admin::button class="shrink-0" x-on:click="openAdd(null)" aria-disabled="{{ $off }}" :title="$offWhy" data-guide="add"
+                :label="$u('add')" :short="__('admin.list.add_short')">
+                <x-bs-admin::icon name="ri-add" class="size-4" />
+            </x-bs-admin::button>
+        </x-bs-admin::screen-head>
 
         {{-- shown until the screen's part has started (one more download for this screen only); the
              shared loader marks the root when the download is lost, and the CSS swaps the two blocks --}}
@@ -153,9 +154,9 @@
                     <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
                         <span class="text-small font-semibold text-text-strong whitespace-nowrap @max-[56.24rem]:hidden" x-text="fill({{ $j($u('total')) }}, { n: counts.total })">{{ $u('total', ['n' => $total]) }}</span>
                         <div class="min-w-48 flex-[1_1_16rem]">
-                            <x-bs-admin::search :label="$u('search_label')" :placeholder="$u('search_ph', ['n' => $total])" x-model="q" data-cm-q />
+                            <x-bs-admin::search :label="$u('search_label')" :placeholder="$u('search_ph', ['n' => $total])" x-model="q" data-cm-q data-guide="search" />
                         </div>
-                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="toggleChips()" x-bind:aria-expanded="(fOpen || chip !== 'all').toString()">
+                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="toggleChips()" data-guide="chips" x-bind:aria-expanded="(fOpen || chip !== 'all').toString()">
                             <x-bs-admin::icon name="ri-filter-3" class="size-4" /> <span x-text="fOpen || chip !== 'all' ? {{ $j($u('chips_off')) }} : {{ $j($u('chips')) }}">{{ $u('chips') }}</span>
                         </x-bs-admin::button>
                         <div x-show="fOpen || chip !== 'all'" role="group" aria-label="{{ $u('chips_group') }}" class="flex basis-full flex-wrap gap-2 @min-[56.25rem]:order-none">
@@ -255,11 +256,11 @@
                                             <span>{{ $count }}</span>
                                         @endif
                                     </span>
-                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openEdit({{ $j($n['key']) }})" aria-label="{{ $u('edit_of', ['name' => $n['name']]) }}" class="@max-[20.6rem]:hidden">
+                                    <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openEdit({{ $j($n['key']) }})" aria-label="{{ $u('edit_of', ['name' => $n['name']]) }}" data-guide="row-edit" class="@max-[20.6rem]:hidden">
                                         <x-bs-admin::icon name="ri-pencil" class="size-4" /> {{ $u('edit') }}
                                     </x-bs-admin::button>
                                     @if ($r['level'] < $depth)
-                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openAdd({{ $j($n['key']) }}, true)" aria-disabled="{{ $off }}"
+                                        <x-bs-admin::button size="sm" variant="outline" color="secondary" x-on:click="openAdd({{ $j($n['key']) }}, true)" aria-disabled="{{ $off }}" data-guide="row-child"
                                             aria-label="{{ $u('add_child_of', ['name' => $n['name']]) }}" :title="$offWhy ?? $u('add_child_of', ['name' => $n['name']])" class="@max-[37.49rem]:hidden">
                                             <x-bs-admin::icon name="ri-add" class="size-4" /> {{ $u('child') }}
                                         </x-bs-admin::button>

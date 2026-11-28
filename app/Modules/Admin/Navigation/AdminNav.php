@@ -79,12 +79,14 @@ final class AdminNav
      * Screens the shell draws no trail above: the dashboard and the screens that carry their own
      * header (review inbox, component gallery), as on the shell board; and the screens that draw
      * their own trail in their header (content lists and editors, products, every settings
-     * screen, the forms list and editor), so no page shows two.
+     * screen, the forms list and editor, and the screens on the shared screen head: categories,
+     * menus, the media library, the leads inbox and the members list), so no page shows two.
      */
     private const NO_SHELL_TRAIL = [
         'admin.dashboard', 'admin.entries.review', 'admin.gallery',
         'admin.entries.index', 'admin.entries.create', 'admin.entries.edit',
         'admin.catalog.*', 'admin.settings.*', 'platform.settings.*', 'admin.form-builder.create', 'admin.form-builder.edit',
+        'admin.form-builder.index', 'admin.forms.index', 'admin.taxonomies.index', 'admin.menus.index', 'admin.media.index', 'admin.users.index',
     ];
 
     /**

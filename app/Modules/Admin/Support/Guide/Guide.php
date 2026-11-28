@@ -27,6 +27,9 @@ final class Guide
     /** @var list<array{id: string, title: string, steps: list<array<string, mixed>>}> */
     private array $parts = [];
 
+    /** @var list<array{q: string, a: string}> */
+    private array $faq = [];
+
     /**
      * @param  array{name: string, may: string, note: string}|null  $role  the member's role box
      */
@@ -76,6 +79,29 @@ final class Guide
         return ['target' => $target, 'title' => $title, 'text' => $text];
     }
 
+    /**
+     * The screen's common questions, each with its answer (the design's «Hay hỏi ở màn này»), shown
+     * in the drawer after the parts; a pair with an empty side is left out.
+     *
+     * @param  list<array{0: string, 1: string}>  $pairs
+     */
+    public function faq(array $pairs): self
+    {
+        foreach ($pairs as [$q, $a]) {
+            if ($q !== '' && $a !== '') {
+                $this->faq[] = ['q' => $q, 'a' => $a];
+            }
+        }
+
+        return $this;
+    }
+
+    /** @return list<array{q: string, a: string}> */
+    public function questions(): array
+    {
+        return $this->faq;
+    }
+
     /** @return list<array{id: string, title: string, steps: list<array<string, mixed>>}> */
     public function parts(): array
     {
@@ -101,6 +127,7 @@ final class Guide
             'role' => $this->role,
             'purpose' => $this->purpose,
             'parts' => $this->parts,
+            'faq' => $this->faq,
             'ui' => self::ui(),
         ];
     }
@@ -115,7 +142,7 @@ final class Guide
         $ui = [];
         foreach (['heading', 'close', 'close_tip', 'role', 'part', 'steps', 'steps_one', 'seen', 'show', 'show_named', 'run', 'run_one',
             'exit', 'exit_tip', 'back', 'prev', 'prev_aria', 'next', 'next_aria', 'done', 'next_part', 'count', 'count_intro', 'title_sep', 'quote',
-            'offer_title', 'offer_title_changed', 'offer_changed', 'offer_text', 'offer_later', 'offer_now', 'list_sep'] as $k) {
+            'offer_title', 'offer_title_changed', 'offer_changed', 'offer_text', 'offer_later', 'offer_now', 'faq', 'list_sep'] as $k) {
             $ui[$k] = Cast::string(__($k === 'list_sep' ? 'guide.list.sep' : 'guide.ui.'.$k));
         }
 

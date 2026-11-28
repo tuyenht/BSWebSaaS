@@ -31,17 +31,16 @@
             </div>
         </div>
     @else
-        <header class="flex flex-col gap-1">
-            <x-bs-admin::title-row :title="__('admin.platform_plans')">
-                @if ($canPlans)
-                    <x-bs-admin::button color="primary" class="shrink-0" :href="route('platform.plans.create')" title="{{ __('admin.plans_add_tip') }}"
-                        :label="__('admin.plans_add')" :short="__('admin.list.add_short')">
-                        <x-bs-admin::icon name="ri-add" :class="$glyph" />
-                    </x-bs-admin::button>
-                @endif
-            </x-bs-admin::title-row>
-            <p class="m-0 max-w-[72ch] text-body text-text-muted [text-wrap:pretty]">{{ __('admin.plans_desc') }}</p>
-        </header>
+        <x-bs-admin::screen-head :title="__('admin.platform_plans')" top :crumb="[['label' => __('admin.platform_plans')]]"
+            :desc="__('admin.plans_desc')"
+            :guide="\App\Modules\Admin\Support\Guide\ScreenGuide::print('plans', __('admin.platform_plans'))">
+            @if ($canPlans)
+                <x-bs-admin::button color="primary" class="shrink-0" :href="route('platform.plans.create')" title="{{ __('admin.plans_add_tip') }}" data-guide="add"
+                    :label="__('admin.plans_add')" :short="__('admin.list.add_short')">
+                    <x-bs-admin::icon name="ri-add" :class="$glyph" />
+                </x-bs-admin::button>
+            @endif
+        </x-bs-admin::screen-head>
     @endif
 
     @if ($canPlans && ! $canTypes)
@@ -182,7 +181,7 @@
                                 <div class="{{ $sub }}">{{ __('admin.plans_position', ['n' => $row['pos']]) }}</div>
                             </div>
                             <div class="col-start-2 row-start-1 flex items-center gap-2.5 justify-self-end @min-[52rem]/pl:col-start-auto @min-[52rem]/pl:justify-self-start">
-                                <button type="button" class="switch hit-area" role="switch" aria-checked="{{ $row['sold'] ? 'true' : 'false' }}"
+                                <button type="button" class="switch hit-area" data-guide="row-switch" role="switch" aria-checked="{{ $row['sold'] ? 'true' : 'false' }}"
                                         aria-label="{{ __('admin.plans_sold_aria', ['name' => $row['name']]) }}"
                                         wire:click="toggleSold({{ Js::from($row['key']) }})" wire:loading.attr="disabled" wire:target="toggleSold"></button>
                                 <x-bs-admin::status-pill :status="$statusPill[$row['status']]">{{ $statusText[$row['status']] }}</x-bs-admin::status-pill>
@@ -195,7 +194,7 @@
                                 </x-bs-admin::button>
                                 <x-bs-admin::dropdown align="end">
                                     <x-slot:trigger>
-                                        <x-bs-admin::button variant="ghost" color="secondary" size="sm" :icon="true" title="{{ __('admin.plans_more') }}" aria-label="{{ __('admin.plans_more_aria', ['name' => $row['name']]) }}">
+                                        <x-bs-admin::button variant="ghost" color="secondary" size="sm" :icon="true" data-guide="row-more" title="{{ __('admin.plans_more') }}" aria-label="{{ __('admin.plans_more_aria', ['name' => $row['name']]) }}">
                                             <x-bs-admin::icon name="ri-more-2-fill" class="size-5" />
                                         </x-bs-admin::button>
                                     </x-slot:trigger>
