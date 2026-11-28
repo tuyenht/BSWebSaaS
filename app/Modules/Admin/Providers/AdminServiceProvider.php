@@ -35,6 +35,7 @@ use App\Modules\Admin\Livewire\EmailDnsStatus;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\EmailRecentMail;
 use App\Modules\Admin\Livewire\EmailSettings;
+use App\Modules\Admin\Livewire\EmailTemplates;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
@@ -65,6 +66,8 @@ use App\Modules\Admin\Support\AdminAddressLimit;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Mail\MailLogWriter;
 use App\Modules\Admin\Support\Mail\MailSendContext;
+use App\Modules\Admin\Support\Mail\MailTemplateMail;
+use App\Modules\Admin\Support\Mail\MailTemplates;
 use App\Modules\Admin\Support\Settings\BranchList;
 use App\Modules\Admin\Support\Settings\FloatingContactInput;
 use App\Modules\Admin\Support\Settings\HeadingDecorInput;
@@ -121,6 +124,8 @@ final class AdminServiceProvider extends ServiceProvider
 
         // What TenantMailer::apply() set up for the mail about to leave: per request / per job.
         $this->app->scoped(MailSendContext::class);
+        // The «Mẫu thư» on/off list, read once per website for the request / job.
+        $this->app->scoped(MailTemplates::class);
         // Feature modules record a mail that failed in the website's mail log through Shared.
         $this->app->bind(MailFailureRecorder::class, MailLogWriter::class);
     }
@@ -182,6 +187,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.account', Account::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
         Livewire::component('admin.email-recent-mail', EmailRecentMail::class);
+        Livewire::component('admin.email-templates', EmailTemplates::class);
         Livewire::component('admin.email-dns-status', EmailDnsStatus::class);
         Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
@@ -226,6 +232,16 @@ final class AdminServiceProvider extends ServiceProvider
         // Through the website's outbox like every other account mail (and so in its mail log).
         VerifyEmail::toMailUsing(function (mixed $notifiable, string $url): MailMessage {
             app(TenantMailer::class)->apply();
+
+            // The website's (or the platform's) wording of «Xác minh địa chỉ email» when it has one.
+            $templated = app(MailTemplateMail::class)->message('verify', [
+                '{customer_name}' => Cast::string(data_get($notifiable, 'name')),
+                '{customer_email}' => Cast::string(data_get($notifiable, 'email')),
+                '{verify_url}' => $url,
+            ]);
+            if ($templated !== null) {
+                return $templated;
+            }
 
             return (new MailMessage)
                 ->subject(__('auth.verify_email_subject'))
