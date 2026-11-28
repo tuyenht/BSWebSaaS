@@ -93,14 +93,18 @@ it('lets a post at /tim-kiem move along its workflow back to live', function ():
 });
 
 it('leaves content already at /tim-kiem unchanged in a permalink reflow', function (): void {
-    app(Tenancy::class)->enter(1, function (): void {
+    $post = app(Tenancy::class)->enter(1, function (): Entry {
         $post = reservedEntry('post');
         $product = Product::query()->create(['status' => 'published', 'published_at' => now()->subDay()]);
         $product->translations()->create(['locale' => 'en', 'name' => 'Old product', 'slug' => 'tim-kiem']);
         SiteRoute::query()->create(['locale' => 'en', 'path' => '/tim-kiem', 'product_id' => $product->id]);
 
-        $summary = collect(app(ReflowSitePermalinks::class)->handle(dryRun: false));
+        return $post;
+    });
 
+    $summary = collect(app(ReflowSitePermalinks::class)->handle(1, dryRun: false));
+
+    app(Tenancy::class)->enter(1, function () use ($post, $summary): void {
         expect($summary->firstWhere('type', 'post')['status'] ?? null)->toBe('unchanged')
             ->and($summary->firstWhere('type', 'product')['status'] ?? null)->toBe('unchanged')
             ->and(SiteRoute::query()->where('entry_id', $post->id)->value('path'))->toBe('/tim-kiem');

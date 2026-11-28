@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  * Nothing is written: an address «after the change» is composed through PathBuilder with the
  * draft preset (PermalinkConfig::withTargets), the way the run will compose it. The preview reads
  * SAMPLE items per section: the board's «Khoảng N» is the section's count times the share of the
- * sample that changes, and a clash is one of the sample's new addresses another item already holds.
+ * sample that changes, rounded up (never 0 when the sample shows a change), and a clash is one of the sample's new addresses another item already holds.
  * A section larger than its sample whose sample shows no change is counted `unknown` (its other
  * items may still move), so the confirmation never hangs on the sample alone. Addresses are shown as
  * visitors open them (PathBuilder::publicUrl: another language under its prefix). A fixed number of
@@ -218,8 +218,9 @@ final readonly class PermalinkBoard
             if ($rows === [] && ($section['capped'] || $section['count'] > count($section['items']))) {
                 $unknown++;
             }
-            $share = $total === 0 ? 0.0 : count($rows) / $total;
-            $estimate = (int) round(($section['capped'] ? self::COUNT_CAP : $section['count']) * $share);
+            // rounded up, in whole numbers: a sample that shows any change never estimates 0
+            $count = $section['capped'] ? self::COUNT_CAP : $section['count'];
+            $estimate = $total === 0 ? 0 : intdiv($count * count($rows) + $total - 1, $total);
             $out = [];
             foreach ($rows as $row) {
                 $holder = $holders[$row['locale'].' '.$row['new']] ?? null;

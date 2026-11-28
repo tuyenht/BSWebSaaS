@@ -6,7 +6,6 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Tenancy\Context\SiteResolver;
-use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
@@ -18,7 +17,8 @@ use Illuminate\Console\ConfirmableTrait;
  * Always run --dry-run first and review the printed table: it previews every route move a real run
  * would make (same code path, rolled back) with nothing persisted, and flags any slug collision as
  * `conflict`. The real run moves live URLs — recoverable via the pre-run DB backup, not a trivial
- * undo — so it prompts for confirmation in production unless --force is given.
+ * undo — so it prompts for confirmation in production unless --force is given. It moves them chunk
+ * by chunk, each chunk in a short transaction of its own (ReflowSitePermalinks::handle).
  */
 final class ReflowSitePermalinksCommand extends Command
 {
@@ -36,7 +36,7 @@ final class ReflowSitePermalinksCommand extends Command
     #[\Override]
     protected $description = 'Reflow a site permalinks to the flat default, moving post + product routes to /{slug} with 301s.';
 
-    public function handle(Tenancy $tenancy, ReflowSitePermalinks $action): int
+    public function handle(ReflowSitePermalinks $action): int
     {
         $host = $this->option('host');
         $host = is_string($host) ? trim($host) : '';
@@ -66,7 +66,7 @@ final class ReflowSitePermalinksCommand extends Command
         }
 
         /** @var list<array{type: string, title: string, locale: string, old: string, new: string, status: string}> $summary */
-        $summary = $tenancy->enter($resolved->siteId, fn (): array => $action->handle($dryRun));
+        $summary = $action->handle($resolved->siteId, $dryRun);
 
         $this->table(
             ['Type', 'Title', 'Locale', 'Old path', 'New path', 'Status'],

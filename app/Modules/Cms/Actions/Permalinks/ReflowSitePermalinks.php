@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Actions\Permalinks;
 
+use App\Modules\Cms\Exceptions\PermalinkMoveFailedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -15,11 +16,12 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Shared\Support\Slugger;
-use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
+use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 use RuntimeException;
 use Throwable;
 
@@ -38,14 +40,19 @@ use Throwable;
  *     or one of the platform's — gets the next free slug (`-2`, `-3`…) stored on the item, then the
  *     move and its 301, when `suffix` is on (the run's settle phase only: during the move the holder
  *     may be an item that moves away later in the same run); without it the item keeps its address
- *     and is reported `conflict`. Each address moves under its own savepoint: one that cannot move
- *     (too long for a route, or any error) is rolled back, reported `failed` with its reason and
- *     skipped, and the chunk carries on.
- *   - handle(): the operator command (permalinks:reflow): every section back to flat in one run
- *     under the site's permalink lock, clashes reported, never suffixed; `dryRun` runs the same
- *     writes and rolls them back.
- *
- * Runs inside the caller's Tenancy::enter() (an explicit transaction with SET LOCAL, RLS-scoped).
+ *     and is reported `conflict`. An address too long for a route is reported `failed` and left.
+ *     A chunk opens no savepoint (one per address would pile up subtransactions in a long run, past
+ *     what PostgreSQL keeps in memory for the snapshots of every other session): an address that
+ *     fails any other way (an error, or a «-2» whose sub-pages find their addresses taken) throws
+ *     PermalinkMoveFailedException, the caller's whole transaction rolls back, and the caller runs
+ *     the chunk again in a new one with that address skipped (`$skip`: reported `failed` with its
+ *     reason, not tried), until the chunk goes through. Every attempt reads its items afresh, so
+ *     nothing a rolled-back attempt changed in memory (a «-2» slug) reaches the next.
+ *     Runs inside the caller's Tenancy::enter() (an explicit transaction with SET LOCAL, RLS-scoped).
+ *   - handle(): the operator command (permalinks:reflow): every section back to flat, clashes
+ *     reported, never suffixed. It opens its own transactions, one per chunk, each under the site's
+ *     permalink lock; `dryRun` runs the same writes in one transaction (a preview must see every
+ *     earlier chunk's moves to report the clashes a real run meets) and rolls it back.
  */
 final readonly class ReflowSitePermalinks
 {
@@ -68,43 +75,57 @@ final readonly class ReflowSitePermalinks
 
     public const string ERROR = 'error';
 
+    /** The message that rolls a dry run back. */
+    private const string DRY_RUN = self::class.':dry-run';
+
     public function __construct(
         private RouteSync $routes,
         private PathBuilder $paths,
         private PermalinkConfig $permalinks,
         private SectionResolver $sections,
         private PermalinkKinds $kinds,
-        private CurrentSite $current,
+        private Tenancy $tenancy,
     ) {}
 
     /**
-     * Every section back to flat and every route moved to its flat address (the operator command).
+     * Every section of $siteId back to flat and every route moved to its flat address (the operator
+     * command), chunk by chunk in transactions of its own; outside any transaction.
      *
      * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>
      */
-    public function handle(bool $dryRun = false): array
+    public function handle(int $siteId, bool $dryRun = false, int $size = self::CHUNK): array
     {
-        if (! $dryRun) {
-            return $this->flattenAll();
+        if (DB::transactionLevel() > 0) {
+            throw new LogicException('permalinks:reflow opens its own transactions, one per chunk: call it outside any transaction.');
         }
 
-        $summary = [];
-        try {
-            DB::transaction(function () use (&$summary): never {
-                $summary = $this->flattenAll();
+        return $dryRun ? $this->preview($siteId, $size) : $this->flatten($siteId, $size);
+    }
 
-                throw new RuntimeException(self::class.':dry-run');
-            });
-        } catch (RuntimeException $e) {
-            if ($e->getMessage() !== self::class.':dry-run') {
-                throw $e;
-            }
-            // expected: every write of the preview pass above has just been rolled back
+    /**
+     * $skip with the address $failed names added (its cause reported when it was an error), for the
+     * next attempt at the chunk that failed.
+     *
+     * @param  array<string, string>  $skip
+     * @return array<string, string>
+     */
+    public function skipping(array $skip, PermalinkMoveFailedException $failed): array
+    {
+        if (isset($skip[$failed->route])) {
+            throw $failed; // a skipped address is never tried, so this one cannot be the cause
         }
-        // the pass cached the flat presets it wrote; those are gone, so read the real ones again
-        $this->permalinks->flush();
+        if ($failed->reason === self::ERROR) {
+            report($failed->getPrevious() ?? $failed);
+        }
+        $skip[$failed->route] = $failed->reason;
 
-        return $summary;
+        return $skip;
+    }
+
+    /** The name of one address of an item in a run's `$skip`: "{column}:{id}:{locale}". */
+    public static function route(string $column, int $id, string $locale): string
+    {
+        return $column.':'.$id.':'.$locale;
     }
 
     /** @return list<string> the kinds a full run walks, entries first */
@@ -128,13 +149,16 @@ final readonly class ReflowSitePermalinks
      * One chunk of a run: the published items of $kind whose id follows $after (at most $limit ids
      * with a route; only pages, or only posts, when $sections names only those), each route moved
      * to the address its section's preset gives — the preset of $targets for the sections named
-     * there. `last` is the cursor for the next chunk, null when this was the last one.
+     * there. `last` is the cursor for the next chunk, null when this was the last one. No savepoint:
+     * an address that fails throws PermalinkMoveFailedException for the caller to roll the whole
+     * transaction back and run the chunk again with that address in $skip.
      *
      * @param  list<string>|null  $sections  only items of these sections (null: every item)
      * @param  array<string, array{pattern: string, base: string|null}>  $targets
+     * @param  array<string, string>  $skip  addresses (route()) an earlier attempt failed on => reason: reported failed, not tried
      * @return array{last: int|null, rows: list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null, section: string|null}>}
      */
-    public function chunk(string $kind, ?array $sections, array $targets, int $after, int $limit = self::CHUNK, bool $suffix = true): array
+    public function chunk(string $kind, ?array $sections, array $targets, int $after, int $limit = self::CHUNK, bool $suffix = true, array $skip = []): array
     {
         if ($sections !== null && ! $this->walks($kind, $sections)) {
             return ['last' => null, 'rows' => []];
@@ -149,14 +173,14 @@ final readonly class ReflowSitePermalinks
 
         $rows = [];
         if ($ids !== []) {
-            $rows = $this->permalinks->withTargets($targets, function () use ($kind, $ids, $sections, $suffix): array {
+            $rows = $this->permalinks->withTargets($targets, function () use ($kind, $ids, $sections, $suffix, $skip): array {
                 $rows = [];
                 foreach ($this->items($kind, $ids) as ['section' => $section, 'item' => $item]) {
                     if ($sections !== null && ! in_array($section, $sections, true)) {
                         continue;
                     }
                     foreach ($item->routes as $locale => $old) {
-                        $row = $this->moveSafely($item, $locale, $old, $suffix);
+                        $row = $this->moveOrFail($item, $locale, $old, $suffix, $skip);
                         if ($row !== null) {
                             $rows[] = $row + ['section' => $section];
                         }
@@ -214,28 +238,29 @@ final readonly class ReflowSitePermalinks
     }
 
     /**
-     * Move one route of $item under its own savepoint: an address that cannot move is rolled back
-     * and reported `failed` with its reason, so one item never stops the run. Null when its
+     * Move one route of $item, or report it failed when an earlier attempt at the chunk failed on it
+     * ($skip). Any failure while it moves throws PermalinkMoveFailedException naming it: with no
+     * savepoint, what it wrote can only go back with the caller's whole transaction. Null when its
      * language has no slug to compose from.
      *
+     * @param  array<string, string>  $skip
      * @return array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}|null
      */
-    private function moveSafely(PermalinkItem $item, string $locale, string $old, bool $suffix): ?array
+    private function moveOrFail(PermalinkItem $item, string $locale, string $old, bool $suffix, array $skip): ?array
     {
         if (! array_key_exists($locale, $item->slugs)) {
             return null;
         }
-        $row = ['type' => $item->type, 'title' => $item->titles[$locale] ?? '', 'locale' => $locale, 'old' => $old];
+        $route = self::route($item->column, $item->id, $locale);
+        if (isset($skip[$route])) {
+            return ['type' => $item->type, 'title' => $item->titles[$locale] ?? '', 'locale' => $locale, 'old' => $old, 'new' => $old, 'status' => 'failed', 'reason' => $skip[$route]];
+        }
 
         try {
-            return DB::transaction(fn (): array => $this->move($item, $locale, $old, $suffix));
-        } catch (RouteConflictException) {
-            // a sub-page following a renamed parent found its address taken: the parent stays too
-            return $row + ['new' => $old, 'status' => 'failed', 'reason' => self::TAKEN];
+            return $this->move($item, $locale, $old, $suffix);
         } catch (Throwable $e) {
-            report($e);
-
-            return $row + ['new' => $old, 'status' => 'failed', 'reason' => self::ERROR];
+            // a sub-page following a renamed parent found its address taken (the parent stays too), or an error
+            throw new PermalinkMoveFailedException($route, $e instanceof RouteConflictException ? self::TAKEN : self::ERROR, $e);
         }
     }
 
@@ -321,7 +346,8 @@ final readonly class ReflowSitePermalinks
             compose: fn (string $locale, string $slug): string => $this->paths->forEntry($entry, $locale, $slug),
             sync: fn (string $locale, string $slug): string => $this->routes->sync($entry, $locale, $slug),
             // the loaded translation is the one every sub-page of the chunk composes from (shareParents);
-            // a sub-page elsewhere follows through RouteSync, each with its 301
+            // a sub-page elsewhere follows through RouteSync, each with its 301. When anything after
+            // this fails, the chunk's attempt is dropped whole and the next reads the slug afresh.
             rename: function (string $locale, string $slug) use ($entry): void {
                 $translation = $entry->translations->firstWhere('locale', $locale);
                 if ($translation instanceof EntryTranslation) {
@@ -399,27 +425,101 @@ final readonly class ReflowSitePermalinks
     }
 
     /**
+     * The real run of handle(): the presets go flat in a short transaction, then each chunk moves in
+     * its own, under the site's permalink lock (never beside a chunk of a change's run, or a change
+     * being saved); a chunk that fails goes again without the address that failed.
+     *
      * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>
      */
-    private function flattenAll(): array
+    private function flatten(int $siteId, int $size): array
     {
-        // the same lock as a change and its run: never between two chunks of a run, never beside a save
-        ChangeSitePermalinks::lock($this->current->id());
-        $this->permalinks->flattenStored();
+        $this->tenancy->enter($siteId, function () use ($siteId): void {
+            ChangeSitePermalinks::lock($siteId);
+            $this->permalinks->flattenStored();
+        });
 
         $summary = [];
-        foreach ($this->kinds() as $kind) {
-            $after = 0;
-            do {
-                $chunk = $this->chunk($kind, null, [], $after, self::CHUNK, suffix: false);
-                foreach ($chunk['rows'] as $row) {
-                    unset($row['section']);
-                    $summary[] = $row;
+        try {
+            foreach ($this->kinds() as $kind) {
+                $after = 0;
+                $skip = [];
+                while ($after !== null) {
+                    try {
+                        $chunk = $this->tenancy->enter($siteId, function () use ($siteId, $kind, $after, $size, $skip): array {
+                            ChangeSitePermalinks::lock($siteId);
+                            $this->permalinks->flush(); // read what the lock now guards
+
+                            return $this->chunk($kind, null, [], $after, $size, suffix: false, skip: $skip);
+                        });
+                    } catch (PermalinkMoveFailedException $e) {
+                        $skip = $this->skipping($skip, $e);
+
+                        continue;
+                    }
+                    self::summarize($summary, $chunk['rows']);
+                    [$after, $skip] = [$chunk['last'], []];
                 }
-                $after = $chunk['last'];
-            } while ($after !== null);
+            }
+        } finally {
+            $this->permalinks->flush();
         }
 
         return $summary;
+    }
+
+    /**
+     * The dry run of handle(): the real run's writes in one transaction, rolled back. A failed address
+     * rolls the whole preview back; it runs again from the start with that address skipped.
+     *
+     * @return list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>
+     */
+    private function preview(int $siteId, int $size): array
+    {
+        $skip = [];
+        while (true) {
+            $summary = [];
+            try {
+                $this->tenancy->enter($siteId, function () use ($siteId, $size, $skip, &$summary): never {
+                    ChangeSitePermalinks::lock($siteId);
+                    $this->permalinks->flattenStored();
+                    foreach ($this->kinds() as $kind) {
+                        $after = 0;
+                        do {
+                            $chunk = $this->chunk($kind, null, [], $after, $size, suffix: false, skip: $skip);
+                            self::summarize($summary, $chunk['rows']);
+                            $after = $chunk['last'];
+                        } while ($after !== null);
+                    }
+
+                    throw new RuntimeException(self::DRY_RUN);
+                });
+            } catch (PermalinkMoveFailedException $e) {
+                $skip = $this->skipping($skip, $e);
+
+                continue;
+            } catch (RuntimeException $e) {
+                if ($e->getMessage() !== self::DRY_RUN) {
+                    throw $e;
+                }
+                // expected: every write of the preview has just been rolled back
+            } finally {
+                // the preview cached the flat presets it wrote; those are gone, so read the real ones again
+                $this->permalinks->flush();
+            }
+
+            return $summary;
+        }
+    }
+
+    /**
+     * @param  list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null}>  $summary
+     * @param  list<array{type: string, title: string, locale: string, old: string, new: string, status: string, reason: string|null, section: string|null}>  $rows
+     */
+    private static function summarize(array &$summary, array $rows): void
+    {
+        foreach ($rows as $row) {
+            unset($row['section']);
+            $summary[] = $row;
+        }
     }
 }

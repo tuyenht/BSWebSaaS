@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Jobs;
 
 use App\Modules\Cms\Actions\Permalinks\ChangeSitePermalinks;
 use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
+use App\Modules\Cms\Exceptions\PermalinkMoveFailedException;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -38,6 +39,12 @@ use Throwable;
  *               still taken now gets the next free slug («-2»). The site stays busy (no other change
  *               starts) until settle ends; the items that could not move are kept for the screen.
  * A run works RUN_SECONDS and hands over to a fresh one, so no job holds a worker long.
+ *
+ * A chunk opens no savepoint, so a long run never piles up subtransactions. When one of its addresses
+ * fails, the chunk's whole transaction rolls back (its cursor with it), a short transaction stores
+ * that address in the run's `skip`, and the next step runs the same chunk again without it, reported
+ * failed (ReflowSitePermalinks::chunk's `$skip`): the other items of the chunk still move, and settle
+ * keeps the failed one for the screen. The skip is stored, so a hand-over never starts it over.
  */
 final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -88,7 +95,16 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
         $kinds = $engine->kinds();
 
         while (true) {
-            $done = $tenancy->enter($this->siteId, fn (): bool => $this->step($engine, $permalinks, $kinds));
+            $at = '';
+            try {
+                $done = $tenancy->enter($this->siteId, function () use ($engine, $permalinks, $kinds, &$at): bool {
+                    return $this->step($engine, $permalinks, $kinds, $at);
+                });
+            } catch (PermalinkMoveFailedException $e) {
+                // the chunk rolled back whole: the next step, of this run or any later one, runs it again without that address
+                $tenancy->enter($this->siteId, fn () => $this->skip($engine, $permalinks, $e, $at));
+                $done = false;
+            }
             if ($done) {
                 return true;
             }
@@ -102,11 +118,12 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
 
     /**
      * One chunk (or one phase change) from the stored cursor, the cursor and heartbeat written with
-     * it. True when there is nothing left to do.
+     * it. True when there is nothing left to do. $at is set to the chunk's place in the run; the run's
+     * `skip` holds the addresses an earlier attempt at the chunk in that place failed on.
      *
      * @param  list<string>  $kinds
      */
-    private function step(ReflowSitePermalinks $engine, PermalinkConfig $permalinks, array $kinds): bool
+    private function step(ReflowSitePermalinks $engine, PermalinkConfig $permalinks, array $kinds, string &$at): bool
     {
         ChangeSitePermalinks::lock($this->siteId);
         $permalinks->flush(); // read what the lock now guards
@@ -118,7 +135,7 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
             if ($pending === []) {
                 return true;
             }
-            $run = ['phase' => self::MOVE, 'sections' => array_keys($pending), 'kind' => 0, 'after' => 0, 'beat' => $now, 'failures' => [], 'failed' => 0];
+            $run = self::fresh($pending, $now);
         }
         $targets = [];
         if ($run['phase'] === self::MOVE) {
@@ -138,7 +155,7 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
         if ($run['kind'] >= count($kinds)) {
             if ($run['phase'] === self::MOVE) {
                 $permalinks->promote();
-                $permalinks->saveRun([...$run, 'phase' => self::SETTLE, 'kind' => 0, 'after' => 0, 'beat' => $now]);
+                $permalinks->saveRun([...$run, 'phase' => self::SETTLE, 'kind' => 0, 'after' => 0, 'beat' => $now, 'skip' => ['at' => '', 'routes' => []]]);
 
                 return false;
             }
@@ -148,7 +165,8 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
         }
 
         $settle = $run['phase'] === self::SETTLE;
-        $chunk = $engine->chunk($kinds[$run['kind']], $run['sections'], $targets, $run['after'], $this->size, suffix: $settle);
+        $at = $run['phase'].':'.$run['kind'].':'.$run['after'];
+        $chunk = $engine->chunk($kinds[$run['kind']], $run['sections'], $targets, $run['after'], $this->size, suffix: $settle, skip: $run['skip']['at'] === $at ? $run['skip']['routes'] : []);
         if ($settle) {
             foreach ($chunk['rows'] as $row) {
                 if (in_array($row['status'], ['failed', 'conflict'], true)) {
@@ -163,8 +181,41 @@ final class ReflowPermalinks implements ShouldBeUniqueUntilProcessing, ShouldQue
             }
         }
         [$run['kind'], $run['after']] = $chunk['last'] === null ? [$run['kind'] + 1, 0] : [$run['kind'], $chunk['last']];
-        $permalinks->saveRun([...$run, 'beat' => $now]);
+        $permalinks->saveRun([...$run, 'beat' => $now, 'skip' => ['at' => '', 'routes' => []]]);
 
         return false;
+    }
+
+    /**
+     * Store, in a short transaction of its own, that the chunk at $at fails on the address $failed
+     * names, so the next attempt (this run's or a later one's, after a hand-over) skips it: the
+     * attempts at one chunk add up across runs and the chunk always gets through.
+     */
+    private function skip(ReflowSitePermalinks $engine, PermalinkConfig $permalinks, PermalinkMoveFailedException $failed, string $at): void
+    {
+        ChangeSitePermalinks::lock($this->siteId);
+        $permalinks->flush();
+        $run = $permalinks->run();
+        $now = Carbon::now()->utc()->toIso8601String();
+        if ($run === null || $run['phase'] === PermalinkConfig::RUN_DONE) {
+            $pending = $permalinks->pending();
+            if ($pending === []) {
+                return;
+            }
+            $run = self::fresh($pending, $now); // the run the failed step began, rolled back with it
+        }
+        $routes = $engine->skipping($run['skip']['at'] === $at ? $run['skip']['routes'] : [], $failed);
+        $permalinks->saveRun([...$run, 'beat' => $now, 'skip' => ['at' => $at, 'routes' => $routes]]);
+    }
+
+    /**
+     * A new run over the staged sections, from the start.
+     *
+     * @param  array<string, array{pattern: string, base: string|null}>  $pending
+     * @return array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int, skip: array{at: string, routes: array<string, string>}}
+     */
+    private static function fresh(array $pending, string $now): array
+    {
+        return ['phase' => self::MOVE, 'sections' => array_keys($pending), 'kind' => 0, 'after' => 0, 'beat' => $now, 'failures' => [], 'failed' => 0, 'skip' => ['at' => '', 'routes' => []]];
     }
 }

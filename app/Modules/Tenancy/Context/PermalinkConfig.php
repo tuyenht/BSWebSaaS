@@ -166,9 +166,11 @@ final class PermalinkConfig
      * The current site's permalink run, null when none is under way or kept: `phase` (RUN_MOVE,
      * RUN_SETTLE, or RUN_DONE when it finished with items it could not move), the `sections` it
      * walks, its cursor (`kind` index, `after` the last item id done), `beat` the ISO time of its last
-     * progress, and the items it could not move (`failures`, at most a few, `failed` how many).
+     * progress, the items it could not move (`failures`, at most a few, `failed` how many), and
+     * `skip`: the addresses an attempt at the chunk at place `at` failed on (route => reason), which
+     * the next attempt there skips.
      *
-     * @return array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int}|null
+     * @return array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int, skip: array{at: string, routes: array<string, string>}}|null
      */
     public function run(): ?array
     {
@@ -197,6 +199,14 @@ final class PermalinkConfig
             }
         }
 
+        $skip = is_array($raw['skip'] ?? null) ? $raw['skip'] : [];
+        $routes = [];
+        foreach (is_array($skip['routes'] ?? null) ? $skip['routes'] : [] as $route => $reason) {
+            if (is_string($route) && is_string($reason)) {
+                $routes[$route] = $reason;
+            }
+        }
+
         return [
             'phase' => (string) $raw['phase'],
             'sections' => array_values(array_filter(is_array($raw['sections'] ?? null) ? $raw['sections'] : [], 'is_string')),
@@ -205,21 +215,28 @@ final class PermalinkConfig
             'beat' => self::text($raw['beat'] ?? null),
             'failures' => $failures,
             'failed' => is_int($raw['failed'] ?? null) ? $raw['failed'] : count($failures),
+            'skip' => ['at' => self::text($skip['at'] ?? null), 'routes' => $routes],
         ];
     }
 
     /**
      * Store the run's state (null: the run is over and nothing is kept). The caller holds the
-     * site's permalink lock.
+     * site's permalink lock, so the row is read and written as read: no savepoint (updateOrCreate
+     * opens one for its insert), and a run writes its state with every chunk.
      *
-     * @param  array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int}|null  $state
+     * @param  array{phase: string, sections: list<string>, kind: int, after: int, beat: string, failures: list<array{section: string, type: string, title: string, locale: string, old: string, new: string, reason: string}>, failed: int, skip?: array{at: string, routes: array<string, string>}}|null  $state
      */
     public function saveRun(?array $state): void
     {
         if ($state === null) {
             SiteSetting::query()->where('group_name', self::RUN_GROUP)->where('key', self::RUN_KEY)->delete();
         } else {
-            SiteSetting::query()->updateOrCreate(['group_name' => self::RUN_GROUP, 'key' => self::RUN_KEY], ['value' => $state]);
+            $row = SiteSetting::query()->where('group_name', self::RUN_GROUP)->where('key', self::RUN_KEY)->first();
+            if ($row === null) {
+                SiteSetting::query()->create(['group_name' => self::RUN_GROUP, 'key' => self::RUN_KEY, 'value' => $state]);
+            } else {
+                $row->update(['value' => $state]);
+            }
         }
 
         $this->flush();

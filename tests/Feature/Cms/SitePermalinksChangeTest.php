@@ -6,6 +6,7 @@ use App\Modules\Cms\Actions\Permalinks\ReflowSitePermalinks;
 use App\Modules\Cms\Exceptions\PermalinkChangeRejectedException;
 use App\Modules\Cms\Jobs\ReflowPermalinks;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Rbac\Context\TeamContext;
@@ -19,6 +20,7 @@ use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Tests\Fixtures\TransactionProbe;
 
 /*
  * A change of address format: ChangeSitePermalinks checks the choice and stages it, the
@@ -594,4 +596,95 @@ it('offers the products format only to a website that has the catalog', function
     plIn(fn () => SiteModule::query()->create(['module_key' => 'catalog', 'enabled' => true]));
     app()->forgetScopedInstances(); // the website's modules are read once per request
     expect(plIn(fn (): array => app(ChangeSitePermalinks::class)->problems($products)))->toBe([]);
+});
+
+it('moves the rest of a chunk past an address that fails, keeps that one for the screen, and opens no savepoint', function (): void {
+    Queue::fake();
+    $ids = plIn(fn (): array => array_map(fn (string $slug): int => plEntry('page', $slug)->id, ['gioi-thieu', 'lien-he', 'bang-gia', 'tuyen-dung']));
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'base', 'base' => 'trang']]));
+    // one address breaks as its route moves, after its 301 is written: a real database error, which
+    // aborts the whole transaction
+    SiteRoute::updating(function (SiteRoute $route): void {
+        if ($route->path === '/trang/bang-gia') {
+            DB::select('select 1/0');
+        }
+    });
+    $probe = TransactionProbe::start();
+
+    expect(plRun())->toBeTrue();
+
+    expect(plRoutes(1))->toBe(['/bang-gia' => 'e'.$ids[2], '/trang/gioi-thieu' => 'e'.$ids[0], '/trang/lien-he' => 'e'.$ids[1], '/trang/tuyen-dung' => 'e'.$ids[3]])
+        ->and(plRedirects(1))->toBe(['/gioi-thieu → /trang/gioi-thieu (301)', '/lien-he → /trang/lien-he (301)', '/tuyen-dung → /trang/tuyen-dung (301)']);
+    $state = plState();
+    expect($state['phase'])->toBe('done')->and($state['failed'])->toBe(1)
+        ->and($state['failures'][0])->toMatchArray(['section' => 'pages', 'locale' => 'vi', 'old' => '/bang-gia', 'reason' => ReflowSitePermalinks::ERROR]);
+    // the whole run, move and settle, with no savepoint and no subtransaction in any transaction
+    expect($probe->savepoints)->toBe(0)->and($probe->subtransactions)->toBe(0)->and($probe->transactions)->toBeGreaterThan(2);
+
+    // and the probe does see one: a savepoint that writes
+    plIn(fn () => DB::transaction(fn () => Entry::query()->whereKey($ids[0])->update(['updated_at' => now()])));
+    expect($probe->savepoints)->toBe(1)->and($probe->subtransactions)->toBe(1);
+});
+
+it('keeps an address that failed skipped across hand-overs, so a run that hands over after every step still ends', function (): void {
+    Queue::fake();
+    $ids = plIn(fn (): array => array_map(fn (string $slug): int => plEntry('page', $slug)->id, ['gioi-thieu', 'lien-he', 'bang-gia', 'tuyen-dung']));
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'base', 'base' => 'trang']]));
+    SiteRoute::updating(function (SiteRoute $route): void {
+        if ($route->path === '/trang/bang-gia') {
+            DB::select('select 1/0');
+        }
+    });
+    $probe = TransactionProbe::start();
+
+    // each run does one step and hands over (seconds 0); the chunk holding the bad address fails once
+    // in move and once in settle, and its next attempt, a new run, skips it as stored
+    $runs = 0;
+    $skipped = [];
+    do {
+        $done = plRun(size: 2, seconds: 0);
+        $routes = plState()['skip']['routes'] ?? [];
+        if ($routes !== []) {
+            $skipped = $routes;
+        }
+    } while (! $done && ++$runs < 20);
+
+    expect($done)->toBeTrue()
+        ->and($skipped)->toBe([ReflowSitePermalinks::route('entry_id', $ids[2], 'vi') => ReflowSitePermalinks::ERROR])
+        ->and(plRoutes(1))->toBe(['/bang-gia' => 'e'.$ids[2], '/trang/gioi-thieu' => 'e'.$ids[0], '/trang/lien-he' => 'e'.$ids[1], '/trang/tuyen-dung' => 'e'.$ids[3]]);
+    $state = plState();
+    expect($state['failed'])->toBe(1)->and($state['failures'][0])->toMatchArray(['old' => '/bang-gia', 'reason' => ReflowSitePermalinks::ERROR])
+        ->and($probe->savepoints)->toBe(0);
+});
+
+it('leaves a parent page whose «-2» cannot take its sub-pages along, and its sub-pages under its real slug', function (): void {
+    Queue::fake();
+    $ids = plIn(function (): array {
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'pages', 'value' => ['pattern' => 'base', 'base' => 'trang']]);
+        $about = plEntry('page', 'gioi-thieu');
+        $team = plEntry('page', 'doi-ngu', parent: $about);
+        $history = plEntry('page', 'lich-su', parent: $about);
+        plEntry('post', 'gioi-thieu', plSection('news', 'tin-tuc'));     // holds /gioi-thieu once pages nest
+        $holder = Entry::query()->create(['type' => 'post', 'status' => 'published']);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu-2/doi-ngu', 'entry_id' => $holder->id]);
+
+        return ['about' => $about->id, 'team' => $team->id, 'history' => $history->id];
+    });
+    expect(plRoutes(1))->toMatchArray(['/trang/gioi-thieu' => 'e'.$ids['about'], '/trang/doi-ngu' => 'e'.$ids['team'], '/trang/lich-su' => 'e'.$ids['history']]);
+
+    // move: the parent keeps its address (taken), its sub-pages nest under its slug; settle: the
+    // parent's «-2» would put its first sub-page on an address another item holds, so it stays
+    plIn(fn () => app(ChangeSitePermalinks::class)->handle(['pages' => ['pattern' => 'nested', 'base' => null]]));
+    expect(plRun())->toBeTrue();
+
+    expect(plRoutes(1))->toMatchArray([
+        '/trang/gioi-thieu' => 'e'.$ids['about'],
+        '/gioi-thieu/doi-ngu' => 'e'.$ids['team'],
+        '/gioi-thieu/lich-su' => 'e'.$ids['history'],
+    ])->and(plRoutes(1))->not->toHaveKeys(['/gioi-thieu-2', '/gioi-thieu-2/lich-su', '/gioi-thieu-2/doi-ngu-2'])
+        ->and(plIn(fn (): array => DB::table('entry_translations')->whereIn('entry_id', array_values($ids))->orderBy('entry_id')->pluck('slug')->all()))
+        ->toBe(['gioi-thieu', 'doi-ngu', 'lich-su']);
+    $state = plState();
+    expect($state['failed'])->toBe(1)
+        ->and($state['failures'][0])->toMatchArray(['section' => 'pages', 'old' => '/trang/gioi-thieu', 'reason' => ReflowSitePermalinks::TAKEN]);
 });

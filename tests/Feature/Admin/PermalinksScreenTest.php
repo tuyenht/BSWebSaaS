@@ -206,6 +206,44 @@ it('asks before nesting pages even when the first pages of the preview stay wher
     $this->get('http://a.test/ky-thuat')->assertStatus(301)->assertRedirect('http://a.test/trang-so-1/doi-ngu/ky-thuat');
 });
 
+it('asks before nesting pages when one address of a large sample in three languages moves', function (): void {
+    Queue::fake();
+    $manager = plsManager();
+    foreach (['en', 'ja'] as $locale) {
+        DB::connection('pgsql_admin')->table('site_locales')->insert(
+            ['site_id' => 1, 'locale' => $locale, 'is_default' => false, 'enabled' => true, 'is_public' => true, 'created_at' => now(), 'updated_at' => now()],
+        );
+    }
+    app()->forgetInstance(SiteLocale::class);
+    app()->forgetScopedInstances();
+    // 25 pages, the oldest 20 in the preview: 19 top-level pages in three languages (57 addresses)
+    // and one sub-page in Vietnamese only, the one address of the 58 that nesting moves
+    plsIn(function (): void {
+        $first = null;
+        for ($i = 1; $i <= 25; $i++) {
+            if ($i === 20) {
+                plsPage('trang-con', $first);
+
+                continue;
+            }
+            $page = plsPage('trang-so-'.$i);
+            $first ??= $page;
+            foreach (['en', 'ja'] as $locale) {
+                $page->translations()->create(['locale' => $locale, 'title' => 'Page '.$i, 'slug' => $locale.'-page-'.$i, 'status' => 'published', 'body' => ['blocks' => []]]);
+                app(RouteSync::class)->sync($page->fresh() ?? $page, $locale, $locale.'-page-'.$i);
+            }
+        }
+    });
+
+    plsIn(fn () => Livewire::actingAs($manager)->test(Permalinks::class)
+        ->set('draft.pages.pattern', 'nested')
+        ->call('save')->assertSet('confirming', true)
+        ->call('confirmSave')->assertSet('confirming', false));
+    plsRunAll();
+
+    expect(plsRoutes())->toHaveKeys(['/trang-so-1/trang-con', '/trang-so-21', '/en-page-1']);
+});
+
 it('shows and moves the addresses of a second language under its prefix', function (): void {
     Queue::fake();
     $manager = plsManager();
