@@ -667,6 +667,7 @@ it('shows the figures as a plain block, not a link, to whoever runs the settings
         ->assertOk()
         ->assertSee('<div id="tq-m-storage" tabindex="-1"', false)
         ->assertSee('Dung lượng thư viện đã dùng 62 phần trăm: 1,2 GB trên 2 GB', false)
+        ->assertSee('aria-hidden="true">Dung lượng thư viện</span>', false)
         ->assertSee('62%')
         ->assertDontSee('<a id="tq-m-storage"', false)
         ->assertDontSee('href="'.route('admin.media.index').'"', false)

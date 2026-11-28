@@ -250,7 +250,8 @@
                         <span class="sr-only">{{ __($st['warn'] ? 'dash.st_text_warn' : 'dash.st_text', $stSay) }}</span>
                     @endif
                         <span class="{{ $statHead }}">
-                            <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
+                            {{-- The plain block speaks its sentence above, so the label is not read twice. --}}
+                            <span class="{{ $statLab }}" @unless ($storage['link']) aria-hidden="true"@endunless>{{ __('dash.st_label') }}</span>
                             <span class="{{ $statIc }} {{ $tones[''] }}" aria-hidden="true"><x-bs-admin::icon name="ri-hard-drive-2" class="size-[calc(1.125rem+var(--user-text-boost))]" /></span>
                         </span>
                         <span class="text-[calc(1.5rem+var(--user-text-boost))] font-bold leading-[1.3] text-text-strong" aria-hidden="true">{{ __('dash.st_val', ['pct' => $stPct]) }}</span>
