@@ -124,7 +124,8 @@ final class Dashboard extends Component
 
         // Dung lượng thư viện — for whoever runs the website's settings, locked while the website has
         // no media library; one statement (the library meter's running totals and the plan's limit).
-        $storage = $user->can('settings.manage') ? $this->storage(in_array('media', $modules, true)) : null;
+        // A link to the library only for those who may open it.
+        $storage = $user->can('settings.manage') ? $this->storage(in_array('media', $modules, true), $user->can('media.view')) : null;
 
         // 3 · Duyệt bài / Bài của tôi / Nội dung gần đây
         $review = $isReviewer && $workflowOn ? $this->read(fn (): array => $reader->review($user)) : null;
@@ -180,18 +181,20 @@ final class Dashboard extends Component
     /**
      * The «Dung lượng thư viện» card: its figures (StorageCard) when the media module is on, read in
      * a savepoint like every card; else locked, with the plans offered only while the platform
-     * invites upgrades.
+     * invites upgrades (read in a savepoint too: when it cannot be read the lock offers nothing).
      *
-     * @return array{locked: bool, upsell: bool, read: array{ok: bool, data: array{pct: int, warn: bool, used: string, limit: string}|null}|null}
+     * @return array{locked: bool, upsell: bool, link: bool, read: array{ok: bool, data: array{pct: int, warn: bool, used: string, limit: string}|null}|null}
      */
-    private function storage(bool $mediaOn): array
+    private function storage(bool $mediaOn, bool $link): array
     {
         if (! $mediaOn) {
-            return ['locked' => true, 'upsell' => app(UpgradeInvitation::class)->isOn(), 'read' => null];
+            $invite = $this->read(fn (): bool => app(UpgradeInvitation::class)->isOn());
+
+            return ['locked' => true, 'upsell' => $invite['data'] === true, 'link' => false, 'read' => null];
         }
         $locale = app()->getLocale();
 
-        return ['locked' => false, 'upsell' => false, 'read' => $this->read(function () use ($locale): array {
+        return ['locked' => false, 'upsell' => false, 'link' => $link, 'read' => $this->read(function () use ($locale): array {
             $usage = app(MediaStorage::class)->usage();
 
             return StorageCard::figures($usage['used'], $usage['limit'], $locale);

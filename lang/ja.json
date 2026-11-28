@@ -7199,6 +7199,8 @@
     "dash.st_warn": "残りわずか",
     "dash.st_aria": "ライブラリの使用容量 :pct パーセント：:limit 中 :used。画像とファイルを開く",
     "dash.st_aria_warn": "ライブラリの使用容量 :pct パーセント：:limit 中 :used、残りわずかです。画像とファイルを開く",
+    "dash.st_text": "ライブラリの使用容量 :pct パーセント：:limit 中 :used",
+    "dash.st_text_warn": "ライブラリの使用容量 :pct パーセント：:limit 中 :used、残りわずかです",
     "dash.st_lock_off": "このサイトではまだ有効になっていません — サポートにお問い合わせください。",
     "dash.st_lock_up": "すべての画像とファイルを一か所に保管し、再アップロードせずに複数の記事で使い回せます。上位プランに含まれます。",
     "dash.st_upgrade": "アップグレードプランを見る",

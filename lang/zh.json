@@ -7199,6 +7199,8 @@
     "dash.st_warn": "快满了",
     "dash.st_aria": "媒体库已用容量 :pct%：:limit 中已用 :used。打开图片与文件",
     "dash.st_aria_warn": "媒体库已用容量 :pct%：:limit 中已用 :used，快满了。打开图片与文件",
+    "dash.st_text": "媒体库已用容量 :pct%：:limit 中已用 :used",
+    "dash.st_text_warn": "媒体库已用容量 :pct%：:limit 中已用 :used，快满了",
     "dash.st_lock_off": "此网站尚未开通 — 请联系客服。",
     "dash.st_lock_up": "在一个地方保存所有图片和文件，多篇文章可重复使用，无需再次上传。更高套餐中提供。",
     "dash.st_upgrade": "查看升级套餐",

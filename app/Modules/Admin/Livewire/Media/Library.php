@@ -1337,17 +1337,15 @@ final class Library extends Component
     {
         $used = max(0, $usage['used']);
         $limit = max(0, $usage['limit']);
-        // tenths of a megabyte, the figures the card prints
-        $usedTenths = (int) round($used * 10 / 1048576);
-        $limitTenths = (int) round($limit * 10 / 1048576);
-        $over = $usedTenths >= $limitTenths;
-        $level = $over && $enforcing ? 'full' : ($over || $usedTenths * 5 >= $limitTenths * 4 ? 'warn' : 'ok');
+        $share = MediaStorage::share($used, $limit);
+        $over = $share['over'];
+        $level = $over && $enforcing ? 'full' : ($share['warn'] ? 'warn' : 'ok');
         $limitText = self::megabytes($limit, 0);
         $left = self::megabytes(max(0, $limit - $used));
 
         return [
             'level' => $level,
-            'pct' => $over ? 100 : intdiv($usedTenths * 100, $limitTenths),
+            'pct' => $share['pct'],
             'used' => self::megabytes($used),
             'limit' => $limitText,
             'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])

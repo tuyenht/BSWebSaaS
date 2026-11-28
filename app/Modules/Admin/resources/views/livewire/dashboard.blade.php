@@ -238,10 +238,17 @@
                 @else
                     @php
                         $stPct = Number::format($st['pct'], locale: $locale);
+                        $stSay = ['pct' => $stPct, 'used' => $st['used'], 'limit' => $st['limit']];
                     @endphp
+                    {{-- A link to the library for those who may open it; else the same figures as a plain block. --}}
+                    @if ($storage['link'])
                     <a id="tq-m-storage" href="{{ route('admin.media.index') }}" wire:navigate
                        class="{{ $stat }} transition-colors hover:bg-surface-hover"
-                       aria-label="{{ __($st['warn'] ? 'dash.st_aria_warn' : 'dash.st_aria', ['pct' => $stPct, 'used' => $st['used'], 'limit' => $st['limit']]) }}">
+                       aria-label="{{ __($st['warn'] ? 'dash.st_aria_warn' : 'dash.st_aria', $stSay) }}">
+                    @else
+                    <div id="tq-m-storage" tabindex="-1" class="{{ $stat }}">
+                        <span class="sr-only">{{ __($st['warn'] ? 'dash.st_text_warn' : 'dash.st_text', $stSay) }}</span>
+                    @endif
                         <span class="{{ $statHead }}">
                             <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
                             <span class="{{ $statIc }} {{ $tones[''] }}" aria-hidden="true"><x-bs-admin::icon name="ri-hard-drive-2" class="size-[calc(1.125rem+var(--user-text-boost))]" /></span>
@@ -251,7 +258,11 @@
                         @if ($st['warn'])
                             <span class="{{ $chip }} {{ $tones['warn'] }}" aria-hidden="true"><x-bs-admin::icon name="ri-error-warning" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('dash.st_warn') }}</span>
                         @endif
+                    @if ($storage['link'])
                     </a>
+                    @else
+                    </div>
+                    @endif
                 @endif
             </div>
         </div>

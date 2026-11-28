@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Livewire\Dashboard;
+use App\Modules\Admin\Livewire\Media\Library;
 use App\Modules\Admin\Support\Dashboard\StorageCard;
 use App\Modules\Admin\Support\Entries\ReviewWaiting;
 use App\Modules\Admin\Support\UpgradeInvitation;
@@ -38,6 +39,8 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // the platform's upgrade switch is a global row no truncate clears: start from its default (off)
+    DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'plans')->delete();
     DB::connection('pgsql_admin')->table('site_modules')->insert([
         ['site_id' => 1, 'module_key' => 'contacts', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
         ['site_id' => 2, 'module_key' => 'contacts', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
@@ -518,7 +521,7 @@ function dashStorage(float $usedMb, int $limitMb = 2000): void
 }
 
 it('shows «Dung lượng thư viện» to whoever runs the settings, with the share of the plan the library uses', function (): void {
-    $admin = dashMember(['settings.manage', 'entries.view']);
+    $admin = dashMember(['settings.manage', 'entries.view', 'media.view']);
     $writer = dashMember(['entries.view', 'entries.create', 'media.view', 'media.upload']);
     dashStorage(1240);
 
@@ -538,7 +541,7 @@ it('shows «Dung lượng thư viện» to whoever runs the settings, with the s
 });
 
 it('warns «Sắp đầy» from 80% of the plan', function (): void {
-    $admin = dashMember(['settings.manage']);
+    $admin = dashMember(['settings.manage', 'media.view']);
     dashStorage(1720);
 
     $this->actingAs($admin)->get('http://a.test/admin')
@@ -556,7 +559,7 @@ it('puts the library figures as the board writes them, and warns exactly when th
     'just under 80%' => [1599.9, 2000, 'vi', ['pct' => 79, 'warn' => false, 'used' => '1,6 GB', 'limit' => '2 GB']],
     'exactly 80%' => [1600, 2000, 'vi', ['pct' => 80, 'warn' => true, 'used' => '1,6 GB', 'limit' => '2 GB']],
     'a small plan' => [312.4, 500, 'vi', ['pct' => 62, 'warn' => false, 'used' => '0,3 GB', 'limit' => '0,5 GB']],
-    'above the plan (not refused)' => [2240, 2000, 'vi', ['pct' => 112, 'warn' => true, 'used' => '2,2 GB', 'limit' => '2 GB']],
+    'above the plan (not refused): 100% as on the library meter' => [2240, 2000, 'vi', ['pct' => 100, 'warn' => true, 'used' => '2,2 GB', 'limit' => '2 GB']],
     'a plan with no room' => [0, 0, 'vi', ['pct' => 100, 'warn' => true, 'used' => '0 GB', 'limit' => '0 GB']],
     'in English' => [1240, 2000, 'en', ['pct' => 62, 'warn' => false, 'used' => '1.2 GB', 'limit' => '2 GB']],
 ]);
@@ -629,4 +632,61 @@ it('keeps the page up when the library figures cannot read, and reads them again
             ->assertSee(__('dash.retry_done', ['card' => __('dash.st_label')]))
             ->assertDispatched('dash-focus', id: 'tq-m-storage');
     });
+});
+
+it('reads the same percent and warning as the library meter, whatever the figures', function (int $usedBytes, int $limitBytes): void {
+    $card = StorageCard::figures($usedBytes, $limitBytes, 'vi');
+    $usage = ['used' => $usedBytes, 'trash' => 0, 'limit' => $limitBytes];
+
+    foreach ([false, true] as $enforcing) {
+        $meter = Library::storageMeter($usage, $enforcing);
+        expect([$card['pct'], $card['warn']])->toBe([$meter['pct'], $meter['level'] !== 'ok']);
+    }
+})->with([
+    'empty' => [0, 2000 * 1048576],
+    'one byte' => [1, 2000 * 1048576],
+    '79,99 % in tenths' => [(int) (1599.94 * 1048576), 2000 * 1048576],
+    'shows as 80 %' => [(int) (1599.96 * 1048576), 2000 * 1048576],
+    '80 % exactly' => [1600 * 1048576, 2000 * 1048576],
+    'one tenth short of the plan' => [(int) (1999.9 * 1048576), 2000 * 1048576],
+    'shows as the plan' => [(int) (1999.96 * 1048576), 2000 * 1048576],
+    'the plan exactly' => [2000 * 1048576, 2000 * 1048576],
+    'above the plan' => [2240 * 1048576, 2000 * 1048576],
+    'far above the plan' => [9000 * 1048576, 500 * 1048576],
+    'a plan with no room' => [0, 0],
+    'files and no room' => [5 * 1048576, 0],
+    'a tiny plan' => [52429, 104858],
+    'negative totals read as none' => [-5, 2000 * 1048576],
+]);
+
+it('shows the figures as a plain block, not a link, to whoever runs the settings but cannot open the library', function (): void {
+    $admin = dashMember(['settings.manage', 'entries.view']);
+    dashStorage(1240);
+
+    $this->actingAs($admin)->get('http://a.test/admin')
+        ->assertOk()
+        ->assertSee('<div id="tq-m-storage" tabindex="-1"', false)
+        ->assertSee('Dung lượng thư viện đã dùng 62 phần trăm: 1,2 GB trên 2 GB', false)
+        ->assertSee('62%')
+        ->assertDontSee('<a id="tq-m-storage"', false)
+        ->assertDontSee('href="'.route('admin.media.index').'"', false)
+        ->assertDontSee('Mở Thư viện ảnh và tệp');
+});
+
+it('keeps the page up and the lock plain when the upgrade switch cannot be read', function (): void {
+    $admin = dashMember(['settings.manage', 'entries.view']);
+    app(UpgradeInvitation::class)->set(true);
+
+    DB::listen(function ($query): void {
+        if (str_contains($query->sql, 'platform_settings') && in_array('plans', $query->bindings, true)) {
+            throw new QueryException('pgsql', $query->sql, [], new RuntimeException('connection lost'));
+        }
+    });
+
+    $this->actingAs($admin)->get('http://a.test/admin')
+        ->assertOk()
+        ->assertSee(__('dash.st_label'))
+        ->assertSee(__('dash.st_lock_off'))
+        ->assertDontSee(__('dash.st_upgrade'))
+        ->assertSee(__('dash.start_title'));
 });

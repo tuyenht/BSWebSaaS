@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support\Dashboard;
 
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Number;
 
@@ -12,17 +13,17 @@ use Illuminate\Support\Number;
  * the media library's meter reads (MediaStorage::usage(): the running total `media.bytes` against the
  * plan's `media.storage_mb`).
  *
- * The percent is the library meter's: both figures to a tenth of a megabyte, rounded down, so the
- * card says «Sắp đầy» (80 % or more) exactly when the library's meter does. It is not capped: a
- * website above its plan (while uploads past the plan are not refused) reads more than 100 %. A plan
- * with no room at all reads 100 %. Sizes are in GB as the board writes them: megabytes over a
- * thousand, to one decimal («1,2 GB», «2 GB»).
+ * The percent and the warning are the library meter's, from the one shared reading
+ * (MediaStorage::share()): rounded down, at most 100 — a website above its plan (while uploads past
+ * the plan are not refused) and a plan with no room both read 100 % — and «Sắp đầy» from 80 %,
+ * exactly when the library's meter warns. Sizes are in GB as the board writes them: megabytes over
+ * a thousand, to one decimal («1,2 GB», «2 GB»).
+ *
+ * No «full» state (the library's «chưa tải thêm được»): board 02 draws none, and it would only be
+ * true while MediaStorage::enforcing() refuses uploads. Add it, from that switch, when it is turned on.
  */
 final class StorageCard
 {
-    /** The share of the plan from which the card warns, in percent. */
-    public const int WARN_AT = 80;
-
     private const int MB = 1048576;
 
     /**
@@ -30,17 +31,13 @@ final class StorageCard
      */
     public static function figures(int $usedBytes, int $limitBytes, string $locale): array
     {
-        $used = max(0, $usedBytes);
-        $limit = max(0, $limitBytes);
-        $usedTenths = (int) round($used * 10 / self::MB);
-        $limitTenths = (int) round($limit * 10 / self::MB);
-        $pct = $limitTenths === 0 ? 100 : intdiv($usedTenths * 100, $limitTenths);
+        $share = MediaStorage::share($usedBytes, $limitBytes);
 
         return [
-            'pct' => $pct,
-            'warn' => $pct >= self::WARN_AT,
-            'used' => self::gigabytes($used, $locale),
-            'limit' => self::gigabytes($limit, $locale),
+            'pct' => $share['pct'],
+            'warn' => $share['warn'],
+            'used' => self::gigabytes(max(0, $usedBytes), $locale),
+            'limit' => self::gigabytes(max(0, $limitBytes), $locale),
         ];
     }
 

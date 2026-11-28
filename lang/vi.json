@@ -7199,6 +7199,8 @@
     "dash.st_warn": "Sắp đầy",
     "dash.st_aria": "Dung lượng thư viện đã dùng :pct phần trăm: :used trên :limit. Mở Thư viện ảnh và tệp",
     "dash.st_aria_warn": "Dung lượng thư viện đã dùng :pct phần trăm: :used trên :limit, sắp đầy. Mở Thư viện ảnh và tệp",
+    "dash.st_text": "Dung lượng thư viện đã dùng :pct phần trăm: :used trên :limit",
+    "dash.st_text_warn": "Dung lượng thư viện đã dùng :pct phần trăm: :used trên :limit, sắp đầy",
     "dash.st_lock_off": "Chưa bật cho website này — liên hệ hỗ trợ.",
     "dash.st_lock_up": "Một chỗ giữ mọi ảnh và tệp, dùng lại cho nhiều bài mà không phải tải lại. Có trong gói cao hơn.",
     "dash.st_upgrade": "Xem gói nâng cấp",
