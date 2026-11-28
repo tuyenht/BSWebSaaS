@@ -8995,5 +8995,17 @@
     "admin.set.desc.system-social": "Connect Google and Facebook once for every customer website.",
     "admin.audit.act.platform.oauth_social.keys": "Saved the shared quick sign-in app's keys",
     "admin.audit.act.platform.oauth_social.switch": "Turned quick sign-in on or off for the whole system",
-    "admin.audit.act.platform.oauth_social.disconnected": "Disconnected the shared quick sign-in app"
+    "admin.audit.act.platform.oauth_social.disconnected": "Disconnected the shared quick sign-in app",
+    "intro.title": ":brand Website Manager",
+    "intro.meta_description": ":brand Website Manager — where :brand customers manage their websites: content, products and orders.",
+    "intro.lead": "Where :brand customers manage their websites: update content and products, and receive orders and enquiries from their visitors.",
+    "intro.feature_content": "Update pages, posts, products and images without any coding.",
+    "intro.feature_orders": "Receive orders and contact requests right in the admin.",
+    "intro.feature_signin": "Sign in securely with email and password, or with a Google or Facebook account.",
+    "intro.signin_heading": "When you sign in with Google or Facebook",
+    "intro.signin_body": "We only receive your name, email address and profile picture, to recognise your account. We never post for you or read your mail or contacts. Details are in our Privacy Policy.",
+    "intro.cta": "Sign in",
+    "intro.legal": "Policies and terms",
+    "intro.privacy": "Privacy Policy",
+    "intro.terms": "Terms of Service"
 }

@@ -8995,5 +8995,17 @@
     "admin.set.desc.system-social": "为所有客户网站一次性连接Google和Facebook。",
     "admin.audit.act.platform.oauth_social.keys": "保存共享快捷登录应用的密钥",
     "admin.audit.act.platform.oauth_social.switch": "为整个系统开启或关闭快捷登录",
-    "admin.audit.act.platform.oauth_social.disconnected": "断开共享快捷登录应用"
+    "admin.audit.act.platform.oauth_social.disconnected": "断开共享快捷登录应用",
+    "intro.title": ":brand 网站管理系统",
+    "intro.meta_description": ":brand 网站管理系统 — :brand 客户管理其网站内容、产品和订单的地方。",
+    "intro.lead": ":brand 客户管理自己网站的地方：更新内容和产品，接收访客的订单和咨询。",
+    "intro.feature_content": "无需编程即可更新页面、文章、产品和图片。",
+    "intro.feature_orders": "直接在管理后台接收订单和联系请求。",
+    "intro.feature_signin": "使用邮箱和密码，或 Google、Facebook 账号安全登录。",
+    "intro.signin_heading": "使用 Google 或 Facebook 登录时",
+    "intro.signin_body": "我们只接收您的姓名、邮箱地址和头像，用于识别您的账号。我们不会代您发帖，也不会读取您的邮件或联系人。详情请见隐私政策。",
+    "intro.cta": "登录",
+    "intro.legal": "政策与条款",
+    "intro.privacy": "隐私政策",
+    "intro.terms": "服务条款"
 }

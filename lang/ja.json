@@ -8995,5 +8995,17 @@
     "admin.set.desc.system-social": "すべてのお客様のウェブサイト向けに、GoogleとFacebookを一度だけ接続します。",
     "admin.audit.act.platform.oauth_social.keys": "共通クイックログインアプリのキーを保存",
     "admin.audit.act.platform.oauth_social.switch": "システム全体のクイックログインをオン/オフ",
-    "admin.audit.act.platform.oauth_social.disconnected": "共通クイックログインアプリの接続を解除"
+    "admin.audit.act.platform.oauth_social.disconnected": "共通クイックログインアプリの接続を解除",
+    "intro.title": ":brand ウェブサイト管理システム",
+    "intro.meta_description": ":brand ウェブサイト管理システム — :brand のお客様がウェブサイトのコンテンツ・商品・注文を管理する場所です。",
+    "intro.lead": ":brand のお客様が自社ウェブサイトを管理する場所です。コンテンツや商品を更新し、訪問者からの注文やお問い合わせを受け取れます。",
+    "intro.feature_content": "プログラミングなしでページ、記事、商品、画像を更新できます。",
+    "intro.feature_orders": "注文とお問い合わせを管理画面で直接受け取れます。",
+    "intro.feature_signin": "メールアドレスとパスワード、または Google・Facebook アカウントで安全にログインできます。",
+    "intro.signin_heading": "Google または Facebook でログインする場合",
+    "intro.signin_body": "アカウントを識別するため、お名前、メールアドレス、プロフィール画像のみを受け取ります。投稿したり、メールや連絡先を読んだりすることはありません。詳しくはプライバシーポリシーをご覧ください。",
+    "intro.cta": "ログイン",
+    "intro.legal": "ポリシーと規約",
+    "intro.privacy": "プライバシーポリシー",
+    "intro.terms": "利用規約"
 }

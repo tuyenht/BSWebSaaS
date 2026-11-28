@@ -3,7 +3,10 @@
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Notifications\EmailOtpNotification;
+use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -12,6 +15,7 @@ use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -69,13 +73,14 @@ it('serves the admin shell to a site member in tenant context', function (): voi
 
 // ── Platform ────────────────────────────────────────────────────────────────────
 it('redirects an unauthenticated visitor on the platform plane to login', function (): void {
-    $this->get('http://platform.bswebsaas.test/')->assertRedirect('http://platform.bswebsaas.test/login');
+    // the host's front page is the public intro; the console behind it needs a sign-in
+    $this->get('http://platform.bswebsaas.test/tenants')->assertRedirect('http://platform.bswebsaas.test/login');
 });
 
 it('forbids a non-operator on the platform plane', function (): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
+    $this->actingAs($user)->getJson('http://platform.bswebsaas.test/tenants')->assertForbidden();
 });
 
 it('refuses a non-operator at login on the platform plane, before any session', function (): void {
@@ -182,6 +187,36 @@ it('never authenticates a non-operator on the platform plane at the email-OTP ch
     $this->assertGuest();
     expect(session('2fa.user_id'))->toBeNull();
 });
+
+it('sends an operator who passes a second-factor step on the console straight to the customer list', function (string $step): void {
+    // Straight there: the host's «/» is the public front page now, so landing on it would cost one
+    // more redirect.
+    $user = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
+    Notification::fake();
+
+    if ($step === 'app') {
+        $secret = app(TwoFactorService::class)->generateSecret();
+        app(TwoFactorService::class)->enable($user, $secret, totpCode($secret, -1));
+        $this->app->instance('request', Request::create('http://platform.bswebsaas.test/two-factor/challenge', 'GET'));
+        session(['2fa.user_id' => $user->getKey()]);
+        $page = Livewire::test(TwoFactorChallenge::class)->set('code', totpCode($secret));
+    } else {
+        $this->app->instance('request', Request::create('http://platform.bswebsaas.test/otp/challenge', 'GET'));
+        app(EmailOtp::class)->send($user);
+        $code = null;
+        Notification::assertSentTo($user, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+        session(['2fa.user_id' => $user->getKey()]);
+        $page = Livewire::test(EmailOtpChallenge::class)->set('code', (string) $code);
+    }
+
+    $page->call('verify')->assertHasNoErrors()->assertRedirect(route('platform.tenants.index'));
+    $this->assertAuthenticatedAs($user);
+})->with(['authenticator app' => 'app', 'emailed code' => 'email']);
 
 it('lands an authenticated platform operator on the Tenants console', function (): void {
     $user = User::factory()->create();

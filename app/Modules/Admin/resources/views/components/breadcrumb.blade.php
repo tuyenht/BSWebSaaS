@@ -3,15 +3,16 @@
     'items' => [],
 ])
 @php
-    // The page's trail above its title: ⌂ (the dashboard) › section › page. A middle step with a
-    // URL is a link, one without is plain text; the last step is the current page. The links keep
-    // a 24px line and get a 48px hit area through a transparent extension (.hit-area).
+    // The page's trail above its title: ⌂ (the plane's first page — the dashboard on a site, the
+    // customer list on the console) › section › page. A middle step with a URL is a link, one
+    // without is plain text; the last step is the current page. The links keep a 24px line and get
+    // a 48px hit area through a transparent extension (.hit-area).
     $items = array_values($items);
     $last = count($items) - 1;
     $glyph = 'size-[min(1.5rem,calc(0.8125rem+var(--user-text-boost)))] shrink-0';
 @endphp
 <nav aria-label="{{ __('admin.breadcrumb') }}" {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-1.5 text-caption text-text-muted']) }}>
-    <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('dashboard') }}" wire:navigate
+    <a href="{{ \App\Modules\Admin\Errors\AdminErrorPages::home() }}" wire:navigate
        aria-label="{{ __('admin.dashboard') }}" title="{{ __('admin.dashboard') }}"
        class="hit-area -mx-1 inline-flex min-h-6 items-center rounded px-1 transition-colors hover:text-primary-text">
         <x-bs-admin::icon name="ri-home-4" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />

@@ -83,7 +83,7 @@ it('kicks a stale-hash session on the platform plane too', function (): void {
 
     $this->actingAs($user->fresh())
         ->withSession(['password_hash_web' => $staleHash])
-        ->get('http://platform.bswebsaas.test/')
+        ->get('http://platform.bswebsaas.test/tenants')
         ->assertRedirect('http://platform.bswebsaas.test/login');
 
     $this->assertGuest();

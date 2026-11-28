@@ -8995,5 +8995,17 @@
     "admin.set.desc.system-social": "Kết nối Google và Facebook một lần cho mọi website của khách.",
     "admin.audit.act.platform.oauth_social.keys": "Lưu khóa ứng dụng đăng nhập nhanh chung",
     "admin.audit.act.platform.oauth_social.switch": "Bật hoặc tắt đăng nhập nhanh cho toàn hệ thống",
-    "admin.audit.act.platform.oauth_social.disconnected": "Ngắt kết nối ứng dụng đăng nhập nhanh chung"
+    "admin.audit.act.platform.oauth_social.disconnected": "Ngắt kết nối ứng dụng đăng nhập nhanh chung",
+    "intro.title": "Hệ thống quản trị website :brand",
+    "intro.meta_description": "Hệ thống quản trị website :brand — nơi khách hàng của :brand quản trị website của mình: nội dung, sản phẩm và đơn hàng.",
+    "intro.lead": "Nơi khách hàng của :brand quản trị website của mình: cập nhật nội dung, sản phẩm và nhận đơn hàng, liên hệ từ khách.",
+    "intro.feature_content": "Cập nhật trang, bài viết, sản phẩm và hình ảnh mà không cần biết lập trình.",
+    "intro.feature_orders": "Nhận đơn hàng và yêu cầu liên hệ của khách ngay trong trang quản trị.",
+    "intro.feature_signin": "Đăng nhập an toàn bằng email và mật khẩu, hoặc bằng tài khoản Google, Facebook.",
+    "intro.signin_heading": "Khi bạn đăng nhập bằng Google hoặc Facebook",
+    "intro.signin_body": "Chúng tôi chỉ nhận tên, địa chỉ email và ảnh đại diện để nhận ra đúng tài khoản của bạn. Chúng tôi không đăng bài, không đọc thư hay danh bạ của bạn. Chi tiết có trong Chính sách bảo mật.",
+    "intro.cta": "Đăng nhập",
+    "intro.legal": "Chính sách và điều khoản",
+    "intro.privacy": "Chính sách bảo mật",
+    "intro.terms": "Điều khoản sử dụng"
 }
