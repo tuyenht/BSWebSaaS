@@ -139,6 +139,31 @@ Schedule::command('x:new')->daily();"; git -C "$SRC" add -A && gitc -m sched; SC
 branch t-env; w config/app.php "<?php return ['name' => env('APP_NAME', 'x'), 'k' => env('NEW_KEY', 'd')];"; git -C "$SRC" add -A && gitc -m env; ENVK=$(git -C "$SRC" rev-parse HEAD)
 branch t-worker; w deploy/media-worker/src/index.js "export default {};"; git -C "$SRC" add -A && gitc -m worker; WORKER=$(git -C "$SRC" rev-parse HEAD)
 branch t-perm; w app/Modules/Rbac/Registry/PermissionRegistry.php '<?php // a new permission'; git -C "$SRC" add -A && gitc -m perm; PERM=$(git -C "$SRC" rev-parse HEAD)
+# a column change and a CONCURRENTLY index in one file (refused), in raw SQL too, and a constraint change beside one (allowed)
+branch t-colconc; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        Schema::table('sites', fn (\$t) => \$t->text('extra')->nullable());
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m colconc; COLCONC=$(git -C "$SRC" rev-parse HEAD)
+branch t-rawalter; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        DB::statement('alter table sites add column extra text');
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m rawalter; RAWALTER=$(git -C "$SRC" rev-parse HEAD)
+branch t-conidx; w database/migrations/2300_01_01_000000_add_col_and_idx.php "<?php
+return new class extends Migration {
+    public \$withinTransaction = false;
+    public function up(): void {
+        DB::statement('ALTER TABLE sites ADD CONSTRAINT sites_x_check CHECK (id > 0) NOT VALID');
+        DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS sites_extra_idx ON sites (extra)');
+    }
+};"; git -C "$SRC" add -A && gitc -m conidx; CONIDX=$(git -C "$SRC" rev-parse HEAD)
 branch t-kinds
 for p in database/content-packs/p/pages.json package.json resources/js/app.js routes/web.php config/octane.php \
     docker-compose.prod.yml deploy/Caddyfile deploy/media-worker/src/index.js app/Modules/Rbac/Registry/PermissionRegistry.php themes/default/y.blade.php \
@@ -422,6 +447,20 @@ ok '[ "$RC" = 0 ] && says "===== XONG" && says "OK   migration mới nhất đã
 [ "$RC" = 0 ] || tail -8 "$OUT"
 fresh "$FULL"; echo 2150_01_01_000000_no_file >> "$FAKE/migrations.txt"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && says "không có tệp trong bản"' "a newest row on prod without its file in the target stops step 7"
+echo "== a stop in step 3, a migration run meanwhile, then a resume at 3"
+KEEP=$OLD; OLD=$LATE_OLD; fresh "$LATE_FULL"; sed -i '/^2150_01_01_000000_shipped_earlier$/d' "$FAKE/migrations.txt"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 3)"' "step 3 stops while an old migration of prod is still pending"
+echo 2150_01_01_000000_shipped_earlier >> "$FAKE/migrations.txt"; launch 3; OLD=$KEEP
+ok '[ "$RC" = 0 ] && says "===== XONG" && says "OK   migration mới nhất đã chạy = 2150_01_01_000000_shipped_earlier"' "the resume reads the newest migration again, and step 7 expects the one run meanwhile"
+[ "$RC" = 0 ] || tail -8 "$OUT"
+echo "== a column change and a CONCURRENTLY index in one new file"
+CC_REL=('DECLARED=(migration)' 'MIGRATIONS=(2300_01_01_000000_add_col_and_idx)' 'declare -gA MIG_OK=([2300_01_01_000000_add_col_and_idx]="test")')
+fresh "$COLCONC"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp" && head_is "$OLD" && [ "$(calls "MIGRATED")" = 0 ]' "Schema::table and CONCURRENTLY in one file stop step 1 before anything runs"
+fresh "$RAWALTER"; release "${CC_REL[@]}"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 1)" && says "tách làm hai tệp"' "a raw lower-case alter table add column beside CONCURRENTLY is refused too"
+fresh "$CONIDX"; release "${CC_REL[@]}"; launch
+ok '! says "tách làm hai tệp" && says "OK   migration mới (theo thứ tự tên)"' "a constraint change beside a CONCURRENTLY index passes the check"
 echo "== pre-reload one-off: a stop at the reload, then resume at 7"
 fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan fake:pre")" = 1 ]' "octane:reload fails after the pre-reload one-off applied"

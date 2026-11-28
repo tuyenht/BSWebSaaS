@@ -211,6 +211,14 @@ mig_flags() { # mig_flags <git dir> <commit> <name> → space list of: raw nonad
     printf '%s' "$t" | grep -qE '\$withinTransaction[[:space:]]*=[[:space:]]*false' && f="$f concurrent"
     echo "${f# }"
 }
+mig_colchange() { # mig_colchange <git dir> <commit> <name>: true when the file changes the columns of an existing
+    # table (Schema::table/rename/drop, or a raw ALTER TABLE other than a constraint change)
+    local t
+    t=$(mig_scan "$@")
+    printf '%s' "$t" | grep -qE 'Schema::(table|rename|drop|dropIfExists|dropColumns)\(' && return 0
+    printf '%s' "$t" | sed -E 's/ALTER TABLE( ONLY| IF EXISTS)*[[:space:]]+[^[:space:]]+[[:space:]]+(ADD|DROP|VALIDATE|RENAME)[[:space:]]+CONSTRAINT//Ig' \
+        | grep -qiE 'ALTER TABLE'
+}
 env_names() { # env_names <git dir> <commit>: env('X') names in config/bootstrap + keys of .env.example
     { git -C "$1" grep -ohE "env\(['\"][A-Z][A-Z0-9_]*" "$2" -- config bootstrap 2>/dev/null | sed -E "s/^env\(['\"]//"
       git -C "$1" show "$2:.env.example" 2>/dev/null | sed -nE 's/^#?[[:space:]]*([A-Z][A-Z0-9_]*)=.*/\1/p'; } | sort -u
@@ -245,6 +253,9 @@ analyse() {
     expect "migration mới (theo thứ tự tên)" "$(printf '%s\n' "$ADDED_MIGS" | joinw)" "$(printf '%s\n' "${MIGRATIONS[@]}" | joinw)"
     for m in "${MIGRATIONS[@]}"; do
         FLAGS[$m]=$(mig_flags "$g" "$TARGET" "$m")
+        case " ${FLAGS[$m]} " in *" concurrent "*)
+            ! mig_colchange "$g" "$TARGET" "$m" || die "migration $m vừa đổi cột của bảng vừa chạy ngoài giao dịch (\$withinTransaction = false): tách làm hai tệp, tệp đầu chỉ có lệnh đổi cột ngắn, chỉ mục CONCURRENTLY sang tệp sau. Để chung thì suốt lúc dựng chỉ mục, truy vấn qua PgBouncer vào bảng đó báo lỗi «cached plan» cho tới khi PgBouncer khởi động lại (.claude/rules/migrations.md)"
+        esac
         case " ${FLAGS[$m]} " in *" raw "*|*" nonadd "*)
             [ -n "${MIG_OK[$m]:-}" ] || die "migration $m có SQL viết tay hoặc thay đổi không chỉ thêm (${FLAGS[$m]}): tệp khai báo phải ghi lý do trong MIG_OK"
         esac
@@ -474,7 +485,7 @@ s3() {
     dump_fresh
     need_state classes 1
     if [ "${#MIGRATIONS[@]}" = 0 ]; then
-        q "SELECT max(migration) FROM migrations" > "$STATE/prev-migration"
+        q "SELECT max(migration COLLATE \"C\") FROM migrations" > "$STATE/prev-migration"
         echo "Bản này không có migration. Migration mới nhất trên prod: $(cat "$STATE/prev-migration")"
         date '+%F %T' > "$STATE/s3-ok"; return 0
     fi
@@ -482,7 +493,7 @@ s3() {
     # the newest migration prod ran BEFORE this release's own, for step 7. Written on every attempt of step 3
     # (the database may have changed since a failed one) and never later: once step 3 passed, the line above
     # skips, and step 4 runs no file before that
-    q "SELECT max(migration) FROM migrations" > "$STATE/prev-migration"
+    q "SELECT max(migration COLLATE \"C\") FROM migrations" > "$STATE/prev-migration"
     pending; expect "migration của bản cũ còn chờ" "${PENDING:-không}" "không"
     stage "${MIGRATIONS[@]}"
     pending ops_mig --path=/deploy-migrations --realpath
@@ -676,10 +687,10 @@ s7() {
         # rows). The earlier one must be a file of TARGET: a row without its file is not this code's schema
         need_state prev-migration 3
         x=$(printf '%s\n' "$(cat "$STATE/prev-migration")" "${MIGRATIONS[-1]}" | LC_ALL=C sort | tail -n 1)
-        expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$x"
+        expect "migration mới nhất đã chạy" "$(q "SELECT max(migration COLLATE \"C\") FROM migrations")" "$x"
         git -C "$PROD" cat-file -e "$TARGET:database/migrations/$x.php" 2>/dev/null \
             || die "migration mới nhất trên prod ($x) không có tệp trong bản $TARGET"
-    else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration) FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
+    else expect "migration mới nhất đã chạy" "$(q "SELECT max(migration COLLATE \"C\") FROM migrations")" "$(cat "$STATE/prev-migration")"; fi
     if has_class permission; then
         if [ -s "$STATE/rbac-ok" ]; then echo "Bỏ qua rbac:sync: đã chạy"; else art rbac:sync; date '+%F %T' > "$STATE/rbac-ok"; fi
         # Each worker keeps the permission list it loaded first in its own memory (the package's Octane
