@@ -20,6 +20,11 @@ it('closes no pooled server connection of the app role unless a scratch stack op
     $appAddress = is_object($seenFromApp) && is_string($seenFromApp->addr) ? $seenFromApp->addr : null;
     $adminAddress = is_object($seenFromAdmin) && is_string($seenFromAdmin->addr) ? $seenFromAdmin->addr : null;
     $behindPooler = $appAddress !== null && $appAddress !== $adminAddress;
+    if ($behindPooler && ! is_string(getenv(TestCase::SCRATCH_STACK_ENV))) {
+        // The shared dev pool also serves dev Octane and Horizon, whose idle connections come and go on
+        // their own; comparing them would fail with nothing wrong. Every dataset runs on a scratch stack.
+        $this->markTestSkipped('Behind the shared dev pooler: runs on a scratch stack (plans/tools/pest-scratch.sh).');
+    }
 
     /** @return list<int> */
     $idleAppBackends = static fn (): array => $appAddress === null ? [] : array_map(
