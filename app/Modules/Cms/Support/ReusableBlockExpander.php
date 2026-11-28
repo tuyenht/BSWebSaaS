@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Models\ContentBlock;
+use App\Modules\Shared\Support\BuilderPreview;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -35,6 +36,13 @@ use Illuminate\Support\Facades\Log;
  * the page once expanded (the page's own blocks always stay; the shared blocks' extra ones are left
  * out, with a warning in the log); and a shared block's link anchor that the page already uses (its
  * own blocks', or the same block placed earlier) is left off (an id is never printed twice).
+ *
+ * In the page builder's preview frame (BuilderPreview) every block of the body carries its place in
+ * the editor's list (BuilderPreview::INDEX), the blocks a shared block brings carry the place of the
+ * reference, and a reference that shows nothing leaves an empty mark there (BuilderPreview::EMPTY_TYPE,
+ * «draft» or «gone»: one more query, only in that frame and only when such a reference is placed;
+ * «hidden»: published, but none of its blocks may stand there, no query), so
+ * the frame can point at every block the editor lists. A visitor's page never carries any of it.
  */
 final class ReusableBlockExpander
 {
@@ -55,6 +63,7 @@ final class ReusableBlockExpander
     public function expand(array $body, array $slots, string $locale): array
     {
         $own = is_array($body['blocks'] ?? null) ? array_values($body['blocks']) : [];
+        $marks = BuilderPreview::on() && array_key_exists('blocks', $body);
         $ulids = BlockReference::ulids($own);
         foreach ($slots as $slot => $list) {
             if (LayoutSlots::accepts($slot, BlockReference::TYPE)) {
@@ -62,6 +71,12 @@ final class ReusableBlockExpander
             }
         }
         if ($ulids === [] && ! $this->holdsReference($own, $slots)) {
+            if ($marks) {
+                // no reference anywhere: nothing is put in, only the body's places are marked
+                $none = ['count' => 0, 'anchors' => [], 'dropped' => 0];
+                $body['blocks'] = $this->replace($own, [], null, $none, true);
+            }
+
             return ['body' => $body, 'slots' => $slots];
         }
         $found = $this->load(array_values(array_unique($ulids)), $locale);
@@ -73,7 +88,7 @@ final class ReusableBlockExpander
         }
         $state = ['count' => $ownCount, 'anchors' => self::anchors([$own, ...array_values($slots)]), 'dropped' => 0];
         if (array_key_exists('blocks', $body)) {
-            $body['blocks'] = $this->replace($own, $found, null, $state);
+            $body['blocks'] = $this->replace($own, $found, null, $state, $marks);
         }
         foreach ($slots as $slot => $list) {
             $slots[$slot] = $this->replace($list, $found, $slot, $state);
@@ -136,22 +151,28 @@ final class ReusableBlockExpander
      * The list with each reference replaced by the shared block's blocks: in a body ($slot null) none
      * that only a slot may hold, in a slot only those the slot accepts (LayoutSlots::accepts), and
      * nothing in a slot that takes no reference. An anchor the page already uses (its own blocks', or
-     * one an earlier shared block brought) is left off.
+     * one an earlier shared block brought) is left off. With $marks (the body, in the builder's preview
+     * frame) every block out carries the place in $blocks it came from, and a reference that shows
+     * nothing (a draft, gone, or none of its blocks may stand here) leaves an empty mark there.
      *
      * @param  array<array-key, mixed>  $blocks
      * @param  array<string, list<array<array-key, mixed>>|null>  $found
      * @param  array{count: int, anchors: array<string, true>, dropped: int}  $state
      * @return list<array<array-key, mixed>>
      */
-    private function replace(array $blocks, array $found, ?string $slot, array &$state): array
+    private function replace(array $blocks, array $found, ?string $slot, array &$state, bool $marks = false): array
     {
         $takesReferences = $slot === null || LayoutSlots::accepts($slot, BlockReference::TYPE);
+        $drafts = $marks ? $this->drafts($blocks, $found) : [];
         $out = [];
-        foreach ($blocks as $block) {
+        foreach ($blocks as $place => $block) {
             if (! is_array($block)) {
                 continue;
             }
             if (! BlockReference::is($block)) {
+                if ($marks) {
+                    $block[BuilderPreview::INDEX] = $place;
+                }
                 $out[] = $block;
 
                 continue;
@@ -159,8 +180,13 @@ final class ReusableBlockExpander
             $ulid = BlockReference::ulid($block);
             $inner = $takesReferences && $ulid !== null ? ($found[$ulid] ?? null) : null;
             if ($inner === null) {
+                if ($marks) {
+                    $out[] = ['type' => BuilderPreview::EMPTY_TYPE, 'props' => [], BuilderPreview::INDEX => $place, 'state' => $ulid !== null && isset($drafts[$ulid]) ? 'draft' : 'gone'];
+                }
+
                 continue;
             }
+            $shown = 0;
             foreach ($inner as $one) {
                 $type = $one['type'] ?? null;
                 if (! is_string($type) || $type === BlockReference::TYPE) {
@@ -185,12 +211,43 @@ final class ReusableBlockExpander
                         $state['anchors'][$anchor] = true;
                     }
                 }
+                if ($marks) {
+                    $one[BuilderPreview::INDEX] = $place;
+                }
                 $out[] = $one;
                 $state['count']++;
+                $shown++;
+            }
+            // a published shared block none of whose blocks may stand here (only slot types, or the
+            // page already holds the most blocks it may) still leaves its mark in the frame
+            if ($marks && $shown === 0) {
+                $out[] = ['type' => BuilderPreview::EMPTY_TYPE, 'props' => [], BuilderPreview::INDEX => $place, 'state' => 'hidden'];
             }
         }
 
         return $out;
+    }
+
+    /**
+     * Of the references in $blocks that show nothing, those whose shared block is still a draft of this
+     * website (one query, only when there is such a reference; RLS: another website's is gone).
+     *
+     * @param  array<array-key, mixed>  $blocks
+     * @param  array<string, list<array<array-key, mixed>>|null>  $found
+     * @return array<string, true>
+     */
+    private function drafts(array $blocks, array $found): array
+    {
+        $empty = array_values(array_filter(BlockReference::ulids($blocks), static fn (string $ulid): bool => ($found[$ulid] ?? null) === null));
+        if ($empty === []) {
+            return [];
+        }
+        $drafts = [];
+        foreach (ContentBlock::query()->whereIn('ulid', $empty)->where('status', '!=', ContentBlock::PUBLISHED)->pluck('ulid') as $ulid) {
+            $drafts[strtoupper(Cast::string($ulid))] = true;
+        }
+
+        return $drafts;
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Http\Controllers\AccessRequestController;
+use App\Modules\Admin\Http\Controllers\BuilderPreviewController;
 use App\Modules\Admin\Http\Controllers\FacebookDataDeletionController;
 use App\Modules\Admin\Http\Controllers\HintPreferenceController;
 use App\Modules\Admin\Http\Controllers\LeadExportController;
@@ -381,6 +382,13 @@ Route::prefix(config('admin.prefix', 'admin'))
         // «Xem trước»: the real storefront page of a page or post of this site, whatever its status, for
         // whoever may open it (EntryPolicy::preview): never cached or indexed, its forms switched off.
         Route::get('/content/{ulid}/preview', [StorefrontController::class, 'preview'])->middleware('can:entries.view')->name('admin.entries.preview');
+        // The page builder's preview frame: the same page drawn from the editor's UNSAVED blocks (a
+        // multipart form posted into the frame), for whoever may edit the entry; writes nothing, at most
+        // BuilderPreviewController::PER_MINUTE a minute per member and site, every refusal a small page
+        // the frame's script reports to the editor.
+        Route::post('/content/{ulid}/builder-preview', BuilderPreviewController::class)
+            ->middleware('throttle:'.BuilderPreviewController::LIMITER)
+            ->name(BuilderPreviewController::ROUTE);
 
         // Chuyên mục (?section=…): the component re-checks taxonomies.manage on every request (boot) and per method.
         Route::get('/taxonomies', CategoriesIndex::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');

@@ -20,7 +20,7 @@ Mandatory conventions and guardrails, loaded every session. Full design: `docs/d
 | DB | PostgreSQL **17** + **RLS** + `ltree` + `pgvector` + `pg_trgm` + PgBouncer (transaction mode) | |
 | Cache/Queue | **Valkey** (not Redis) + Horizon 5 | Reverb deferred past phase 1 |
 | Search | ⏳ Meilisearch + Scout | **tenant tokens** (§2) when shipped |
-| Admin UI | Livewire 4 + ⏳ React island (Inertia v2) for the builder only | |
+| Admin UI | Livewire 4, the page builder included <!-- owner decision 28/11/2026: the page builder is Livewire with a real-page iframe preview; React island / Inertia v2 dropped --> | |
 | Storefront | **Blade SSR + Alpine islands** (JS ≤ 30KB) | |
 | Build FE | Vite 8 + Tailwind 4 | build tools, not a Laravel replacement |
 | Storage | Cloudflare **R2** (private) + **Worker/cf.image** serving (imgproxy = L4 cold) | ADR-17 |

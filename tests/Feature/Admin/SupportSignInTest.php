@@ -254,6 +254,19 @@ it('ends the session when its time is up, on pages and on Livewire updates', fun
         ->toBe(AuditLog::query()->where('action', 'support.session.entered')->sole()->support_session_ulid);
 })->with(['page', 'livewire']);
 
+it('ends the session in the page builder’s preview frame with the frame’s own page, which cannot follow a redirect', function (): void {
+    $owner = supportMember(1, 'owner');
+    enterSupport($this, supportToken(platformStaff('support'), $owner, 15))->assertStatus(303);
+
+    $this->travel(16)->minutes();
+
+    $html = (string) $this->withoutVite()->post('http://a.test/admin/content/01JZZZZZZZZZZZZZZZZZZZZZZZ/builder-preview', ['locale' => 'vi', 'blocks' => '[]', 'nonce' => str_repeat('ab', 16)])
+        ->assertForbidden()->getContent();
+
+    expect($html)->toContain('<meta name="bs-pb-error" content="403"')->toContain('<meta name="bs-pb" content="'.str_repeat('ab', 16).'">');
+    $this->assertGuest();
+});
+
 it('ends the session at the next request once the owner turns support sign-in off', function (): void {
     $owner = supportMember(1, 'owner');
     enterSupport($this, supportToken(platformStaff('support'), $owner))->assertStatus(303);

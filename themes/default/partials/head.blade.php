@@ -15,7 +15,9 @@
     names where its view is counted and loads sf-view.js, which sends that one view from the browser (so a copy served by
     the edge cache counts too). These lines sit in column 0 so a site without them renders the same bytes as before.
     The admin's preview of a page ($preview) prints no share tags and no JSON-LD (its caller sets no canonical
-    or alternates either), and opens every link outside the preview frame (<base target="_blank">).
+    or alternates either), and opens every link outside the preview frame (<base target="_blank">). The page
+    builder's preview frame (BuilderPreview) also names its nonce (<meta name="bs-pb">), which the frame's
+    script repeats in every message to the editor; nothing else prints it.
 --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,6 +32,9 @@
 @endif
 @if (! empty($preview))
 <base target="_blank">
+@endif
+@if (\App\Modules\Shared\Support\BuilderPreview::on())
+<meta name="bs-pb" content="{{ \App\Modules\Shared\Support\BuilderPreview::nonce() }}">
 @endif
 @foreach (($verification ?? []) as $verify)
 <meta name="{{ $verify['name'] }}" content="{{ $verify['content'] }}">

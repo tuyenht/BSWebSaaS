@@ -100,6 +100,10 @@
       "js": 974,
       "css": 0
     },
+    "resources/js/sf-builder-bridge.js": {
+      "js": 219,
+      "css": 0
+    },
     "resources/js/sf-footer-rot.js": {
       "js": 798,
       "css": 0

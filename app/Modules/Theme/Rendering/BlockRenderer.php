@@ -4,6 +4,7 @@ namespace App\Modules\Theme\Rendering;
 
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Shared\Contracts\PageLinks;
+use App\Modules\Shared\Support\BuilderPreview;
 use App\Modules\Theme\Components\ButtonLink;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaHtml;
@@ -30,6 +31,12 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * open a page or a library file are resolved the same way: every page ulid and file key on the page,
  * then one lookup each (none when the page has no such button), and each button gets its current
  * address or none.
+ *
+ * In the page builder's preview frame (BuilderPreview) the first element of each block of the page's
+ * own body carries `data-pb-i`, the block's place in the editor's list (ReusableBlockExpander sets it;
+ * the blocks a shared block brings carry the reference's place), and the empty mark of a shared block
+ * that shows nothing is drawn as a zero-height `<div data-pb-i data-pb-empty>`. Nothing else changes:
+ * no wrapper, no extra element in the page's flow. A visitor's page never carries either.
  */
 final readonly class BlockRenderer
 {
@@ -236,6 +243,7 @@ final readonly class BlockRenderer
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL, inside
         // the look wrapper when the block sets one (StyleProps).
         $out = [];
+        $marks = BuilderPreview::on();
         foreach ($bodies as $position => $body) {
             $html = '';
             $isOwn = $ownBody && $position === 0;
@@ -248,7 +256,18 @@ final readonly class BlockRenderer
                     continue;
                 }
 
+                $place = $marks && $isOwn && is_int($block[BuilderPreview::INDEX] ?? null) ? $block[BuilderPreview::INDEX] : null;
                 $type = $block['type'] ?? null;
+                if ($place !== null && $type === BuilderPreview::EMPTY_TYPE) {
+                    $state = match ($block['state'] ?? null) {
+                        'draft' => 'draft',
+                        'hidden' => 'hidden',
+                        default => 'gone',
+                    };
+                    $html .= '<div data-pb-i="'.$place.'" data-pb-empty="'.$state.'"></div>';
+
+                    continue;
+                }
                 if (! is_string($type) || ! $this->registry->has($type)) {
                     continue; // allow-list gate
                 }
@@ -279,12 +298,13 @@ final readonly class BlockRenderer
 
                 // A block that draws nothing gets no wrapper either (an empty band would still take a margin),
                 // unless a link points at its anchor.
-                $html .= $wrapper === null || ($wrapper['image'] === null && $wrapper['id'] === null && trim($section) === '') ? $section : $this->views->make('theme::partials.sf-section', [
+                $drawn = $wrapper === null || ($wrapper['image'] === null && $wrapper['id'] === null && trim($section) === '') ? $section : $this->views->make('theme::partials.sf-section', [
                     'wrapper' => $wrapper,
                     'section' => $section,
                     'srcset' => $wrapper['image'] !== null ? ($srcsets[$wrapper['image']] ?? null) : null,
                     'eager' => $high,
                 ])->render();
+                $html .= $place !== null ? self::marked($drawn, $place) : $drawn;
                 // The claim is spent once a block drew any image; a block with none passes it on, but only
                 // on a page whose layout has no photo of its own above the body.
                 $high = $high && $leadAnyBlock && ! $wrapperPhoto && ! str_contains($section, '<img');
@@ -294,6 +314,15 @@ final readonly class BlockRenderer
         }
 
         return $out;
+    }
+
+    /**
+     * $html with `data-pb-i="$place"` on its first element (not a style, script, link, template, meta
+     * or noscript one). A block that draws nothing stays nothing.
+     */
+    private static function marked(string $html, int $place): string
+    {
+        return (string) preg_replace('/<(?!(?:style|script|link|template|meta|noscript)\b)([a-zA-Z][a-zA-Z0-9-]*)(?=[\s\/>])/', '<$1 data-pb-i="'.$place.'"', $html, 1);
     }
 
     /**

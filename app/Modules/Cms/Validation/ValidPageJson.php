@@ -47,7 +47,7 @@ final readonly class ValidPageJson implements ValidationRule
      * accented Vietnamese letter would count six bytes and a long article would be refused well under
      * MAX_HTML_CHARS.
      */
-    private const int MAX_BYTES = 262_144;
+    public const int MAX_BYTES = 262_144;
 
     /**
      * Characters one formatted-text (`html`) prop may hold. Product descriptions have no cap of their

@@ -28,6 +28,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\View;
 use Tests\Fixtures\StorefrontCards;
 
@@ -668,4 +669,178 @@ it('renders the member\'s own account page within its query budget', function ()
     $count = countQueries(fn () => $this->actingAs($user)->get('http://a.test/admin/account?tab=prefs')->assertOk());
 
     expect($count)->toBeLessThanOrEqual($budget);
+});
+
+/*
+ * The page builder's preview frame (admin.entries.builder-preview) draws the editor's unsaved
+ * blocks on every pause of an edit, so its cost must stay flat in the number of blocks: static
+ * blocks cost nothing each, pictures are read once for the page, shared blocks in one query, and
+ * blocks that read data share one lookup per kind.
+ */
+
+/** A member of site 1 who may edit every page, with the caches a signed-in member has warmed. */
+function qbBuilderEditor(): User
+{
+    truncateRbac();
+    test()->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view', 'entries.edit.any']));
+
+    return $user->fresh() ?? $user;
+}
+
+/** The ulid of site 1's home page (seedHomepage). */
+function qbBuilderHome(): string
+{
+    return app(Tenancy::class)->enter(1, fn (): string => (string) Entry::query()->orderBy('id')->value('ulid'));
+}
+
+/** Start the next request from a clean container, as every request does in production. */
+function qbBuilderFresh(): void
+{
+    app()->forgetScopedInstances();
+    foreach (app('router')->getRoutes() as $route) {
+        $route->flushController();
+    }
+    app(TeamContext::class)->forget();
+}
+
+/**
+ * The queries one builder preview of $home drawn from $blocks costs (after a first preview
+ * that warms what a signed-in member has), the page asserted to show $see.
+ *
+ * @param  list<array<string, mixed>>  $blocks
+ */
+function qbBuilderCount(User $editor, string $home, array $blocks, string $see): int
+{
+    $post = fn () => test()->actingAs($editor)->post("http://a.test/admin/content/{$home}/builder-preview", [
+        'locale' => 'vi', 'title' => 'Trang chủ', 'nonce' => '0123456789abcdef0123456789abcdef',
+        'blocks' => json_encode($blocks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ])->assertOk()->assertSee($see, false);
+    $post();
+    qbBuilderFresh();
+    $count = countQueries($post);
+    qbBuilderFresh();
+
+    return $count;
+}
+
+it('draws the builder preview of one static block within the plain preview’s budget, and 60 for the same cost', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    $this->actingAs($editor)->get("http://a.test/admin/content/{$home}/preview")->assertOk();
+    qbBuilderFresh();
+    $preview = countQueries(fn () => $this->actingAs($editor)->get("http://a.test/admin/content/{$home}/preview")->assertOk());
+    qbBuilderFresh();
+
+    $one = qbBuilderCount($editor, $home, [['type' => 'cta', 'props' => ['heading' => 'Khối số 1']]], 'Khối số 1');
+    $sixty = qbBuilderCount($editor, $home, array_map(static fn (int $i): array => ['type' => 'cta', 'props' => ['heading' => 'Khối số '.$i]], range(1, 60)), 'Khối số 60');
+
+    // measured 29/11: 11 for both (the plain preview of the saved page and the frame of one block)
+    expect($one)->toBeLessThanOrEqual($preview)->toBeLessThanOrEqual(11)->and($sixty)->toBe($one);
+});
+
+it('reads the pictures of ten galleries of six once for the builder preview, as for one gallery', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    $ids = app(Tenancy::class)->enter(1, fn (): array => array_map(static fn (int $i): int => StorefrontCards::media('qb-anh-'.$i)->id, range(1, 60)));
+    $gallery = static fn (array $ids): array => ['type' => 'gallery', 'props' => ['images' => array_map(static fn (int $id): array => ['image' => $id], $ids)]];
+
+    $one = qbBuilderCount($editor, $home, [$gallery(array_slice($ids, 0, 6))], 'qb-anh-6-');
+    $ten = qbBuilderCount($editor, $home, array_map(static fn (array $six): array => $gallery($six), array_chunk($ids, 6)), 'qb-anh-60-');
+
+    // measured 29/11: 12, one static block's 11 plus the one read of every picture on the page
+    expect($one)->toBeLessThanOrEqual(12)->and($ten)->toBe($one);
+});
+
+it('places three shared blocks in the builder preview for the one read a visitor’s page makes plus the save’s one check, as for one', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    $refs = app(Tenancy::class)->enter(1, function (): array {
+        $refs = [];
+        foreach (['mot', 'hai', 'ba'] as $key) {
+            $block = ContentBlock::query()->create(['key' => $key, 'name' => 'Khối '.$key, 'region' => 'inline', 'status' => 'published']);
+            ContentBlockTranslation::query()->create(['content_block_id' => $block->id, 'locale' => 'vi', 'body' => ['blocks' => [
+                ['type' => 'cta', 'props' => ['heading' => 'Khối dùng chung '.$key]],
+            ]]]);
+            $refs[] = ['type' => BlockReference::TYPE, 'props' => [BlockReference::PROP => $block->ulid]];
+        }
+
+        return $refs;
+    });
+
+    $static = qbBuilderCount($editor, $home, [['type' => 'cta', 'props' => ['heading' => 'Tĩnh']]], 'Tĩnh');
+    $single = qbBuilderCount($editor, $home, [$refs[0]], 'Khối dùng chung mot');
+    $shared = qbBuilderCount($editor, $home, $refs, 'Khối dùng chung ba');
+
+    // the one read a visitor's page makes for every shared block it places, and before it the one a
+    // save makes too (the blocks named are this site's): one query each, however many are placed
+    expect($shared)->toBe($static + 2)->and($shared)->toBe($single);
+});
+
+it('keeps the builder preview of blocks that read data on one budget, however many of a kind it shows', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    [$a, $b] = app(Tenancy::class)->enter(1, fn (): array => [
+        StorefrontCards::page('/gioi-thieu', 'Giới thiệu', [])->ulid,
+        StorefrontCards::page('/lien-he', 'Liên hệ', [])->ulid,
+    ]);
+    $button = static fn (string $page, string $label): array => ['type' => 'cta', 'props' => ['heading' => $label, 'button_label' => $label, 'button_url_do' => ['k' => 'page', 'page' => $page]]];
+    $years = ['type' => 'stats', 'props' => ['items' => [['kind' => 'years', 'value' => 2014, 'label' => 'Năm kinh nghiệm']]]];
+
+    $few = qbBuilderCount($editor, $home, [$button($a, 'Nút một'), $years], 'href="/gioi-thieu"');
+    $many = qbBuilderCount($editor, $home, [$button($a, 'Nút một'), $button($b, 'Nút hai'), $button($a, 'Nút ba'), $years, $years, $years], 'href="/lien-he"');
+
+    // measured 29/11: 14 for one of each kind (a static block alone costs 11), the same for three
+    expect($few)->toBeLessThanOrEqual(14)->and($many)->toBe($few);
+});
+
+it('keeps the builder preview of the blocks that list the website’s posts and products on one budget, however many rows they show, at a visitor’s cost per block', function (): void {
+    $editor = qbBuilderEditor();
+    $home = qbBuilderHome();
+    app(Tenancy::class)->enter(1, function (): void {
+        $news = StorefrontCards::category('Tin tức', 'tin-tuc');
+        $catalog = StorefrontCards::category('Sản phẩm', 'san-pham');
+        StorefrontCards::catalog($catalog);
+        $photo = StorefrontCards::media('qb-sp');
+        foreach (range(1, 12) as $n) {
+            StorefrontCards::post($news, 'Bài số '.$n, 'bai-so-'.$n, CarbonImmutable::parse('2026-10-01 08:00', 'UTC')->addHours($n), [], 'Tóm tắt.');
+            StorefrontCards::product('Sản phẩm số '.$n, 'san-pham-so-'.$n, $catalog, $photo, CarbonImmutable::parse('2026-10-01 08:00', 'UTC')->addHours($n));
+        }
+    });
+    // «Bài viết mới nhất», a category's list of posts and a product grid
+    $data = static fn (int $rows): array => [
+        ['type' => 'latest_posts', 'props' => ['heading' => 'Mới nhất', 'limit' => $rows]],
+        ['type' => 'entry_grid', 'props' => ['heading' => 'Tin tức', 'taxonomy_slug' => 'tin-tuc', 'limit' => $rows]],
+        ['type' => 'product_grid', 'props' => ['heading' => 'Sản phẩm', 'limit' => $rows]],
+    ];
+
+    $static = qbBuilderCount($editor, $home, [['type' => 'cta', 'props' => ['heading' => 'Tĩnh']]], 'Tĩnh');
+    $few = qbBuilderCount($editor, $home, $data(3), 'san-pham-so-10"');
+    $many = qbBuilderCount($editor, $home, $data(12), 'san-pham-so-1"');
+    $twice = qbBuilderCount($editor, $home, [...$data(3), ...$data(3)], 'san-pham-so-10"');
+
+    $visitor = function (string $path, array $blocks): int {
+        app(Tenancy::class)->enter(1, fn () => StorefrontCards::page($path, 'Khối', $blocks));
+        test()->get('http://a.test'.$path)->assertOk();
+        qbBuilderFresh();
+        $count = countQueries(fn () => test()->get('http://a.test'.$path)->assertOk());
+        qbBuilderFresh();
+
+        return $count;
+    };
+    $vStatic = $visitor('/tinh', [['type' => 'cta', 'props' => ['heading' => 'Tĩnh']]]);
+    $vFew = $visitor('/mot-lan', $data(3));
+    $vTwice = $visitor('/hai-lan', [...$data(3), ...$data(3)]);
+
+    // measured 29/11: the frame 11 / 24 / 24 / 37 (a static block; one of each kind at 3 rows; at 12
+    // rows; two of each), a visitor's page 10 / 23 / 36. Flat in the rows; each of these blocks reads
+    // its own rows (13 for one of each kind), on a visitor's page just the same, so the frame adds
+    // its one read and nothing per block.
+    expect($few)->toBeLessThanOrEqual(24)
+        ->and($many)->toBe($few)
+        ->and($twice - $few)->toBe($few - $static)
+        ->and($few - $vFew)->toBe($static - $vStatic)
+        ->and($twice - $vTwice)->toBe($static - $vStatic);
 });

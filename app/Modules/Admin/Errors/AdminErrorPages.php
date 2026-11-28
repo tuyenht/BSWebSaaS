@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Errors;
 
+use App\Modules\Admin\Http\Controllers\BuilderPreviewController;
 use App\Modules\Admin\Support\AccessRequests;
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Builder\BuilderFrameError;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
@@ -59,6 +61,27 @@ final class AdminErrorPages
 
     public function render(Throwable $e, Request $request): ?Response
     {
+        // The page builder's preview frame: its parent cannot read a frame's status, so every refusal
+        // the route's middleware raises (an unknown host, the address limit, a closed site, a member of
+        // no role here: 403/404; the CSRF check, or a sign-in that ended: 419; the limiter: 429; a body
+        // over PHP's limit: 413; maintenance: 503) and a fault of ours gets the frame's own small page,
+        // which says the code to the editor instead of a full admin page nobody sees.
+        if (BuilderPreviewController::handles($request) && ! $e instanceof ValidationException && ! $e instanceof HttpResponseException) {
+            $code = $e instanceof AuthenticationException ? 419 : self::status($e);
+            if (! in_array($code, BuilderFrameError::CODES, true) || ($code === 500 && (bool) config('app.debug'))) {
+                return null;
+            }
+            try {
+                $retry = $e instanceof HttpExceptionInterface ? ($e->getHeaders()['Retry-After'] ?? null) : null;
+
+                return BuilderFrameError::response($code, $request, is_numeric($retry) ? (int) $retry : null);
+            } catch (Throwable $drawFailed) {
+                // as below: a page that cannot be drawn must not hide the first fault
+                report($drawFailed);
+
+                return null;
+            }
+        }
         if (! self::isAdminRequest($request)
             || $e instanceof ValidationException
             || $e instanceof HttpResponseException) {
