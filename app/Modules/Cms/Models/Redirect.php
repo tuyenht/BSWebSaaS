@@ -6,11 +6,11 @@ namespace App\Modules\Cms\Models;
 
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
+use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * A 301/302 history row: an old path → its current target within a (site, locale).
@@ -65,29 +65,37 @@ class Redirect extends Model
     /**
      * Write the system's row at $from (a slug move), unless a member's redirect to another website
      * holds that address. The row is read locked and written as read, so a member's save in between
-     * is never overwritten; an insert that races a member's insert of the same address rolls back to
-     * its savepoint and is decided again against the member's row (as updateOrCreate would).
-     * Returns false when a member's redirect to another website holds the address (nothing written).
+     * is never overwritten; an insert that races a member's insert of the same address does nothing
+     * (ON CONFLICT) and is decided again against the member's row (as updateOrCreate would). No
+     * savepoint: a permalink run writes one row per address it moves, and a subtransaction for each
+     * would pile up in its transaction. Returns false when a member's redirect to another website
+     * holds the address (nothing written).
      *
      * @param  array<string, mixed>  $values
      */
     public static function writeSystemRow(string $locale, string $from, array $values): bool
     {
-        $write = static function () use ($locale, $from, $values): bool {
-            $held = self::query()->where('locale', $locale)->where('from_path', $from)->lockForUpdate()->first();
-            if (self::leadsAway($held?->to_path)) {
-                return false;
+        $held = static fn (): ?self => self::query()->where('locale', $locale)->where('from_path', $from)->lockForUpdate()->first();
+
+        $row = $held();
+        if ($row === null) {
+            // what creating() would stamp (the site, the key), then the model's own fill, casts and timestamps
+            $site = app(CurrentSite::class);
+            $inserted = self::query()->fillAndInsertOrIgnore([[
+                ...$values, 'locale' => $locale, 'from_path' => $from,
+                'site_id' => $site->hasId() ? $site->id() : null, 'ulid' => (string) Str::ulid(),
+            ]]);
+            if ($inserted > 0) {
+                return true;
             }
-            ($held ?? new self(['locale' => $locale, 'from_path' => $from]))->fill($values)->save();
-
-            return true;
-        };
-
-        try {
-            return DB::transaction($write);
-        } catch (UniqueConstraintViolationException) {
-            return $write();
+            $row = $held();
         }
+        if (self::leadsAway($row?->to_path)) {
+            return false;
+        }
+        ($row ?? new self(['locale' => $locale, 'from_path' => $from]))->fill($values)->save();
+
+        return true;
     }
 
     /** Whether a stored destination leads to another website (any `https://` value, valid or not). */
