@@ -203,6 +203,72 @@
         </section>
     @endif
 
+    {{-- Thẻ số liệu (board 02's figure row): «Dung lượng thư viện», for whoever runs the website's
+         settings. Locked while the website has no media library; a failed read shows «Thử lại». --}}
+    @if ($storage !== null)
+        @php
+            $stat = 'flex h-full w-full flex-col items-start gap-1.5 rounded-md p-4 text-left';
+            $statHead = 'flex w-full items-start justify-between gap-2';
+            $statLab = 'min-w-0 text-small font-semibold leading-[1.4] text-text-muted [overflow-wrap:anywhere]';
+            $statIc = 'inline-flex size-9 shrink-0 items-center justify-center rounded-md';
+            $statSub = 'text-small leading-normal text-text-muted';
+            $stRead = $storage['read'];
+            $st = $stRead !== null && $stRead['ok'] ? $stRead['data'] : null;
+        @endphp
+        <div class="grid grid-cols-2 gap-4 @max-[37.4375rem]/tq:gap-3">
+            <div class="{{ $card }}">
+                @if ($storage['locked'])
+                    <div class="{{ $stat }}">
+                        <span class="{{ $statHead }}">
+                            <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
+                            <span class="{{ $statIc }} bg-surface-hover text-text-muted" aria-hidden="true"><x-bs-admin::icon name="ri-lock" class="size-[calc(1.125rem+var(--user-text-boost))]" /></span>
+                        </span>
+                        <span class="{{ $statSub }}">{{ __($storage['upsell'] ? 'dash.st_lock_up' : 'dash.st_lock_off') }}</span>
+                        @if ($storage['upsell'] && $help['mailto'] !== '')
+                            <x-bs-admin::button variant="outline" color="neutral" :href="$help['mailto']" :navigate="false" class="max-w-full shrink-0">
+                                <span>{{ __('dash.st_upgrade') }}</span>
+                            </x-bs-admin::button>
+                        @endif
+                    </div>
+                @elseif ($st === null)
+                    <div class="{{ $stat }}">
+                        <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
+                        <div wire:loading.class="sr-only" wire:target="retry('storage')" class="flex flex-col items-start gap-1.5">
+                            <p role="alert" class="flex items-start gap-1.5 text-small leading-normal text-danger-text">
+                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0" />
+                                <span>{{ __('dash.st_error') }}</span>
+                            </p>
+                            <x-bs-admin::button variant="outline" color="neutral" wire:click="retry('storage')" wire:loading.attr="aria-disabled" wire:target="retry('storage')" class="max-w-full shrink-0">
+                                <x-bs-admin::icon name="ri-refresh" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('dash.retry') }}</span>
+                            </x-bs-admin::button>
+                        </div>
+                        <div wire:loading.flex wire:target="retry('storage')" aria-hidden="true" class="w-full flex-col gap-1.5">
+                            <span class="h-[1.875rem] w-[45%] animate-pulse rounded bg-surface-hover"></span>
+                            <span class="h-3 w-4/5 animate-pulse rounded bg-surface-hover"></span>
+                        </div>
+                    </div>
+                @else
+                    @php
+                        $stPct = Number::format($st['pct'], locale: $locale);
+                    @endphp
+                    <a id="tq-m-storage" href="{{ route('admin.media.index') }}" wire:navigate
+                       class="{{ $stat }} transition-colors hover:bg-surface-hover"
+                       aria-label="{{ __($st['warn'] ? 'dash.st_aria_warn' : 'dash.st_aria', ['pct' => $stPct, 'used' => $st['used'], 'limit' => $st['limit']]) }}">
+                        <span class="{{ $statHead }}">
+                            <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
+                            <span class="{{ $statIc }} {{ $tones[''] }}" aria-hidden="true"><x-bs-admin::icon name="ri-hard-drive-2" class="size-[calc(1.125rem+var(--user-text-boost))]" /></span>
+                        </span>
+                        <span class="text-[calc(1.5rem+var(--user-text-boost))] font-bold leading-[1.3] text-text-strong" aria-hidden="true">{{ __('dash.st_val', ['pct' => $stPct]) }}</span>
+                        <span class="{{ $statSub }}" aria-hidden="true">{{ __('dash.st_sub', ['used' => $st['used'], 'limit' => $st['limit']]) }}</span>
+                        @if ($st['warn'])
+                            <span class="{{ $chip }} {{ $tones['warn'] }}" aria-hidden="true"><x-bs-admin::icon name="ri-error-warning" class="size-[calc(0.875rem+var(--user-text-boost))]" />{{ __('dash.st_warn') }}</span>
+                        @endif
+                    </a>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Làm nhanh · Cần giúp? --}}
     <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16.25rem),1fr))] items-start gap-4">
         @if ($quick !== [])

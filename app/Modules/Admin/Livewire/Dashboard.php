@@ -4,9 +4,12 @@ namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Errors\SupportChannels;
 use App\Modules\Admin\Support\Dashboard\DashboardReader;
+use App\Modules\Admin\Support\Dashboard\StorageCard;
+use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\UserPreferences;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
@@ -32,8 +35,11 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class Dashboard extends Component
 {
-    /** The cards that read the database, each retried on its own, with the id of its heading. */
-    private const array CARDS = ['todo' => 'tq-h-todo', 'start' => 'tq-h-start', 'review' => 'tq-h-rev', 'mine' => 'tq-h-wr', 'recent' => 'tq-h-rec'];
+    /**
+     * The cards that read the database, each retried on its own, with the id the focus goes to once
+     * it reads: its heading, or the card itself for a figure card (it has no heading).
+     */
+    private const array CARDS = ['todo' => 'tq-h-todo', 'start' => 'tq-h-start', 'storage' => 'tq-m-storage', 'review' => 'tq-h-rev', 'mine' => 'tq-h-wr', 'recent' => 'tq-h-rec'];
 
     public string $toastMsg = '';
 
@@ -116,12 +122,16 @@ final class Dashboard extends Component
             ? $this->read(fn (): array => $reader->startSteps($user, $canDomains ? ($groups ?? $reader->domainGroups()) : null))
             : null;
 
+        // Dung lượng thư viện — for whoever runs the website's settings, locked while the website has
+        // no media library; one statement (the library meter's running totals and the plan's limit).
+        $storage = $user->can('settings.manage') ? $this->storage(in_array('media', $modules, true)) : null;
+
         // 3 · Duyệt bài / Bài của tôi / Nội dung gần đây
         $review = $isReviewer && $workflowOn ? $this->read(fn (): array => $reader->review($user)) : null;
         $mine = $isWriter ? $this->read(fn (): array => $reader->mine($user, $workflowOn)) : null;
         $recent = $user->can('entries.view') ? $this->read(fn (): array => $reader->recent($user, $editor)) : null;
 
-        $this->afterRetry(['todo' => $todo, 'start' => $start, 'review' => $review, 'mine' => $mine, 'recent' => $recent], $editor);
+        $this->afterRetry(['todo' => $todo, 'start' => $start, 'storage' => $storage['read'] ?? null, 'review' => $review, 'mine' => $mine, 'recent' => $recent], $editor);
 
         $view = view('admin::livewire.dashboard', [
             'siteName' => $site instanceof Site ? $site->name : '',
@@ -129,6 +139,7 @@ final class Dashboard extends Component
             'domains' => $groups !== null ? $reader->domainProblems($groups) : [],
             'start' => $start,
             'startHidden' => $site instanceof Site && $this->startHidden($user, $site->ulid),
+            'storage' => $storage,
             'review' => $review,
             'mine' => $mine,
             'workflowOn' => $workflowOn,
@@ -164,6 +175,27 @@ final class Dashboard extends Component
 
             return ['ok' => false, 'data' => null];
         }
+    }
+
+    /**
+     * The «Dung lượng thư viện» card: its figures (StorageCard) when the media module is on, read in
+     * a savepoint like every card; else locked, with the plans offered only while the platform
+     * invites upgrades.
+     *
+     * @return array{locked: bool, upsell: bool, read: array{ok: bool, data: array{pct: int, warn: bool, used: string, limit: string}|null}|null}
+     */
+    private function storage(bool $mediaOn): array
+    {
+        if (! $mediaOn) {
+            return ['locked' => true, 'upsell' => app(UpgradeInvitation::class)->isOn(), 'read' => null];
+        }
+        $locale = app()->getLocale();
+
+        return ['locked' => false, 'upsell' => false, 'read' => $this->read(function () use ($locale): array {
+            $usage = app(MediaStorage::class)->usage();
+
+            return StorageCard::figures($usage['used'], $usage['limit'], $locale);
+        })];
     }
 
     /**
@@ -213,6 +245,7 @@ final class Dashboard extends Component
         $label = match ($card) {
             'todo' => __('dash.todo_title'),
             'start' => __('dash.start_title'),
+            'storage' => __('dash.st_label'),
             'review' => __('dash.rev_title'),
             'mine' => __('dash.wr_title'),
             default => __($editor ? 'dash.rec_title_edit' : 'dash.rec_title_view'),
