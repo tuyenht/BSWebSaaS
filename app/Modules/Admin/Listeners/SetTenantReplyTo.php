@@ -21,23 +21,17 @@ use Illuminate\Mail\Events\MessageSending;
  * email: TenantMailer::applyPlatform()) never carries the website's Reply-To: a member replying to it
  * would quote the link or code to the website's owner. It carries the platform's, when one is set.
  */
-final readonly class SetTenantReplyTo
+final class SetTenantReplyTo
 {
-    public function __construct(
-        private CurrentSite $current,
-        private SettingsRepository $settings,
-        private PlatformSettings $platform,
-    ) {}
-
     public function handle(MessageSending $event): void
     {
-        if (! $this->current->hasId()) {
+        // Everything is read at send time, from the container the mail was set up in (as the other
+        // mail listeners do): under Octane the listener may be built from another one.
+        if (! app(CurrentSite::class)->hasId()) {
             return;
         }
 
-        // Read the context at send time, from the container the mail was set up in (as the other
-        // mail listeners do): under Octane the listener may be built from another one.
-        $cfg = app(MailSendContext::class)->accountMail ? $this->platform->get('email') : $this->settings->get('email');
+        $cfg = app(MailSendContext::class)->accountMail ? app(PlatformSettings::class)->get('email') : app(SettingsRepository::class)->get('email');
         $replyTo = is_array($cfg) ? ($cfg['reply_to'] ?? null) : null;
         if (! is_string($replyTo) || $replyTo === '') {
             return;

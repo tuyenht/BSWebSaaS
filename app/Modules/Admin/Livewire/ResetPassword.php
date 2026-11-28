@@ -11,10 +11,9 @@ use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Contracts\Auth\CanResetPassword;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Timebox;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -58,12 +57,15 @@ final class ResetPassword extends Component
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ], ['email' => Str::lower(__('auth.email_label'))]);
 
-        if (! $this->mayTryHere()) {
-            // A link is checked with one hash of its token (the password hasher, Argon2id), and only
-            // when the account has one waiting. Every other way out does the same work on a random
-            // value, so the reply time tells neither a member from anyone else, nor an account from
-            // an unknown address.
-            Hash::make(Str::random(64));
+        // Every way out below (an unknown address, not a member here, no link or an expired one, a
+        // wrong token, a reset done) answers after the same floor, so the reply time tells nobody
+        // whether an address has an account, a link waiting or a place on this website.
+        return app(Timebox::class)->call(fn (): mixed => $this->attempt(), ForgotPassword::REPLY_FLOOR_US);
+    }
+
+    private function attempt(): mixed
+    {
+        if (! $this->mayResetHere()) {
             $this->addError('email', __('auth.reset_failed'));
 
             return null;
@@ -100,27 +102,16 @@ final class ResetPassword extends Component
         return null;
     }
 
-    /**
-     * A known account with a link waiting, which may enter this website (the platform console serves
-     * every account; a website only its members). Anything else is refused before the broker, which
-     * would answer an unknown address or a missing link without the hash.
-     */
-    private function mayTryHere(): bool
+    /** No website (the platform console) serves every account; a website only its members. */
+    private function mayResetHere(): bool
     {
+        if (! app(CurrentSite::class)->hasId()) {
+            return true;
+        }
+
         $user = Password::broker()->getUser(['email' => $this->email]);
-        if (! $user instanceof User) {
-            return false;
-        }
 
-        if (app(CurrentSite::class)->hasId() && ! app(EnsureTenantMember::class)->admits($user)) {
-            return false;
-        }
-
-        $broker = Cast::string(config('auth.defaults.passwords'));
-
-        return DB::table(Cast::string(config("auth.passwords.{$broker}.table")))
-            ->where('email', $user->getEmailForPasswordReset())
-            ->exists();
+        return ! $user instanceof User || app(EnsureTenantMember::class)->admits($user);
     }
 
     public function render(): View

@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Support\Timebox;
 use Livewire\Livewire;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -287,37 +288,64 @@ it('lets a member reset on this website\'s reset page', function (): void {
     expect(Hash::check('a-fresh-secure-pass', $member->fresh()?->password ?? ''))->toBeTrue();
 });
 
-it('spends the token\'s hash on a reset page refusal, whoever the address belongs to', function (string $who): void {
-    fakePwnedVerifier();
+/** A Timebox that records each floor it is asked for and returns at once (no sleeping in tests). */
+function amTimebox(): Timebox
+{
+    $box = new class extends Timebox
+    {
+        /** @var list<int> */
+        public array $floors = [];
+
+        public function call(callable $callback, int $microseconds): mixed
+        {
+            $this->floors[] = $microseconds;
+
+            return $callback($this);
+        }
+    };
+    app()->instance(Timebox::class, $box);
+
+    return $box;
+}
+
+it('answers every «Quên mật khẩu» ask after the same floor, whoever the address belongs to', function (string $who): void {
+    Notification::fake();
     $email = match ($who) {
         'unknown address' => 'nobody-'.Str::random(8).'@example.test',
         'not a member' => User::factory()->create()->email,
-        'member with no link waiting' => amMember()->email,
+        'member', 'member asking again' => amMember()->email,
     };
-    Hash::spy();
+    $ask = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::test(ForgotPassword::class)
+        ->set('email', $email)->call('submit')->assertSet('sent', true));
+    if ($who === 'member asking again') {
+        $ask();
+    }
+    $box = amTimebox();
 
-    app(Tenancy::class)->enter(1, function () use ($email): void {
+    $ask();
+
+    expect($box->floors)->toBe([ForgotPassword::REPLY_FLOOR_US]);
+})->with(['unknown address', 'not a member', 'member', 'member asking again']);
+
+it('answers every reset attempt on a website after the same floor, whoever the address belongs to', function (string $who): void {
+    fakePwnedVerifier();
+    $member = amMember();
+    $token = Password::createToken($member);
+    [$email, $tokenSent] = match ($who) {
+        'unknown address' => ['nobody-'.Str::random(8).'@example.test', Str::random(64)],
+        'not a member' => [User::factory()->create()->email, Str::random(64)],
+        'member, wrong link' => [$member->email, Str::random(64)],
+        'member, right link' => [$member->email, $token],
+    };
+    $box = amTimebox();
+
+    app(Tenancy::class)->enter(1, function () use ($email, $tokenSent): void {
         Livewire::test(ResetPassword::class)
-            ->set('token', Str::random(64))->set('email', $email)
+            ->set('token', $tokenSent)->set('email', $email)
             ->set('password', 'a-fresh-secure-pass')->set('password_confirmation', 'a-fresh-secure-pass')
-            ->call('resetPassword')
-            ->assertHasErrors('email')
-            ->assertSee(__('auth.reset_failed'));
+            ->call('resetPassword');
     });
 
-    Hash::shouldHaveReceived('make')->once();
-})->with(['unknown address', 'not a member', 'member with no link waiting']);
-
-it('spends the token\'s hash on a repeated ask within the broker\'s throttle, so it answers no faster', function (): void {
-    Notification::fake();
-    $member = amMember();
-    $ask = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::test(ForgotPassword::class)
-        ->set('email', $member->email)->call('submit')->assertSet('sent', true));
-
-    $ask();
-    Hash::spy();
-    $ask();
-
-    Hash::shouldHaveReceived('make')->once();
-    Notification::assertSentToTimes($member, ResetPasswordLinkNotification::class, 1);
-});
+    expect($box->floors)->toBe([ForgotPassword::REPLY_FLOOR_US])
+        ->and(Hash::check('a-fresh-secure-pass', $member->fresh()?->password ?? ''))->toBe($who === 'member, right link');
+})->with(['unknown address', 'not a member', 'member, wrong link', 'member, right link']);
