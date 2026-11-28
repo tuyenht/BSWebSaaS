@@ -34,8 +34,11 @@ use Illuminate\Support\Str;
  *   "v=spf1 include:mailgun.org ~all"; the DKIM record is per domain ("Find this record in the
  *   Domain Verification & DNS section").
  * - Brevo: help.brevo.com/hc/en-us/articles/16045394674066 (troubleshooting domain
- *   authentication) — DKIM 1 / DKIM 2 at brevo1._domainkey / brevo2._domainkey; its authentication
- *   asks for a Brevo code, DKIM and DMARC, no SPF.
+ *   authentication; the page refuses automated reads) — DKIM 1 / DKIM 2 at brevo1._domainkey /
+ *   brevo2._domainkey; its authentication asks for a Brevo code, DKIM and DMARC, no SPF. Checked in
+ *   public DNS 28/11 on brevo.com itself: brevo1/brevo2 are CNAMEs to b1/b2.<domain>.dkim.brevo.com
+ *   (a key at the end), and the older mail._domainkey (domains set up before brevo1/brevo2) still
+ *   publishes one, so a domain authenticated the older way is not told it lacks DKIM.
  * - Resend: resend.com/docs/knowledge-base/cloudflare.md — DKIM TXT "resend._domainkey"; SPF TXT
  *   at "send" with "v=spf1 include:amazonses.com ~all".
  * - Mailtrap: docs.mailtrap.io/email-api-smtp/setup/sending-domain — DKIM rwmt1._domainkey and
@@ -54,7 +57,7 @@ final class MailDnsProviders
         'postmark' => ['spf' => ['host' => 'pm-bounces', 'include' => null], 'spf_needed' => false, 'dkim' => []],
         'ses' => ['spf' => null, 'spf_needed' => false, 'dkim' => []],
         'mailgun' => ['spf' => ['host' => '', 'include' => 'mailgun.org'], 'spf_needed' => true, 'dkim' => []],
-        'brevo' => ['spf' => null, 'spf_needed' => false, 'dkim' => ['brevo1', 'brevo2']],
+        'brevo' => ['spf' => null, 'spf_needed' => false, 'dkim' => ['brevo1', 'brevo2', 'mail']],
         'resend' => ['spf' => ['host' => 'send', 'include' => 'amazonses.com'], 'spf_needed' => true, 'dkim' => ['resend']],
         'mailtrap' => ['spf' => null, 'spf_needed' => false, 'dkim' => ['rwmt1', 'rwmt2']],
         'google' => ['spf' => ['host' => '', 'include' => '_spf.google.com'], 'spf_needed' => true, 'dkim' => ['google']],
