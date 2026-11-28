@@ -59,6 +59,10 @@ w resources/js/app.js "x(); bsNewThing(); const lazy = () => import('./lazy.js')
 w resources/js/lazy.js 'lazy()'
 git -C "$SRC" add -A && gitc -m full
 FULL=$(git -C "$SRC" rev-parse HEAD)
+# the same release on top of a prod that already ran a migration numbered after its two files
+branch t-late-base; w database/migrations/2150_01_01_000000_shipped_earlier.php '<?php'
+git -C "$SRC" add -A && gitc -m 'old, with a later-numbered migration'; LATE_OLD=$(git -C "$SRC" rev-parse HEAD)
+quiet git -C "$SRC" -c user.name=t -c user.email=t@t cherry-pick "$FULL"; LATE_FULL=$(git -C "$SRC" rev-parse HEAD)
 # migration shapes for the flag patterns, among them the two real files the first review found unflagged
 branch t-flags
 w database/migrations/3000_01_01_000000_builder_update.php "<?php
@@ -182,7 +186,7 @@ release() { # release [extra lines]: the release file of the scenario
     REL=$S/release.sh
     {
         printf 'OLD=%s\nTARGET=%s\nHOST=fake.test\nPAGES=(/ /lien-he /admin/login)\n' "$OLD" "$TGT"
-        if [ "$TGT" = "$FULL" ]; then cat <<'EOF'
+        if [ "$TGT" = "$FULL" ] || [ "$TGT" = "$LATE_FULL" ]; then cat <<'EOF'
 DECLARED=(migration schedule sanitizer)
 MIGRATIONS=(2100_01_01_000000_add_col 2100_01_01_000100_add_idx)
 declare -gA MIG_OK=([2100_01_01_000100_add_idx]="index only, CONCURRENTLY")
@@ -412,6 +416,12 @@ launch 5
 ok '[ "$RC" = 0 ] && head_is "$FULL"' "a forward run again after the rollback finishes (a third build)"
 ok '[ -s "$B/served-before.css" ] && [ -s "$B/storefront.css-${OLD:0:7}" ] && [ -s "$B/app.js-${OLD:0:7}" ] && [ -s "$B/storefront.css-${FULL:0:7}" ] && [ -s "$B/app.js-${FULL:0:7}" ]' "three builds within the window: every build's files are still served"
 
+echo "== a migration numbered below one prod already ran"
+KEEP=$OLD; OLD=$LATE_OLD; fresh "$LATE_FULL"; launch; OLD=$KEEP
+ok '[ "$RC" = 0 ] && says "===== XONG" && says "OK   migration mới nhất đã chạy = 2150_01_01_000000_shipped_earlier"' "a release whose migrations sort before one prod already ran still ends XONG"
+[ "$RC" = 0 ] || tail -8 "$OUT"
+fresh "$FULL"; echo 2150_01_01_000000_no_file >> "$FAKE/migrations.txt"; launch
+ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && says "không có tệp trong bản"' "a newest row on prod without its file in the target stops step 7"
 echo "== pre-reload one-off: a stop at the reload, then resume at 7"
 fresh "$FULL"; touch "$FAKE/fail-reload-once"; launch
 ok '[ "$RC" = 1 ] && says "DỪNG (bước 7)" && [ "$(calls "artisan fake:pre")" = 1 ]' "octane:reload fails after the pre-reload one-off applied"
