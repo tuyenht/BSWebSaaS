@@ -139,6 +139,38 @@ it('guards every authenticated platform-host route with the platform middleware'
     expect($unguarded)->toBe([]);
 });
 
+it('keeps the console host\'s open (no sign-in) routes to an exact list', function (): void {
+    // The test above only checks routes that DO carry `auth`; a console screen registered by mistake
+    // in the guest group (no `auth` at all) would slip past it and be served to anyone. Every route
+    // on the operator host without `auth` must be one of these, named; a new open page is added here
+    // on purpose, never by accident.
+    $platformHost = (string) config('tenancy.platform_host');
+
+    $open = collect(app('router')->getRoutes()->getRoutes())
+        ->filter(fn (Route $route): bool => $route->getDomain() === $platformHost)
+        ->reject(fn (Route $route): bool => collect($route->gatherMiddleware())
+            ->contains(fn (mixed $m): bool => $m === 'auth' || $m === Authenticate::class || str_starts_with((string) $m, 'auth:')))
+        ->map(fn (Route $route): string => $route->getName() ?? $route->uri())
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($open)->toBe([
+        'platform.admin-address',
+        'platform.admin-unknown',
+        'platform.dashboard',
+        'platform.locale',
+        'platform.login',
+        'platform.otp.challenge',
+        'platform.password.request',
+        'platform.password.reset',
+        'platform.session.expired',
+        'platform.two-factor.challenge',
+        'platform.unknown',
+        'platform.verification.verify',
+    ]);
+});
+
 it('throttles a valid non-operator on the platform plane exactly like a bad password (no oracle)', function (): void {
     // A valid tenant credential refused on the operator host must ACCUMULATE the per-email throttle
     // so it locks out at MAX_ATTEMPTS identically to a wrong password. Otherwise the throttle timing
