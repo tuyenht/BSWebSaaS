@@ -10,16 +10,19 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Database\TrackedPostgresConnection;
 use App\Modules\Tenancy\Domains\CaddyOnDemandProvisioner;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\SystemDnsLookup;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Closure;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use PDO;
 use RuntimeException;
 
 final class TenancyServiceProvider extends ServiceProvider
@@ -27,6 +30,14 @@ final class TenancyServiceProvider extends ServiceProvider
     #[\Override]
     public function register(): void
     {
+        // Every pgsql connection counts its failed statements, so Tenancy::enter can tell a site
+        // transaction PostgreSQL aborted from a healthy one without a round trip on every request.
+        // Boot-time configuration (one resolver per driver), not request state.
+        Connection::resolverFor('pgsql', static function (PDO|Closure $pdo, string $database, string $prefix, array $config): TrackedPostgresConnection {
+            /** @var array<string, mixed> $config */
+            return new TrackedPostgresConnection($pdo, $database, $prefix, $config);
+        });
+
         // Scoped → Octane flushes it between operations (defense layer #3, with the
         // explicit FlushTenancyContext listener as backup).
         $this->app->scoped(CurrentSite::class);

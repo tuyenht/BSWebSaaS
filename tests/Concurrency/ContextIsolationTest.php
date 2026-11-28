@@ -3,6 +3,7 @@
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\TenantProbe;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -44,6 +45,37 @@ it('never leaks data across interleaved site contexts on one connection', functi
     }
 
     expect($seen)->toBe([['A'], ['B'], ['A'], ['B'], ['A']]);
+});
+
+it('keeps sites apart when one site aborts its transaction and swallows the error on the same connection', function (): void {
+    DB::connection('pgsql_admin')->table('tenant_probes')->insert([
+        ['site_id' => 1, 'value' => 'A', 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'value' => 'B', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    $tenancy = app(Tenancy::class);
+    $committed = false;
+
+    $tenancy->enter(1, function () use (&$committed): void {
+        TenantProbe::create(['value' => 'A lost']);
+        DB::afterCommit(function () use (&$committed): void {
+            $committed = true;
+        });
+        try {
+            DB::select('select 1/0');
+        } catch (QueryException) {
+            // swallowed: PostgreSQL has aborted site A's transaction all the same
+        }
+    });
+
+    $seenB = $tenancy->enter(2, fn () => TenantProbe::pluck('value')->all());
+    $seenA = $tenancy->enter(1, fn () => TenantProbe::pluck('value')->all());
+
+    expect($seenB)->toBe(['B'])
+        ->and($seenA)->toBe(['A'])
+        ->and($committed)->toBeFalse()
+        ->and(app(CurrentSite::class)->hasId())->toBeFalse()
+        ->and(DB::transactionLevel())->toBe(0);
 });
 
 it('throws when a tenant query runs with a site set but outside a transaction (scenario #1)', function (): void {
