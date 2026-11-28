@@ -167,7 +167,7 @@ final class Editor extends Component
      * The fields the save state and the leave dialog count against the saved entry. The block list
      * is counted apart (blocksChanged): the browser cannot write it the way the server does.
      */
-    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'categoryIds', 'coverUlid', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
+    public const array TRACKED = ['title', 'slug', 'excerpt', 'bodyHtml', 'seoTitle', 'seoDescription', 'focusKeyword', 'categoryIds', 'coverUlid', 'coverAlt', 'parentUlid', 'pageOrder', 'scheduleAt', 'statusTo', 'templateKey', 'displayDate', 'tags', 'expiresAt', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge'];
 
     /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
     #[Locked]
@@ -276,6 +276,12 @@ final class Editor extends Component
      * Google and a screen reader take from it; empty = the picture's own words, then the title.
      */
     public string $coverAlt = '';
+
+    /**
+     * «Từ khóa muốn lên top»: the words this language of the page should be found by
+     * (entry_translations.focus_keyword). The editor's own note: the website never shows it.
+     */
+    public string $focusKeyword = '';
 
     /**
      * «Mẫu hiển thị» of a post (board 07 «Thuộc tính bài»): '' = the look its category gives it, else one
@@ -641,6 +647,7 @@ final class Editor extends Component
             $this->seoTitle = $translation->seo_title ?? '';
             $this->seoDescription = $translation->seo_description ?? '';
             $this->coverAlt = $translation->cover_alt ?? '';
+            $this->focusKeyword = $translation->focus_keyword ?? '';
         }
 
         $this->loadCover($entry->cover_media_id, $entry->meta);
@@ -1600,6 +1607,8 @@ final class Editor extends Component
     /** "Đăng" / "Cập nhật" (live content) / "Gửi duyệt" (no right to publish): save, then publish or send. */
     public function publish(): void
     {
+        // on live content this is «Cập nhật» (or «Gửi duyệt» without the right to publish): a held save refused names that move
+        $this->changeAct = $this->mayPublish ? 'apply' : 'submit';
         $entry = $this->persist('publish');
         if (! $entry instanceof Entry || $this->saveFailed) {
             // nothing put on the website after a save refused in part (a new page's typed place)
@@ -1658,7 +1667,7 @@ final class Editor extends Component
     private function addressTaken(RouteConflictException $e, Entry $entry): void
     {
         if ($e->subPageOf($entry->id)) {
-            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->path]));
+            $this->addError('workflow', __('entries.subpage_path_taken', ['path' => $e->address($this->locale)]));
 
             return;
         }
@@ -1674,6 +1683,8 @@ final class Editor extends Component
     {
         $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
 
+        // the save this move starts with is what a held change refuses (nothing moved): «Chưa lưu được thay đổi»
+        $this->changeAct = 'save';
         $entry = $this->persist('transition', $key);
         if (! $entry instanceof Entry || ! $this->applyExpiry($entry)) {
             return;
@@ -2425,7 +2436,7 @@ final class Editor extends Component
         $this->saveFailed = false;
         // A language with no saved version yet loads nothing back: start from an empty form.
         $preset = $this->ulid === null ? $this->parentLoaded : null;
-        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverUlid', 'coverTouched', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
+        $this->reset('title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'focusKeyword', 'coverUlid', 'coverTouched', 'coverAlt', 'templateKey', 'displayDate', 'storedDisplayDate', 'expiresAt', 'expiresLoaded', 'publishedDay', 'formToast', 'formUndo', 'tags', 'tagsLoaded', 'tagDraft', 'jobFacts', 'jobDeadline', 'jobDeadlineAccent', 'jobBadge', 'jobStored', 'blocks', 'bodyHtml', 'prose', 'proseLook', 'converted', 'lookSplit', 'openBlock',
             'transitionNote', 'assignTo', 'showImagePicker', 'blockImagePickerPath', 'coverToast', 'coverUndo', 'stale', 'overwrite',
             'parentUlid', 'parentLoaded', 'parentName', 'pageHome', 'scheduleAt', 'scheduleLoaded', 'statusTo', 'autoSaved', 'slugFresh', 'slugTouched');
         $this->mount($this->ulid, $this->sectionKey, $this->locale, $preset);
@@ -2490,7 +2501,7 @@ final class Editor extends Component
     public function restoreKept(array $kept): void
     {
         $this->authorizeEditing();
-        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'coverAlt'] as $field) {
+        foreach (['title', 'slug', 'excerpt', 'seoTitle', 'seoDescription', 'focusKeyword', 'coverAlt'] as $field) {
             if (is_string($kept[$field] ?? null)) {
                 $this->{$field} = $kept[$field];
             }
@@ -2569,6 +2580,8 @@ final class Editor extends Component
             // «Thông tin tuyển dụng»: every language's boxes and label (another language's save changes them too),
             // keys in a fixed order like the body's (the database hands the language maps back sorted)
             'job' => md5((string) json_encode(self::keysSorted(is_array($meta) ? [$meta['facts'] ?? null, $meta['badge'] ?? null] : [null, null]))),
+            // after them, as a later field: a form opened before it holds a print without it (see save())
+            'focus_keyword' => md5((string) $translation?->focus_keyword),
         ];
     }
 
@@ -2686,6 +2699,7 @@ final class Editor extends Component
             'body' => [__('entries.ed.body_label'),
                 $this->prose ? EntryProseBody::preview($this->bodyHtml, 160) : __('entries.ed.stale_blocks', ['n' => count($this->blocks)]),
                 $storedBody !== null ? EntryProseBody::preview($storedBody['html'], 160) : __('entries.ed.stale_blocks', ['n' => count($storedBlocks)])],
+            'focus_keyword' => [__('entries.ed.keyword_label'), $this->focusKeyword, (string) $translation?->focus_keyword],
             'seo_title' => [__('admin.seo.title_label'), $this->seoTitle, (string) $translation?->seo_title],
             'seo_description' => [__('admin.seo.description_label'), $this->seoDescription, (string) $translation?->seo_description],
             'cover' => [__('entries.ed.card_cover'), $this->coverName($this->coverKey()), $this->coverName($cover)],
@@ -2770,6 +2784,43 @@ final class Editor extends Component
         }
 
         return $count;
+    }
+
+    /**
+     * The fields with unsaved edits, by the names the form shows them under, once each and in the
+     * form's order; empty when nothing differs from what was loaded or saved (as changeCount counts,
+     * the block list judged again now).
+     *
+     * @return list<string>
+     */
+    private function unsavedNames(): array
+    {
+        $labels = [
+            'title' => $this->type === 'page' ? 'entries.ed.title_page' : 'entries.ed.title_post',
+            'slug' => 'entries.ed.slug', 'excerpt' => 'admin.seo.excerpt_label', 'bodyHtml' => 'entries.ed.body_label',
+            'seoTitle' => 'admin.seo.title_label', 'seoDescription' => 'admin.seo.description_label',
+        ];
+        $blocks = $this->blocksHash() !== ($this->saved['blocks'] ?? '');
+        $names = [];
+        $choices = false;
+        foreach ($this->tracked() as $field => $value) {
+            if ($field === 'blocks' || ($field === 'scheduleAt' && $this->effectiveStatus() !== EntryStatus::Scheduled->value)) {
+                continue;
+            }
+            if (($this->saved[$field] ?? '') === $value && ! ($field === 'bodyHtml' && $blocks)) {
+                continue;
+            }
+            if (isset($labels[$field])) {
+                $names[] = Cast::string(__($labels[$field], ['doc' => $this->docNoun()]));
+            } else {
+                $choices = true;
+            }
+        }
+        if ($choices) {
+            $names[] = Cast::string(__('entries.refuse.reload_choices'));
+        }
+
+        return array_values(array_unique($names));
     }
 
     /** The list this entry belongs to: a post's content section, the pages list for a page. */
@@ -3312,32 +3363,34 @@ final class Editor extends Component
 
     /**
      * The save state beside the title while nothing is being typed: a new entry not saved yet,
-     * saved at a time, or a field to fix. The browser shows the typing states over it.
+     * saved at a time, or a field to fix. The browser shows the typing states over it. `short` is
+     * the phone's one bar line (board 07: «Đã lưu 09:40» · «Chưa lưu»).
      *
-     * @return array{key: string, icon: string, text: string, full: string, tip: string}
+     * @return array{key: string, icon: string, text: string, short: string, full: string, tip: string}
      */
     private function saveNote(): array
     {
         if ($this->saveFailed) {
             $text = (string) __('catalog.ed.sv_error');
 
-            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'error', 'icon' => 'ri-error-warning', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $at = $this->savedAt !== null ? app(SiteTime::class)->forDisplay(CarbonImmutable::parse($this->savedAt)) : null;
         if (! $at instanceof CarbonImmutable) {
             $text = (string) __('entries.ed.sv_new', ['unit' => Str::ucfirst($this->unit())]);
 
-            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'full' => $text, 'tip' => $text];
+            return ['key' => 'auto', 'icon' => 'ri-draft', 'text' => $text, 'short' => (string) __('catalog.ed.sv_dirty_short'), 'full' => $text, 'tip' => $text];
         }
 
         $today = $at->isSameDay(app(SiteTime::class)->now());
         $time = $at->format('H:i');
         $full = (string) ($today ? __('catalog.ed.sv_full_today', ['time' => $time]) : __('catalog.ed.sv_full_day', ['time' => $time, 'day' => $at->format('d/m/Y')]));
         // the draft's own save reads «Đã lưu nháp …» (board 07); a button's save «Đã lưu …»
-        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $today ? $time : $at->format('d/m')]);
+        $when = $today ? $time : $at->format('d/m');
+        $text = (string) __($this->autoSaved ? 'entries.ed.sv_auto' : 'entries.ed.sv_saved', ['when' => $when]);
 
-        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
+        return ['key' => 'saved', 'icon' => 'ri-checkbox-circle', 'text' => $text, 'short' => (string) __('catalog.ed.sv_short', ['when' => $when]), 'full' => $full, 'tip' => (string) __('catalog.ed.sv_tip', ['text' => $full])];
     }
 
     /**
@@ -3451,6 +3504,8 @@ final class Editor extends Component
         $rules = self::onFormFields(app(EntryContentRules::class)->rules($this->ulid !== null ? EntryContentRules::storedRefs($this->ulid) : []));
         // the featured image's words: one line of plain text (normalized before validation)
         $rules['coverAlt'] = ['nullable', 'string', 'max:'.EntryContentRules::COVER_ALT_MAX, $this->plainCoverAlt(...)];
+        // the words the page should be found by: one line of plain text (normalized before validation)
+        $rules['focusKeyword'] = ['nullable', 'string', 'max:'.EntryContentRules::FOCUS_KEYWORD_MAX, $this->plainFocusKeyword(...)];
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -3566,6 +3621,7 @@ final class Editor extends Component
             'categoryId.exists' => __('entries.category_invalid'),
             'categoryIds.*' => __('entries.category_invalid'),
             'coverAlt.max' => __('entries.ed.cover_alt_too_long', ['max' => EntryContentRules::COVER_ALT_MAX]),
+            'focusKeyword.max' => __('entries.ed.keyword_too_long', ['max' => EntryContentRules::FOCUS_KEYWORD_MAX]),
             'templateKey.in' => __('entries.ed.tpl_invalid'),
             'displayDate.date_format' => __('entries.ed.pd_invalid'),
             'tags.max' => __('entries.ed.tag_full', ['max' => EntryTags::MAX_TAGS]),
@@ -3577,6 +3633,14 @@ final class Editor extends Component
     {
         if (is_string($value) && PlainText::hasMarkup($value)) {
             $fail(__('entries.ed.cover_alt_markup'));
+        }
+    }
+
+    /** «Từ khóa muốn lên top» is words, never markup (EntryContentRules::focusKeyword, as a restored version is held). */
+    private function plainFocusKeyword(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (is_string($value) && PlainText::hasMarkup($value)) {
+            $fail(__('entries.ed.keyword_markup'));
         }
     }
 
@@ -3688,6 +3752,7 @@ final class Editor extends Component
         $this->seoTitle = SeoFields::singleLine($this->seoTitle);
         $this->seoDescription = SeoFields::singleLine($this->seoDescription);
         $this->coverAlt = PlainText::label($this->coverAlt);
+        $this->focusKeyword = PlainText::label($this->focusKeyword);
         $this->blocks = PlainText::linesIn($this->blocks);
 
         $filled = $this->fillBlankSlug();
@@ -3802,7 +3867,7 @@ final class Editor extends Component
                 if ($filled) {
                     $this->slug = '';
                 }
-                $this->addError('workflow', __('entries.change_err_change_stale'));
+                $this->changeRefused('change_stale');
 
                 return null;
             }
@@ -3819,9 +3884,13 @@ final class Editor extends Component
             if ($this->overwrite !== null) {
                 $this->overwrite += ['cover_alt' => md5('')];
             }
-            // a form opened before «Mẫu hiển thị», «Ngày đăng hiện trên bài» and «Thông tin tuyển dụng» could not change them: read as stored
-            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true, 'job' => true]);
+            // a form opened before «Mẫu hiển thị», «Ngày đăng hiện trên bài», «Thông tin tuyển dụng» and «Từ khóa muốn lên top» could not change them: read as stored
+            $later = array_intersect_key($stored['print'], ['template' => true, 'display_date' => true, 'job' => true, 'focus_keyword' => true]);
             if ($this->storedPrint !== []) {
+                // a form opened before «Từ khóa muốn lên top» existed holds no words for it: it leaves the stored ones as they are
+                if (! array_key_exists('focus_keyword', $this->storedPrint)) {
+                    $this->focusKeyword = (string) $stored['translation']?->focus_keyword;
+                }
                 $this->storedPrint += $later;
             }
             if ($this->overwrite !== null) {
@@ -3930,6 +3999,7 @@ final class Editor extends Component
             'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
             'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
             'cover_alt' => $hasCover && $this->coverAlt !== '' ? $this->coverAlt : null,
+            'focus_keyword' => $this->focusKeyword !== '' ? $this->focusKeyword : null,
             'status' => $this->translationStatus($entry, $translation),
         ])->save();
         if ($coverChanged) {

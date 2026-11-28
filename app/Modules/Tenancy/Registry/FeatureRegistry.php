@@ -60,6 +60,9 @@ final class FeatureRegistry
             // Whether the website's «Chuyển hướng» may send a visitor to another website (an https
             // address). Off: the screen does not offer it and the storefront ignores such rows.
             'redirects.external' => ['name' => 'Chuyển hướng sang website khác', 'kind' => 'boolean', 'default' => false, 'scope' => 'site', 'plans' => false],
+            // Whether the website may choose how its pages, posts and products get their addresses
+            // («Đường dẫn»). Gates only CHANGING the format: what a website stored keeps serving off.
+            'permalinks.custom' => ['name' => 'Tự chọn kiểu đường dẫn', 'kind' => 'boolean', 'default' => true, 'scope' => 'site'],
         ];
     }
 

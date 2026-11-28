@@ -150,7 +150,8 @@ final class FormDraft
     /**
      * The choices of a choice field from the lines typed in $locale: a line whose text is an existing
      * choice keeps that choice (its stored value and its other languages), a new line gets a value of
-     * its own. Empty lines are dropped, and so is a repeated line no further choice shows the words of.
+     * its own. A line that only shows another language's words for a choice with no name in $locale leaves
+     * that choice without one. Empty lines are dropped, and so is a repeated line no further choice shows the words of.
      *
      * @param  list<array{value: string, label: array<string, string>}>  $existing
      * @return list<array{value: string, label: array<string, string>}>
@@ -185,9 +186,12 @@ final class FormDraft
                 for ($n = 2; isset($taken[$value]) || self::valueOfOther($value, $existing, $line, $locale); $n++) {
                     $value = $base.'-'.$n;
                 }
-                $choice = ['value' => $value, 'label' => []];
+                $choice = ['value' => $value, 'label' => [$locale => $line]];
             }
-            $choice['label'][$locale] = $line;
+            // A line that matched a stored choice shows exactly that choice's words, so it keeps its names
+            // as they are: one that only shows another language's words (or, with no name at all, its
+            // value) stays without a name in $locale. Retyping those words on purpose cannot be told
+            // apart from leaving the line alone; visitors read the same words either way.
             $taken[$choice['value']] = true;
             $out[] = $choice;
         }

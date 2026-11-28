@@ -114,6 +114,17 @@ it('refuses a field the storefront could not draw or a key the platform keeps fo
     'a setting the loader does not write' => [fn (array $field): array => $field + ['validation' => ['max_length' => 5]], "'validation' is not a field setting"],
 ]);
 
+it('accepts a number, a day, one choice and several choices', function (Closure $change): void {
+    fpField($this->folder, 'need', $change);
+
+    expect(fpProblems())->toBe('');
+})->with([
+    'one choice' => [fn (array $field): array => ['type' => 'radio'] + $field],
+    'several choices' => [fn (array $field): array => ['type' => 'checkboxes'] + $field],
+    'a number' => [fn (array $field): array => ['type' => 'number'] + array_diff_key($field, ['choices' => true])],
+    'a day' => [fn (array $field): array => ['type' => 'date'] + array_diff_key($field, ['choices' => true])],
+]);
+
 it('refuses any change to the consent box but its place, and keeps it last', function (Closure $change, string $problem): void {
     fpField($this->folder, 'consent', $change);
 

@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Admin\Livewire\Forms\Concerns\GatesFormScreens;
 use App\Modules\Admin\Support\LangBar;
+use App\Modules\Admin\Support\MailNotifyTo;
 use App\Modules\Cms\Routing\FormPagePaths;
 use App\Modules\Forms\Actions\SaveForm;
 use App\Modules\Forms\Models\Form;
@@ -54,7 +55,7 @@ final class FormEditor extends Component
     use GatesFormScreens;
 
     /** The kinds of field a member can add, in the board's order, with their icons. */
-    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'select' => 'ri-list-check', 'checkbox' => 'ri-checkbox', FormFieldTypes::FILE => 'ri-attachment-2'];
+    public const array KINDS = ['text' => 'ri-text', 'email' => 'ri-mail', 'tel' => 'ri-phone', 'textarea' => 'ri-file-text', 'number' => 'ri-hashtag', 'date' => 'ri-calendar', 'select' => 'ri-list-check', 'radio' => 'ri-radio-button', 'checkboxes' => 'ri-checkbox-multiple', 'checkbox' => 'ri-checkbox', FormFieldTypes::FILE => 'ri-attachment-2'];
 
     #[Locked]
     public ?string $ulid = null;
@@ -185,6 +186,8 @@ final class FormEditor extends Component
             abort_unless(in_array($purpose, FormTemplates::PURPOSES, true), 404);
             $this->isNew = true;
             $draft = FormDraft::template($purpose, $this->locale);
+            // a new form starts sending its leads to the Email screen's «Gửi thông báo tới»
+            $draft['emails'] = app(MailNotifyTo::class)->emails();
             $this->sourceTexts = ['name' => $draft['name'], 'success' => '', 'labels' => array_column($draft['fields'], 'label', 'key'), 'choices' => array_column($draft['fields'], 'choices', 'key')];
         }
         if ($this->consentLabel === '') {

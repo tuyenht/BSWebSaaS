@@ -127,7 +127,7 @@ final readonly class RestoreEntryRevision
             });
         } catch (RouteConflictException $e) {
             throw $e->subPageOf($entry->id)
-                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->path)
+                ? new RevisionRestoreRejectedException('subpage_path_taken', $e->address($revision->locale))
                 : new RevisionRestoreRejectedException('slug_taken');
         }
 
@@ -168,7 +168,7 @@ final readonly class RestoreEntryRevision
         $current = is_array($held) && is_array($held['meta'] ?? null) ? $held['meta'] : $entry->meta;
         $content['meta'] = JobFacts::restored($current, is_array($content['meta'] ?? null) ? $content['meta'] : [], $locale, $this->locales->default());
         $text = ['body' => ['blocks' => $content['blocks'] ?? []]]
-            + array_intersect_key($content, array_flip(['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt']));
+            + array_intersect_key($content, array_flip(['title', 'slug', 'excerpt', 'seo_title', 'seo_description', 'og_image_id', 'author_name', 'cover_alt', 'focus_keyword']));
         $shared = array_intersect_key($content, array_flip(['template_override', 'cover_media_id', 'meta']));
 
         try {

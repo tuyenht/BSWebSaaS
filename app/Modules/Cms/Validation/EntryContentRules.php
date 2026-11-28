@@ -67,6 +67,26 @@ final readonly class EntryContentRules
         return mb_strlen($text) > self::COVER_ALT_MAX || PlainText::hasMarkup($text) ? false : $text;
     }
 
+    /**
+     * «Từ khóa muốn lên top»: the words one language of a post or page should be found by
+     * (entry_translations.focus_keyword, varchar(120)). The editor's own note: never shown on the website.
+     */
+    public const int FOCUS_KEYWORD_MAX = 120;
+
+    /**
+     * The focus keyword to store: one line of plain text (PlainText::label), null when empty. False
+     * when it cannot be stored: longer than FOCUS_KEYWORD_MAX or holding markup.
+     */
+    public static function focusKeyword(string $text): string|false|null
+    {
+        $text = PlainText::label($text);
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_strlen($text) > self::FOCUS_KEYWORD_MAX || PlainText::hasMarkup($text) ? false : $text;
+    }
+
     public function __construct(private ValidPageJson $blocks) {}
 
     /**

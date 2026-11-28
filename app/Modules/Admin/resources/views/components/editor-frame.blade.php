@@ -74,8 +74,10 @@
             <x-bs-admin::save-state :note="$note" data-guide="state" class="max-w-full" />
         </div>
         <span wire:ignore class="contents">
-            <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ped-retry shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()">
-                <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> {{ __('catalog.ed.retry') }}
+            {{-- on the phone's one bar the word gives way to the icon alone when it does not fit (data-retry-tight, admin-editor.js) --}}
+            <x-bs-admin::button variant="outline" color="secondary" size="sm" class="ped-retry shrink-0" x-show="state() === 'offline'" x-cloak x-on:click="retry()"
+                                title="{{ __('catalog.ed.retry') }}">
+                <x-bs-admin::icon name="ri-refresh" :class="$glyph" /> <span class="ped-retry-t">{{ __('catalog.ed.retry') }}</span>
             </x-bs-admin::button>
         </span>
 

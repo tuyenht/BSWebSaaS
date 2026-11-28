@@ -519,6 +519,24 @@ it('refuses a card label or a byline that is too long, holds tags or is not text
     'a byline that is not text' => ['posts.json', 'post:ra-mat-website', 'author', 12, 'post:ra-mat-website: author (vi) must be text.'],
 ]);
 
+it('accepts a focus keyword on a page and a post, one line of plain text each', function (): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'gia công CNC theo yêu cầu']]);
+    ContentPacks::item($this->folder, 'posts.json', 'post:ra-mat-website', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => 'ra mắt website']]);
+
+    expect(cpProblems())->toBe([]);
+});
+
+it('refuses a focus keyword that is too long, holds tags or is not text', function (mixed $value, string $problem): void {
+    ContentPacks::item($this->folder, 'pages.json', 'page:/gioi-thieu', fn (array $item): array => [...$item, 'focus_keyword' => ['vi' => $value]]);
+
+    expect(implode("\n", cpProblems()))->toContain($problem);
+})->with([
+    'over 120 characters' => [str_repeat('a', 121), 'page:/gioi-thieu: focus_keyword (vi) is longer than 120 characters.'],
+    'with a tag' => ['gia công <b>CNC</b>', 'page:/gioi-thieu: focus_keyword (vi) must be one line of plain text'],
+    'on two lines' => ["gia công\nCNC", 'page:/gioi-thieu: focus_keyword (vi) must be one line of plain text'],
+    'not text' => [12, 'page:/gioi-thieu: focus_keyword (vi) must be text.'],
+]);
+
 it('accepts a menu item icon from the website icon set and refuses any other name', function (mixed $icon, bool $ok): void {
     ContentPacks::item($this->folder, 'menus.json', 'menu:primary', function (array $menu) use ($icon): array {
         $menu['items'][0]['icon'] = $icon;

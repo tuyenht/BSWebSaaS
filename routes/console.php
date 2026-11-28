@@ -78,6 +78,11 @@ Schedule::command('cms:reconcile-category-counts')->dailyAt('20:15')->timezone('
 // the admin totals' re-count, before the product search words (20:45).
 Schedule::command('cms:reconcile-category-public-counts')->dailyAt('20:30')->timezone('UTC')->withoutOverlapping();
 
+// Recount every website's running totals (site_counters: the media library's stored and Trash
+// bytes) and correct a drifted one (logged per drift). 20:20 UTC is 03:20 in Vietnam: after the
+// purges (00:00 UTC), between the category re-counts.
+Schedule::command('counters:reconcile')->dailyAt('20:20')->timezone('UTC')->withoutOverlapping();
+
 // Check the search words of the 500 products each site edited last, and of the next 10,000 by id after
 // where the last night stopped (so every product is checked in turn), against their names and SKU, and
 // write again the ones that differ (one warning per site that had any: a write path missed them).

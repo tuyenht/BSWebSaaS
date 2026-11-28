@@ -11,7 +11,8 @@ use App\Modules\Shared\Support\Cast;
 /**
  * A lead's answers as people read them: under the label of the field they answer, in the form's
  * order, a picked choice by its label. A ticked box shows the sentence stored with the lead (what
- * the visitor agreed to when they sent it), never the box's current wording. An answer whose field
+ * the visitor agreed to when they sent it), never the box's current wording; a day reads the
+ * Vietnamese way (24/12/2026), as every date in the admin does. An answer whose field
  * was removed later still shows, under its key — nothing the visitor sent is hidden. With
  * $withEmpty a field the visitor left empty is listed too, with an empty value (the inbox writes
  * "Khách không điền" there); an unticked box is never listed. A file field is not an answer: its
@@ -76,6 +77,9 @@ final class LeadAnswers
         }
 
         $text = self::plain($value);
+        if ($field->type === 'date' && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $day) === 1) {
+            $text = $day[3].'/'.$day[2].'/'.$day[1];
+        }
         if ($text === '' && ! $withEmpty) {
             return null;
         }

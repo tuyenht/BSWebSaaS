@@ -553,6 +553,7 @@ it('renders the admin "Tổng quan" with every card on a flat query budget', fun
         grantRole($member, 'everything', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'entries.review', 'entries.approve',
             'settings.manage', 'forms.view', 'domains.manage', 'media.upload', 'menus.manage']);
         SiteModule::query()->create(['module_key' => 'contacts', 'enabled' => true]);
+        SiteModule::query()->create(['module_key' => 'media', 'enabled' => true]);
 
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
@@ -588,10 +589,11 @@ it('renders the admin "Tổng quan" with every card on a flat query budget', fun
     });
 
     expect($html)->toContain(__('dash.rev_title'))->toContain(__('dash.wr_title'))->toContain(__('dash.wr_returned_title'))
-        ->toContain(__('dash.start_title'))->toContain(__('dash.todo_leads', ['n' => 12]))
+        ->toContain(__('dash.start_title'))->toContain(__('dash.todo_leads', ['n' => 12]))->toContain(__('dash.st_label'))->toContain('id="tq-m-storage"')
         // The shell (tenancy, nav, entitlement) and one bounded read per card: the newest unread
         // leads, the domains, the first steps, the review queue (with its rows' relations), the
-        // member's own posts counted up to 99+ in one statement, and five recent pages and posts.
+        // member's own posts counted up to 99+ in one statement, five recent pages and posts, and
+        // the library's storage against the plan in one statement (measured 38 → 39 with it).
         // Every list is capped, so the count does not grow with the website's size.
         ->and($count)->toBeLessThanOrEqual(41);
 });

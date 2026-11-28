@@ -26,8 +26,10 @@
 @endphp
 <div class="@container rounded-md border border-border-strong bg-surface p-4 shadow-card">
     <h2 id="em-prov-title" class="mb-3 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_prov_title') }}</h2>
-    {{-- a radio group: the arrows move to the next service and pick it --}}
-    <div role="radiogroup" aria-labelledby="em-prov-title" class="grid grid-cols-4 gap-2.5 @max-[51.25rem]:grid-cols-2"
+    {{-- a radio group: the arrows move to the next service and pick it. Four columns (two below 51.25rem), fewer
+         when a tile would be narrower than 9rem + 7 × the text boost, so a service name never breaks inside a word --}}
+    <div role="radiogroup" aria-labelledby="em-prov-title"
+         class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,max(calc(9rem_+_7*var(--user-text-boost)),(100%_-_2rem)/4)),1fr))] gap-2.5 @max-[51.25rem]:grid-cols-[repeat(auto-fit,minmax(min(100%,max(calc(9rem_+_7*var(--user-text-boost)),(100%_-_0.75rem)/2)),1fr))]"
          x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=radio]')]; const to = r[(r.indexOf(el) + by + r.length) % r.length]; to.focus(); to.click() } }">
         @foreach (MailRelay::KEYS as $k)
             @php $on = $relay === $k; [$initials, $bg, $fg] = $badges[$k]; @endphp
@@ -165,4 +167,7 @@
     @if (! $relayChecked && $testResult === 'error')
         <x-bs-admin::field-error class="mt-2.5">{{ __('admin.test_email_failed') }}</x-bs-admin::field-error>
     @endif
+
+    {{-- the SPF / DKIM / DMARC rows of the sending domain: their own component, polling on its own --}}
+    <livewire:admin.email-dns-status :domain="$dns['domain']" :provider="$dns['provider']" wire:key="em-dns-status" />
 </div>

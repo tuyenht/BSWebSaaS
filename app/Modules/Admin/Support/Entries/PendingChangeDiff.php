@@ -20,7 +20,8 @@ use Illuminate\Support\Str;
 
 /**
  * What differs between a live entry's pending change and what visitors see (boards 07 and 17 «So
- * sánh»): per language the six text fields (the body as plain text), then the picture and the main
+ * sánh»): per language the seven text fields (the body as plain text; the focus keyword too, which
+ * the website never shows but a publisher puts live with the rest), then the picture and the main
  * category, shared by every language; and the languages the change would put live for the first time
  * (still a draft). One definition for the editor and the review inbox, so «N chỗ sửa» is the same
  * number on both.
@@ -31,7 +32,10 @@ use Illuminate\Support\Str;
 final readonly class PendingChangeDiff
 {
     /** The per-language text fields compared, in board order (the body comes after them). */
-    private const array TEXT_FIELDS = ['title', 'slug', 'excerpt', 'seo_title', 'seo_description'];
+    private const array TEXT_FIELDS = ['title', 'slug', 'excerpt', 'focus_keyword', 'seo_title', 'seo_description'];
+
+    /** Text fields a change saved before they existed may lack: applying it leaves them as they are, so no row. */
+    private const array LATER_FIELDS = ['focus_keyword'];
 
     /**
      * @param  Collection<string, EntryTranslation>  $live  the entry's translations visitors may see, keyed by locale
@@ -57,6 +61,9 @@ final readonly class PendingChangeDiff
                 $drafts[] = $code;
             }
             foreach (self::TEXT_FIELDS as $field) {
+                if (in_array($field, self::LATER_FIELDS, true) && ! array_key_exists($field, $text)) {
+                    continue;
+                }
                 $now = Cast::stringOrNull($text[$field] ?? null);
                 $was = $seen instanceof EntryTranslation ? Cast::stringOrNull($seen->getAttribute($field)) : null;
                 if ((string) $now !== (string) $was) {

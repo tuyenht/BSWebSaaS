@@ -59,6 +59,10 @@ final readonly class LeadCsvExport
             return '="'.$value.'"';
         }
 
+        if (preg_match('/^-\d{1,15}(\.\d{1,6})?$/D', $value) === 1) {
+            return $value; // a plain negative number (a «Số» answer) is a number, not a formula
+        }
+
         return $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 

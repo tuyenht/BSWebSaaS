@@ -132,11 +132,41 @@ it('names a document «Chi tiết tệp» and shows no picture words for it', fu
         $html = Livewire::actingAs($user)->test(Library::class)->call('openDetail', $file->ulid)->html();
 
         expect($html)->toContain(e(__('media.drw.title_file')))
-            ->toContain(e(__('media.drw.pdf')))
+            ->toMatch('#PDF\s*</span>#') // not counted (yet): «PDF» alone, never a made-up «1 trang»
+            ->not->toContain('PDF · ')
             ->not->toContain('wire:model="detailAlt.vi"')
             ->not->toContain('$wire.saveDetail()')
             ->not->toContain('data-unsaved-body="'.e(__('media.drw.ud_body')).'"');
     });
+});
+
+it('shows a counted PDF\'s pages in the drawer and on its line in the library', function (): void {
+    $user = drwUser(['media.view', 'media.upload']);
+    $counted = drwFile('ho-so-nang-luc.pdf', ['width' => null, 'height' => null, 'meta' => ['pages' => 1250]]);
+    drwFile('chua-dem.pdf', ['width' => null, 'height' => null]);
+    drwFile('so-la.pdf', ['width' => null, 'height' => null, 'meta' => ['pages' => 'nhiều']]); // not a count: shown as none
+
+    app(Tenancy::class)->enter(1, function () use ($user, $counted): void {
+        $page = Livewire::actingAs($user)->test(Library::class);
+        $list = $page->html();
+        expect($list)->toContain('1.250 trang · ') // the tile's info line, where a picture shows its size
+            ->toContain('— · ')                      // the uncounted ones: a dash, no number
+            ->not->toContain(' 1 trang');
+
+        $html = $page->call('openDetail', $counted->ulid)->html();
+        expect($html)->toContain('PDF · 1.250 trang')
+            ->toMatch('#<dd[^>]*>1\.250 trang</dd>#');
+    });
+});
+
+it('words the page count in each admin language', function (): void {
+    app()->setLocale('en');
+    expect(trans_choice('media.lib.pages', 1, ['n' => 1]))->toBe('1 page')
+        ->and(trans_choice('media.drw.pdf_pages', 3, ['n' => 3]))->toBe('PDF · 3 pages');
+    app()->setLocale('ja');
+    expect(trans_choice('media.lib.pages', 3, ['n' => 3]))->toBe('3 ページ');
+    app()->setLocale('zh');
+    expect(trans_choice('media.drw.pdf_pages', 3, ['n' => 3]))->toBe('PDF · 3 页');
 });
 
 it('saves the description and title of every website language at once, keeping other languages', function (): void {
@@ -618,8 +648,9 @@ it('opens the drawer on a flat query budget, however many places use the file', 
         $b = countQueries(fn () => $page->call('openDetail', $many->ulid)->assertSet('pickerDetailUlid', $many->ulid));
 
         // the page's own redraw (with the page's use chips, one statement; the filter groups' counts wait
-        // for the filters to open) plus the file, its folder, its uses and its people: measured 16
+        // for the filters to open; «Dung lượng đã dùng», one statement) plus the file, its folder, its
+        // uses and its people: measured 17
         expect($page->viewData('manyUploaders'))->toBeTrue()
-            ->and($b)->toBe($a)->toBeLessThanOrEqual(16);
+            ->and($b)->toBe($a)->toBeLessThanOrEqual(17);
     });
 });

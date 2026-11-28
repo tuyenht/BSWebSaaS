@@ -16,10 +16,11 @@ use Illuminate\Support\Facades\Log;
  *                (per-site, MUTABLE — design.md §10/ADR-11).
  *  - enabled():  the locales editors write in (the admin's language column + per-locale editor).
  *  - public():   the enabled locales visitors can open — storefront prefix, hreflang, sitemap.
+ *  - codes():    every locale the site has a row for, switched off ones included.
  *  - formerDefaults(): the public locales that were the default before (most recent first), whose
  *                old clean addresses the storefront sends on under their prefix.
  *
- * One query loads all three (a site has a handful of locale rows), memoized per site for the
+ * One query loads them all (a site has a handful of locale rows), memoized per site for the
  * request. Registered scoped (TenancyServiceProvider) so the memo is flushed between Octane
  * operations and never leaks a stale answer across requests; a writer that changes the locales
  * mid-request calls forget(). A site with no default is a broken invariant: fall back to the first
@@ -34,7 +35,7 @@ final class SiteLocale
 
     public const string FORMER_KEY = 'former_defaults';
 
-    /** @var array<int, array{default: string, enabled: list<string>, public: list<string>}> per site id (request-scoped) */
+    /** @var array<int, array{default: string, enabled: list<string>, public: list<string>, all: list<string>}> per site id (request-scoped) */
     private array $memo = [];
 
     /** @var array<int, list<string>> per site id (request-scoped) */
@@ -77,6 +78,32 @@ final class SiteLocale
     }
 
     /**
+     * Language codes in the website's own order (default first, then by id); codes it does not know follow, alphabetically.
+     * The one order every screen and action uses to pick "the first" of several languages.
+     *
+     * @param  iterable<string>  $codes
+     * @return list<string>
+     */
+    public function inSiteOrder(iterable $codes): array
+    {
+        $held = [];
+        foreach ($codes as $code) {
+            $held[(string) $code] = true;
+        }
+        $out = [];
+        foreach ($this->enabled() as $code) {
+            if (isset($held[$code])) {
+                $out[] = $code;
+                unset($held[$code]);
+            }
+        }
+        $rest = array_keys($held);
+        sort($rest);
+
+        return [...$out, ...$rest];
+    }
+
+    /**
      * The enabled locales visitors can open, default first then by id. A locale can be enabled
      * (editors prepare its translations) without being public yet. Empty with no site context.
      *
@@ -104,6 +131,21 @@ final class SiteLocale
     public function isPublic(string $locale): bool
     {
         return in_array($locale, $this->public(), true);
+    }
+
+    /**
+     * Every language the current site has, switched on or off (an off one can be switched back on),
+     * default first then by id. Empty with no site context.
+     *
+     * @return list<string>
+     */
+    public function codes(): array
+    {
+        if (! $this->current->hasId()) {
+            return [];
+        }
+
+        return $this->state()['all'];
     }
 
     /**
@@ -147,7 +189,7 @@ final class SiteLocale
     }
 
     /**
-     * @return array{default: string, enabled: list<string>, public: list<string>}
+     * @return array{default: string, enabled: list<string>, public: list<string>, all: list<string>}
      */
     private function state(): array
     {
@@ -157,13 +199,14 @@ final class SiteLocale
     }
 
     /**
-     * @return array{default: string, enabled: list<string>, public: list<string>}
+     * @return array{default: string, enabled: list<string>, public: list<string>, all: list<string>}
      */
     private function load(int $siteId): array
     {
         $default = null;
         $enabled = [];
         $public = [];
+        $all = [];
 
         $rows = SiteLocaleModel::query()
             ->orderByDesc('is_default')
@@ -172,6 +215,7 @@ final class SiteLocale
 
         foreach ($rows as $row) {
             $locale = (string) $row->locale;
+            $all[] = $locale;
 
             if ($row->is_default && $default === null) {
                 $default = $locale;
@@ -192,6 +236,6 @@ final class SiteLocale
             Log::warning('Site has no default locale; falling back.', ['site_id' => $siteId, 'locale' => $default]);
         }
 
-        return ['default' => $default, 'enabled' => $enabled, 'public' => $public];
+        return ['default' => $default, 'enabled' => $enabled, 'public' => $public, 'all' => $all];
     }
 }

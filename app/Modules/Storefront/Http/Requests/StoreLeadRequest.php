@@ -81,6 +81,12 @@ final class StoreLeadRequest extends FormRequest
         /** @var array<string, mixed> $data */
         $data = $this->all();
         foreach ($this->collectableFields() as $field) {
+            // A number typed the Vietnamese way («1,5») is read as 1.5 and kept that way. The rule is
+            // one only: a lone comma with digits on both sides and no dot is the decimal separator.
+            // Anything mixing both marks («1,234.5») is not guessed at and fails the number rule.
+            if ($field->type === 'number' && is_string($data[$field->key] ?? null) && preg_match('/^-?\d+,\d+$/D', $data[$field->key]) === 1) {
+                $data[$field->key] = str_replace(',', '.', $data[$field->key]);
+            }
             if ($field->type !== FormFieldTypes::FILE || ! array_key_exists($field->key, $data)) {
                 continue;
             }
@@ -165,6 +171,7 @@ final class StoreLeadRequest extends FormRequest
             $label = FormDraft::text($labels, $locale);
             if ($label !== '') {
                 $attributes[$field->key] = $label;
+                $attributes[$field->key.'.*'] = $label; // each pick of «Chọn nhiều» is named by the field too
             }
         }
 
@@ -204,6 +211,9 @@ final class StoreLeadRequest extends FormRequest
         foreach ($this->collectableFields() as $field) {
             if (FormFieldTypes::isChoice($field->type)) {
                 $messages[$field->key.'.required'] = __('forms.err_choice_required');
+                // a list sent for one choice is a choice to make again, not text to type again
+                $messages[$field->key.'.string'] = __('forms.err_choice_invalid');
+                $messages[$field->key.'.*.string'] = __('forms.err_choice_invalid');
             }
             if ($field->type === FormFieldTypes::FILE) {
                 $messages[$field->key.'.required'] = __('forms.err_file_required');

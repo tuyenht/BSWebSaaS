@@ -183,7 +183,7 @@
       "css": 0
     },
     "resources/js/admin-editor.js": {
-      "js": 2423,
+      "js": 2642,
       "css": 0
     },
     "resources/js/media-picker-uploader.js": {
@@ -200,6 +200,10 @@
     },
     "resources/js/admin-email-signature.js": {
       "js": 2188,
+      "css": 0
+    },
+    "resources/js/admin-email-template.js": {
+      "js": 3312,
       "css": 0
     },
     "resources/js/admin-media-drawer.js": {

@@ -6,15 +6,29 @@ use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Media\Support\PurgedObjects;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Force-purge cleanup for a media master (design.md §16, D3). Soft-delete (Thùng rác) keeps the R2
  * object + attachments; a force-delete (emptying the trash) is the irreversible purge. We drop the
  * master's attachments in forceDeleting — while media_id still resolves them, BEFORE the FK SET NULL
- * cascade strands them — and delete the R2 object in forceDeleted, after the row is gone, so a failed
- * purge never strands a live image. RLS scopes the attachment cleanup to the master's site.
+ * cascade strands them. forceDeleted decides which stored objects go (inside the transaction, where
+ * the website's other rows are still visible) and deletes them only once that transaction has
+ * committed (afterCommit): a purge that fails later on, at its counter write or anywhere else, rolls
+ * its rows back into the Trash with their files still there. A worker killed between the commit and
+ * the delete leaves an object no row names (a leak, never a row without its file). RLS scopes the
+ * attachment cleanup to the master's site.
+ *
+ * Between the commit and the delete the key is free again: an upload of the same bytes under the same
+ * name gets the same key (MediaKey::unique looks at rows only) and stores its object there. So right
+ * before deleting, the website's rows are looked at once more, in the website's context (PurgedObjects:
+ * one look for every file a purge batch deletes), and a key a row names by then (trashed or not) is
+ * kept, an old address too when a row names it as its own old address or seed source; when that look
+ * fails the objects are kept too (a leak, never a row without its file). What is left is an upload
+ * whose object is stored and whose row is not committed yet at that look: its object can still go,
+ * and a re-upload of the same bytes puts it back (UploadMedia's self-heal).
  *
  * A row media:rekey-site moved still has its old object at `meta.moved_from` (kept so addresses
  * already shared keep working); a purge removes that one too, so a file deleted for good is gone
@@ -40,21 +54,21 @@ final class MediaObserver
 
     public function forceDeleted(Media $media): void
     {
-        $disk = Storage::disk($media->disk);
-        if (! MediaKey::isSeedKey($media->storage_key)) {
-            $disk->delete($media->storage_key);
-        }
+        $keys = MediaKey::isSeedKey($media->storage_key) ? [] : [$media->storage_key];
 
         $meta = $media->getAttribute('meta');
         $movedFrom = is_array($meta) ? ($meta['moved_from'] ?? null) : null;
-        if (! is_string($movedFrom) || $movedFrom === '' || $movedFrom === $media->storage_key || MediaKey::isSeedKey($movedFrom)) {
-            return;
+        $freedOld = null;
+        if (is_string($movedFrom) && $movedFrom !== '' && $movedFrom !== $media->storage_key && ! MediaKey::isSeedKey($movedFrom)) {
+            $stillUsed = Media::query()->withTrashed()
+                ->where(fn (Builder $q) => $q->where('storage_key', $movedFrom)->orWhere('meta->seed_source', $movedFrom)->orWhere('meta->moved_from', $movedFrom))
+                ->exists();
+            if (! $stillUsed) {
+                $keys[] = $freedOld = $movedFrom;
+            }
         }
-        $stillUsed = Media::query()->withTrashed()
-            ->where(fn (Builder $q) => $q->where('storage_key', $movedFrom)->orWhere('meta->seed_source', $movedFrom)->orWhere('meta->moved_from', $movedFrom))
-            ->exists();
-        if (! $stillUsed) {
-            $disk->delete($movedFrom);
-        }
+
+        // deleted once the purge commits, after one last look at the website's rows
+        app(PurgedObjects::class)->add($media->getConnection(), Cast::int($media->site_id), $media->disk, $keys, $freedOld);
     }
 }

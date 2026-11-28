@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\AdvancedSettings;
 use App\Modules\Admin\Livewire\Blocks\Library as BlockLibrary;
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Admin\Livewire\Catalog\Index;
+use App\Modules\Admin\Livewire\EmailTemplates;
 use App\Modules\Admin\Livewire\Entries\ReviewChanges;
 use App\Modules\Admin\Livewire\Entries\ReviewInbox;
 use App\Modules\Admin\Livewire\Forms\FormEditor;
@@ -37,9 +38,11 @@ use App\Modules\Admin\Livewire\Platform\Audit\CleanupDialog;
 use App\Modules\Admin\Livewire\Roles\Index as RolesIndex;
 use App\Modules\Admin\Livewire\SeoSettings;
 use App\Modules\Admin\Livewire\Settings\Domains as DomainSettings;
+use App\Modules\Admin\Livewire\Settings\Permalinks as PermalinkSettings;
 use App\Modules\Admin\Livewire\Settings\Redirects as RedirectSettings;
 use App\Modules\Admin\Livewire\Users\Index as MembersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
+use App\Modules\Admin\Support\Mail\MailTemplateStore;
 use App\Modules\Admin\Support\PlatformPlans;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -66,6 +69,7 @@ use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\Redirect;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\BlockMediaUsage;
 use App\Modules\Cms\Support\CategoryScopes;
@@ -80,6 +84,7 @@ use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Actions\InviteMember;
@@ -89,6 +94,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Http\SafeHttp;
 use App\Modules\Storefront\Models\ContactClickDaily;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
@@ -98,6 +104,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Services\SiteCounters;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
@@ -160,6 +167,17 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $this->withVite(); // render with the real built assets, not the test stub
 
     $owner = User::query()->where('email', 'owner@'.ADMIN_PREVIEW_HOST)->firstOrFail();
+
+    // «Thư gần đây» with a sent and a failed mail of today and yesterday, and today's count of the
+    // shared outbox («Còn N thư hôm nay»). mail_logs has no foreign key to sites: cleared here.
+    $mailDb = DB::connection('pgsql_admin');
+    $mailDb->statement('truncate mail_logs, mail_daily restart identity cascade');
+    foreach ([[0, 'lead', 'nguyenvanb@congty.vn', 'sent', null], [1, 'password_reset', 'thuha@vidu.vn', 'sent', null], [2, 'invitation', 'sai@dia-chi', 'failed', 'rejected']] as [$days, $kind, $to, $state, $why]) {
+        $at = now('UTC')->subDays(min(1, $days))->subMinutes(5 + $days * 20);
+        $mailDb->statement('select public.mail_log_month_create(?::date)', [$at->copy()->startOfMonth()->toDateString()]);
+        $mailDb->table('mail_logs')->insert(['site_id' => 1, 'kind' => $kind, 'via' => 'platform', 'recipient_count' => 1, 'to_first' => $to, 'status' => $state, 'reason_code' => $why, 'created_at' => $at]);
+    }
+    $mailDb->table('mail_daily')->insert(['site_id' => 1, 'day' => now('Asia/Ho_Chi_Minh')->toDateString(), 'via' => 'platform', 'sent' => 7, 'failed' => 1, 'held' => 0]);
 
     // A few entries in mixed states so the list screen shows real rows, not an empty state; the site
     // has two languages and one page is translated, so the rows show both language-chip states.
@@ -444,8 +462,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
     $this->flushSession();
-    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
-    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $auditHtml = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $auditHtml));
 
     // «Đăng nhập nhanh»: the platform's face with Google connected and Facebook not yet (its policy
     // addresses configured), then a website's face on the same shared apps.
@@ -467,19 +485,81 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain(e(__('admin.sl.providers_site')));
     file_put_contents($dir.'/social.html', $html);
     // «Email» → «Nhà cung cấp khác»: «Chọn dịch vụ» on SendGrid not set up yet, then Amazon SES with
-    // its key saved and checked
+    // its key saved and checked (with two notice addresses); then a signed-in Google mailbox, whose
+    // sending address is locked
     foreach ([
         'email-other' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'sendgrid'],
         'email-other-saved' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'ses', 'relay_region' => 'eu-west-1',
-            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(),
+            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(), 'from_address' => 'lienhe@congtydemo.vn',
             'smtp' => ['host' => 'email-smtp.eu-west-1.amazonaws.com', 'port' => 587, 'encryption' => 'tls', 'username' => 'AKIAPREVIEWONLY00000', 'password' => SecretCipher::encrypt('preview-only')]],
+        'email-google' => ['provider' => 'google', 'method' => 'oauth2', 'from_name' => 'Công ty Demo',
+            'oauth' => ['provider' => 'google', 'client_id' => 'preview-client', 'client_secret' => SecretCipher::encrypt('preview-only'), 'refresh_token' => SecretCipher::encrypt('preview-only'), 'email' => 'hop@congtydemo.vn']],
     ] as $shot => $cfg) {
-        app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'config', $cfg));
+        app(Tenancy::class)->enter(1, function () use ($cfg, $shot): void {
+            app(SettingsRepository::class)->put('email', 'config', $cfg);
+            app(SettingsRepository::class)->put('email', 'notify_to', ['emails' => $shot === 'email-other' ? [] : ['kinhdoanh@congtydemo.vn', 'giamdoc@congtydemo.vn']]);
+        });
         $this->flushSession();
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
-        expect($html)->toContain(e(__('admin.em_prov_title')))->not->toContain('preview-only');
+        expect($html)->toContain($shot === 'email-google' ? 'data-from-locked' : e(__('admin.em_prov_title')))->not->toContain('preview-only');
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
+    // «Nâng cao — các dòng xác thực tên miền» as a check left it: all verified (SendGrid); waiting
+    // for the domain, re-checking (Mailgun: SPF without its include, DKIM not checkable, no DMARC);
+    // stopped after the day with records still missing (Resend)
+    $key = ['host' => '', 'port' => 587, 'encryption' => 'tls', 'password' => SecretCipher::encrypt('preview-only')];
+    $now = now()->utc();
+    foreach ([
+        'email-dns-ok' => [['relay' => 'sendgrid', 'smtp' => ['host' => 'smtp.sendgrid.net', 'username' => 'apikey'] + $key],
+            ['spf' => ['code' => 'ok', 'host' => 'congtydemo.vn'], 'dkim' => ['code' => 'ok', 'host' => 's1._domainkey.congtydemo.vn'], 'dmarc' => ['code' => 'ok', 'host' => '_dmarc.congtydemo.vn']], null],
+        'email-dns-pending' => [['relay' => 'mailgun', 'relay_region' => 'us', 'smtp' => ['host' => 'smtp.mailgun.org', 'username' => 'postmaster@congtydemo.vn'] + $key],
+            ['spf' => ['code' => 'not_allowed', 'host' => 'congtydemo.vn'], 'dkim' => ['code' => 'unchecked', 'why' => 'unknown_selector'], 'dmarc' => ['code' => 'missing', 'host' => '_dmarc.congtydemo.vn']], $now->addMinutes(4)],
+        'email-dns-failed' => [['relay' => 'resend', 'smtp' => ['host' => 'smtp.resend.com', 'username' => 'resend'] + $key],
+            ['spf' => ['code' => 'missing', 'host' => 'send.congtydemo.vn'], 'dkim' => ['code' => 'ok', 'host' => 'resend._domainkey.congtydemo.vn'], 'dmarc' => ['code' => 'missing', 'host' => '_dmarc.congtydemo.vn']], null],
+    ] as $shot => [$relay, $rows, $next]) {
+        app(Tenancy::class)->enter(1, function () use ($relay, $rows, $next, $now): void {
+            app(SettingsRepository::class)->put('email', 'config', ['provider' => 'other', 'method' => 'smtp_password', 'send_domain' => 'congtydemo.vn',
+                'checked_at' => $now->toIso8601String(), 'from_address' => 'lienhe@congtydemo.vn', ...$relay]);
+            app(SettingsRepository::class)->put('email', 'dns', ['token' => 'PREVIEW', 'domain' => 'congtydemo.vn', 'provider' => $relay['relay'],
+                'started_at' => $now->subHours(2)->toIso8601String(), 'until' => $now->addHours(22)->toIso8601String(), 'running' => false,
+                'checked_at' => $now->subMinute()->toIso8601String(), 'next_at' => $next?->toIso8601String(), 'rows' => $rows]);
+        });
+        $this->flushSession();
+        $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
+        expect($html)->toContain('data-dns-box')->toContain(e(__('admin.em_dns_state_'.['email-dns-ok' => 'ok', 'email-dns-pending' => 'pending', 'email-dns-failed' => 'failed'][$shot])))->not->toContain('preview-only');
+        file_put_contents($dir.'/'.$shot.'.html', $html);
+    }
+    // «Email» → «Mẫu thư»: the list with one template edited and one turned off; the editor open on the
+    // password-changed notice the website reworded; a «Hệ thống» template, which the website only reads
+    app(Tenancy::class)->enter(1, function (): void {
+        app(MailTemplateStore::class)->put('pwchanged', 'vi', 'Mật khẩu tại {site_name} vừa được đổi', '<p>Chào {customer_name},</p><p>Mật khẩu của bạn vừa được đổi lúc {change_time}, từ địa chỉ {change_ip}.</p><p>Nếu không phải bạn, hãy gọi {hotline} hoặc viết tới {contact_email} ngay.</p>');
+        app(MailTemplateStore::class)->setOff('welcome', true);
+    });
+    $tplPage = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email?tab=tpl')->assertOk()->getContent();
+    expect($tplPage)->toContain(e(__('admin.mt_n_pwchanged')))->toContain(e(__('admin.mt_b_edited')));
+    file_put_contents($dir.'/email-tpl.html', $tplPage);
+    foreach (['email-tpl-edit' => 'pwchanged', 'email-tpl-system' => 'ntf_contact'] as $shot => $key) {
+        $lw = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(EmailTemplates::class, ['fromName' => 'Công ty Demo', 'fromAddress' => 'hop@congtydemo.vn'])
+            ->call('open', $key)->assertSet('editing', $key));
+        $snapshot = (fn () => $this->lastState->getSnapshot())->call($lw);
+        $root = (string) preg_replace('/^<div wire:id="([^"]+)"/', '<div wire:snapshot="'.e(is_string($snapshot) ? $snapshot : (string) json_encode($snapshot)).'" wire:effects="[]" wire:id="$1"', $lw->html(), 1);
+        expect($root)->toContain('wire:snapshot=')->toContain('data-bs-lazy="bsEmailTpl"');
+        expect(preg_match('/<div (?:wire:key="[^"]*" )?wire:snapshot="[^"]*admin\.email-templates/', $tplPage, $found, PREG_OFFSET_CAPTURE))->toBe(1);
+        $from = $found[0][1];
+        preg_match_all('~<div\b|</div>~', $tplPage, $tags, PREG_OFFSET_CAPTURE, $from);
+        $depth = 0;
+        $to = null;
+        foreach ($tags[0] as [$tag, $at]) {
+            $depth += $tag === '</div>' ? -1 : 1;
+            if ($depth === 0) {
+                $to = $at + 6;
+                break;
+            }
+        }
+        expect($to)->not->toBeNull();
+        file_put_contents($dir.'/'.$shot.'.html', substr($tplPage, 0, $from).$root.substr($tplPage, (int) $to));
+    }
+    DB::connection('pgsql_admin')->table('mail_templates')->delete();
     DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
     DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'oauth_social')->delete();
     $this->flushSession();
@@ -493,7 +573,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($dialog->get('exact'))->not->toBeNull();
     $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
     foreach ($steps as $name => $open) {
-        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $auditHtml));
     }
 
     // "Gói & tính năng": three plans (one with a customer on it) as the platform super-admin, who
@@ -776,6 +856,34 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $trash = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/redirects?tab=trash')->assertOk()->getContent();
     expect($trash)->toContain('/trang-cu-da-xoa');
     file_put_contents($dir.'/redirects-trash.html', $trash);
+
+    // "Đường dẫn": the cards as stored; a drafted change with its preview of the addresses that move;
+    // a change still being applied (read-only cards, the notice that refreshes itself); and the
+    // addresses a finished run could not move, each with what to do, «Thử lại» and «Đã hiểu».
+    $this->flushSession();
+    $page = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($page)->toContain('Khuyên dùng', 'Phẳng');
+    file_put_contents($dir.'/permalinks.html', $page);
+    $draft = app(Tenancy::class)->enter(1, fn (): string => Livewire::actingAs($owner)->test(PermalinkSettings::class)
+        ->set('draft.pages.pattern', 'base')->set('draft.pages.base', 'trang-moi')->html());
+    expect($draft)->toContain('/trang-moi/lien-he');
+    file_put_contents($dir.'/permalinks-change.html', str_replace('</body>', $draft.'</body>', $page));
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->stage(['pages' => ['pattern' => 'base', 'base' => 'trang']], now()->utc()->toIso8601String()));
+    $this->flushSession();
+    $pending = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($pending)->toContain('Đang đổi đường dẫn');
+    file_put_contents($dir.'/permalinks-pending.html', $pending);
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::query()->where('group_name', 'permalinks')->delete());
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->saveRun([
+        'phase' => PermalinkConfig::RUN_DONE, 'sections' => ['pages'], 'kind' => 1, 'after' => 0, 'beat' => now()->utc()->toIso8601String(), 'failed' => 1,
+        'failures' => [['section' => 'pages', 'type' => 'page', 'title' => 'Chính sách bảo hành và đổi trả sản phẩm', 'locale' => 'vi', 'old' => '/chinh-sach-bao-hanh-va-doi-tra-san-pham', 'new' => '/trang/chinh-sach-bao-hanh-va-doi-tra-san-pham', 'reason' => 'too_long']],
+    ]));
+    $this->flushSession();
+    $failedRun = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/permalinks')->assertOk()->getContent();
+    expect($failedRun)->toContain('1 địa chỉ chưa đổi được', 'Đã hiểu');
+    file_put_contents($dir.'/permalinks-failed.html', $failedRun);
+    app(Tenancy::class)->enter(1, fn () => app(PermalinkConfig::class)->saveRun(null));
+    app(PermalinkConfig::class)->flush();
 
     // "Thông tin chung" filled from the older brand setting, as a site has it before its first save
     // (long names, so a clipped label or a sideways scroll shows up).
@@ -1091,6 +1199,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$product->ulid.'/edit')->assertOk()->getContent();
     expect($html)->toContain('data-seo-fields')->not->toContain('wire:model="excerpt"');
     file_put_contents($dir.'/product-editor.html', $html);
+    // The picture strip with two pictures and videos (one with a long title), for the strip's screenshots.
+    $withVideos = app(Tenancy::class)->enter(1, function (): Product {
+        $item = Product::query()->create(['status' => 'draft', 'price' => 9000, 'meta' => ['videos' => [
+            ['yt' => 'dQw4w9WgXcQ', 'title' => 'Cắt thử thép'], ['yt' => 'aaaaaaaaaaa', 'title' => ''],
+            ['yt' => 'bbbbbbbbbbb', 'title' => 'Một tiêu đề video rất dài để thử việc cắt chữ và xuống dòng trong ô nhỏ'],
+        ]]]);
+        $item->translations()->create(['locale' => 'vi', 'name' => 'Mũi khoan có video', 'slug' => 'mui-khoan-co-video']);
+        foreach ([0, 1] as $position) {
+            $media = Media::query()->create(['collection' => 'library', 'slug' => "strip-{$position}", 'hash' => hash('sha256', "strip{$position}"), 'storage_key' => "s/library/strip-{$position}.png",
+                'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024, 'original_filename' => "anh-{$position}.png"]);
+            $item->images()->create(['media_id' => $media->id, 'position' => $position]);
+        }
+
+        return $item;
+    });
+    $this->flushSession();
+    $strip = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/catalog/'.$withVideos->ulid.'/edit')->assertOk()->getContent();
+    expect($strip)->toContain('data-vid-i="2"', 'ped-yt');
+    file_put_contents($dir.'/product-editor-videos.html', $strip);
     // The language bar (board 09) on the English version: the name and link written, Japanese not yet,
     // Vietnamese the source; the product's own cards locked with «Chung».
     app(Tenancy::class)->enter(1, fn () => $product->translations()->create(['locale' => 'en', 'name' => '5-axis CNC workholding fixture', 'slug' => 'cnc-5-axis-fixture']));
@@ -1547,6 +1674,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
     expect($html)->toContain('Ảnh xưởng', 'Hồ sơ công ty');
     file_put_contents($dir.'/media-folders.html', $html);
+    // «Dung lượng đã dùng»: «Sắp đầy» at 450 of 500 MB with «Mở Thùng rác», then, with the storage switch on,
+    // «Đã hết dung lượng» (the card's alert, the greyed upload button) and the upload panel's box
+    $addBytes = fn (int $mb) => app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)
+        ->addMany([MediaStorage::BYTES => $mb * 1048576, MediaStorage::TRASH => intdiv($mb, 10) * 1048576]));
+    $addBytes(450);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="warn"', e(__('media.lib.st_open_trash')));
+    file_put_contents($dir.'/media-storage-warn.html', $html);
+    config(['media.storage_enforce' => true]);
+    $addBytes(50);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="full"', 'id="tv-full"');
+    file_put_contents($dir.'/media-storage-full.html', $html);
+    $fullBox = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)->call('openUpload')));
+    expect($fullBox)->toContain(e(__('media.lib.st_full_title')));
+    file_put_contents($dir.'/media-storage-full-upload.html', $swap($html, $fullBox, 'app\\.modules\\.admin\\.livewire\\.media\\.library'));
+    config(['media.storage_enforce' => false]);
+    $addBytes(-500);
     $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
     $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
     // the same page as a list, with its «Nơi dùng» column
@@ -1668,9 +1813,12 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     // change: the writer's band before sending (with «Gửi duyệt thay đổi»), the question before
     // «Bỏ thay đổi»; then, once sent, the reviewer's band (approve / return, discard locked with its
     // reason), «So sánh», the question before «Duyệt đăng thay đổi» and the note of «Trả lại».
-    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting): Entry {
+    $staleTab = null;
+    $livePost = app(Tenancy::class)->enter(1, function () use ($owner, $writer, $waiting, &$staleTab): Entry {
         $entry = Entry::query()->where('ulid', $waiting[2])->firstOrFail();
         app(ApplyEntryWorkflowTransition::class)->handle($entry, 'vi', $owner, 'approve');
+        // a tab opened before the change below was saved: its next save is refused as stale («Chưa làm được» with «Tải lại»)
+        $staleTab = Livewire::actingAs($writer->fresh())->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $entry->ulid]);
         app(SaveEntryDraft::class)->handle($entry->fresh(), $writer->fresh(), 'vi', [
             'title' => 'Gia công khuôn ép nhựa cho ngành ô tô',
             'excerpt' => 'Khuôn 2 tầng, bàn giao tháng 11.',
@@ -1704,6 +1852,60 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         $part = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($state()));
         file_put_contents($dir.'/'.$name.'.html', $swap($html, $part, 'admin\\.entries\\.editor'));
     }
+    // «Chưa làm được»: the writer's save of the sent change (no «Tải lại»), and the stale tab's (with it)
+    $locked = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($writer->fresh())
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $livePost->ulid])->set('excerpt', 'Gõ thêm sau khi gửi')->call('save')));
+    expect($locked)->toContain('data-entry-refusal', e(__('entries.refuse.t_locked')), e(__('entries.change_err_change_locked')))->not->toContain('data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused.html', $swap($html, $locked, 'admin\\.entries\\.editor'));
+    $stale = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->set('excerpt', 'Gõ ở tab cũ')->call('save')));
+    expect($stale)->toContain('data-entry-refusal', e(__('entries.refuse.t_save')), e(__('entries.change_err_change_stale')), 'data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused-stale.html', $swap($html, $stale, 'admin\\.entries\\.editor'));
+    // «Tải lại» there, with the typed text: «Tải bản mới nhất?» names the field it would replace
+    $ask = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot($staleTab->call('reloadChange')));
+    expect($ask)->toContain('data-entry-reload-ask', e(__('entries.refuse.reload_title')), e(__('entries.refuse.reload_ok')), e(__('entries.refuse.reload_stay')));
+    file_put_contents($dir.'/editor-change-reload-ask.html', $swap($html, $ask, 'admin\\.entries\\.editor'));
+    // «Chưa cập nhật được website» on a live page whose change would move its live sub-page to an address
+    // other content holds (the page's own new link is free): the dialog names that address
+    // pages nested under their parent's address, so the change's new link moves the sub-page (the request's memo forgotten)
+    $permalinks = app(Tenancy::class)->enter(1, function (): mixed {
+        $was = SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'pages')->value('value');
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+
+        return $was;
+    });
+    app()->forgetScopedInstances();
+    [$subPage, $subPageTeam, $subPageOther] = app(Tenancy::class)->enter(1, function () use ($owner): array {
+        $live = function (string $title, string $slug, ?Entry $parent) use ($owner): Entry {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id, 'parent_id' => $parent?->id]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []]]);
+            app(PublishEntry::class)->handle($entry->fresh(), 'vi', $owner);
+
+            return $entry->fresh();
+        };
+        $plant = $live('Nhà máy', 'nha-may', null);
+        $team = $live('Xưởng gia công CNC', 'xuong-gia-cong-cnc', $plant);
+        app(SaveEntryDraft::class)->handle($plant, $owner, 'vi', ['slug' => 'gioi-thieu-nha-may']);
+        $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $owner->id]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/gioi-thieu-nha-may/xuong-gia-cong-cnc', 'entry_id' => $other->id]);
+
+        return [$plant, $team, $other];
+    });
+    $this->flushSession();
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/content/'.$subPage->ulid.'/edit')->assertOk()->getContent();
+    $refusedSub = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)
+        ->test(App\Modules\Admin\Livewire\Entries\Editor::class, ['ulid' => $subPage->ulid])->call('askApplyChange')->call('applyChange')));
+    expect($refusedSub)->toContain('data-entry-refusal', e(__('entries.refuse.t_apply')), e(__('entries.change_err_subpage_path_taken', ['path' => '/gioi-thieu-nha-may/xuong-gia-cong-cnc'])))
+        ->not->toContain('data-refusal-reload');
+    file_put_contents($dir.'/editor-change-refused-subpage.html', $swap($html, $refusedSub, 'admin\\.entries\\.editor'));
+    // gone again, so the screens below (the review inbox's changes among them) stay as they were
+    app(Tenancy::class)->enter(1, function () use ($permalinks, $subPage, $subPageTeam, $subPageOther): void {
+        foreach ([$subPageOther, $subPageTeam, $subPage] as $page) {
+            $page->forceDelete();
+        }
+        $setting = SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'pages')->sole();
+        $permalinks === null ? $setting->delete() : $setting->update(['value' => $permalinks]);
+    });
+    app()->forgetScopedInstances();
     expect(file_get_contents($dir.'/editor-change-diff.html'))->toContain('data-change-diff')
         ->and(file_get_contents($dir.'/editor-change-return.html'))->toContain(e(__('entries.chg.return_err')));
 
@@ -1761,5 +1963,5 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect(file_get_contents($dir.'/lead-trashed-toast.html'))->toContain(e(__('leads.toast_trashed')), 'undoLast')
         ->and(file_get_contents($dir.'/leads-trash.html'))->toContain('Lê Văn Tùng', e(__('leads.trash_days_left', ['n' => LeadTrash::daysLeft(now()->subDays(12), now())])))
         ->and(file_get_contents($dir.'/lead-trash-detail.html'))->toContain('data-state="in-trash"', 'restoreLead(');
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 159);
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 178);
 });

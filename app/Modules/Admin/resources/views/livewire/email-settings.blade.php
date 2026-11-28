@@ -18,19 +18,26 @@
     @endif
 
     @if ($scope !== 'platform')
-        {{-- A website's page has two tabs (the board's strip; «Mẫu thư» joins them with the mail
-             templates). Switching shows the other at once; the server learns the tab with the next
-             request, so a redraw keeps it, and the address keeps it for a reload. --}}
+        {{-- A website's page has three tabs (the board's strip). Switching shows the other at once;
+             the server learns the tab with the next request, so a redraw keeps it, and the address
+             keeps it for a reload. «Mẫu thư» counts the mails with a switch (the board's list), and
+             the strip steps aside while a template is open in its editor. --}}
         @php
+            $tplCount = count(array_filter(
+                \App\Modules\Admin\Support\Mail\MailTemplateCatalog::visible(app(\App\Modules\Tenancy\Entitlement\Entitlement::class)->entitledModuleKeys()),
+                static fn (string $k): bool => \App\Modules\Admin\Support\Mail\MailTemplateCatalog::switchable($k),
+            ));
             $tabs = [
                 'send' => ['icon' => 'ri-send-plane', 'label' => __('admin.em_tab_send'), 'short' => __('admin.em_tab_send')],
+                'tpl' => ['icon' => 'ri-mail', 'label' => __('admin.em_tab_tpl'), 'short' => __('admin.em_tab_tpl'), 'count' => $tplCount],
                 'sign' => ['icon' => 'ri-quill-pen', 'label' => __('admin.em_tab_sign'), 'short' => __('admin.em_tab_sign_short')],
             ];
         @endphp
         <div class="@container flex flex-col gap-6"
-             x-data="{ tab: @js($tab), go(t) { if (this.tab === t) return; this.tab = t; $wire.$set('tab', t, false); try { const u = new URL(location.href); t === 'send' ? u.searchParams.delete('tab') : u.searchParams.set('tab', t); history.replaceState(history.state, '', u) } catch (e) {} } }"
+             x-on:email-tpl-editing.window="tplEditing = !! $event.detail.on"
+             x-data="{ tplEditing: false, tab: @js($tab), go(t) { if (this.tab === t) return; this.tab = t; $wire.$set('tab', t, false); try { const u = new URL(location.href); t === 'send' ? u.searchParams.delete('tab') : u.searchParams.set('tab', t); history.replaceState(history.state, '', u) } catch (e) {} } }"
              x-on:email-tab.window="go($event.detail.tab)">
-            <div role="tablist" aria-label="{{ __('admin.em_tabs_label') }}"
+            <div role="tablist" aria-label="{{ __('admin.em_tabs_label') }}" x-show="! tplEditing"
                  class="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border-strong [scrollbar-width:none] [&::-webkit-scrollbar]:h-0"
                  x-data="{ step(el, by) { const r = [...$root.querySelectorAll('[role=tab]')]; const n = r[(r.indexOf(el) + by + r.length) % r.length]; n.focus(); n.click() } }">
                 @foreach ($tabs as $k => $t)
@@ -42,6 +49,10 @@
                             class="-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-[7px] border-b-2 border-transparent px-4 pt-[11px] pb-[13px] text-[calc(0.84375rem+var(--user-text-boost))] font-medium whitespace-nowrap text-text-muted hover:text-text-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-text aria-selected:border-primary-text aria-selected:font-semibold aria-selected:text-primary-text @max-[37.5rem]:px-2.5">
                         <x-bs-admin::icon :name="$t['icon']" class="size-[min(1.25rem,calc(1rem+var(--user-text-boost)))] shrink-0 @max-[25rem]:hidden" />
                         <span class="@max-[37.5rem]:hidden">{{ $t['label'] }}</span><span class="hidden @max-[37.5rem]:inline">{{ $t['short'] }}</span>
+                        @isset($t['count'])
+                            <span class="rounded-[20px] bg-surface-muted px-[7px] py-px text-[calc(0.75rem+var(--user-text-boost))] font-semibold text-text-muted" x-bind:class="tab === @js($k) && 'bg-primary-soft text-primary-text'"
+                                  @if ($tab === $k) data-on @endif aria-label="{{ __('admin.mt_tab_count', ['n' => $t['count']]) }}">{{ $t['count'] }}</span>
+                        @endisset
                     </button>
                 @endforeach
             </div>
@@ -143,6 +154,12 @@
                                     <span @class(['size-[7px] shrink-0 rounded-full', 'bg-success-base' => $done, 'border-[1.5px] border-dashed border-text-muted' => ! $done])></span>
                                     {{ $k === 'other' ? __($done ? 'admin.em_set' : 'admin.em_not_set') : __($done ? 'admin.em_connected' : 'admin.em_not_connected') }}
                                 </span>
+                            @elseif ($quota !== null)
+                                {{-- Today's mails left on the shared outbox, the bar filled by the share already used; hidden in a narrow card, as on the board --}}
+                                <span class="inline-flex shrink-0 items-center gap-[7px] text-caption whitespace-nowrap text-text @max-[35rem]:hidden">
+                                    {{ __('admin.em_quota_left', ['n' => \Illuminate\Support\Number::format($quota['left'], locale: app()->getLocale())]) }}
+                                    <span class="inline-block h-[5px] w-11 overflow-hidden rounded-full bg-border-strong" aria-hidden="true"><span class="block h-full bg-success-base" style="width: {{ $quota['used_pct'] }}%"></span></span>
+                                </span>
                             @endif
                             <button type="button" x-on:click="info = info === @js($k) ? null : @js($k)"
                                     x-bind:aria-expanded="info === @js($k) ? 'true' : 'false'" aria-controls="em-info-{{ $k }}"
@@ -156,9 +173,9 @@
                             {{-- Sign in to the mailbox. The website's own app at the provider, until the platform has one approved. --}}
                             <div role="group" aria-label="{{ __('admin.em_connect_with', ['name' => $obName($k)]) }}" class="space-y-4 rounded-b-md border-[1.5px] border-t-0 border-primary-text px-4 py-3.5">
                                 <div class="grid gap-4 sm:grid-cols-2">
-                                    <x-bs-admin::input :label="__('admin.client_id')" wire:model.live.blur="oauthClientId" />
+                                    <x-bs-admin::input id="em-oauth-client-id" :label="__('admin.client_id')" wire:model.live.blur="oauthClientId" />
                                     <div>
-                                        <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model.live.blur="oauthClientSecret" autocomplete="new-password"
+                                        <x-bs-admin::input id="em-oauth-client-secret" :label="__('admin.client_secret')" type="password" wire:model.live.blur="oauthClientSecret" autocomplete="new-password"
                                                         :placeholder="$oauthSecretSet ? __('admin.secret_stored') : ''" />
                                         @if ($oauthSecretSet)
                                             <p class="mt-1 text-caption text-text-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -222,6 +239,7 @@
                                 @if ($k === 'platform')
                                     {{ __('admin.em_info_platform', ['name' => $fromName !== '' ? $fromName : $siteName, 'address' => $platformFrom]) }}
                                     @if ($replyTo !== '') {{ __('admin.em_info_platform_reply', ['reply' => $replyTo]) }} @endif
+                                    @if ($quota !== null) {{ __('admin.em_info_platform_quota', ['limit' => \Illuminate\Support\Number::format($quota['limit'], locale: app()->getLocale())]) }} @endif
                                 @elseif ($k === 'other')
                                     {{ __('admin.em_info_other') }}
                                 @else
@@ -239,7 +257,8 @@
         @endif
     @endif
 
-    {{-- Configuration form (a website's page: the end of «Gửi thư») --}}
+    @if ($scope === 'platform')
+    {{-- The console's «Email hệ thống»: the platform's own server and sender (a website's page draws the card below) --}}
     {{-- Enter in a field is the save bar's "Lưu" (it waits while a save runs and does nothing with nothing to save); the form itself never submits, so the page never reloads --}}
     <form x-data x-on:submit.prevent class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
@@ -249,8 +268,8 @@
         <div class="space-y-5 p-5">
             @if ($scope === 'platform')
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-bs-admin::input :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
-                    <x-bs-admin::input :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
+                    <x-bs-admin::input id="em-smtp-host" :label="__('admin.smtp_host')" wire:model.live.blur="smtpHost" placeholder="smtp.gmail.com" />
+                    <x-bs-admin::input id="em-smtp-port" :label="__('admin.smtp_port')" type="number" wire:model.live.blur="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
                         <select wire:model.live="smtpEncryption" class="field block w-full rounded border border-border-strong bg-surface px-3 text-text focus:border-primary-text">
@@ -259,9 +278,9 @@
                             <option value="null">{{ __('admin.encryption_none') }}</option>
                         </select>
                     </div>
-                    <x-bs-admin::input :label="__('admin.smtp_username')" wire:model.live.blur="smtpUsername" placeholder="info@example.com" />
+                    <x-bs-admin::input id="em-smtp-username" :label="__('admin.smtp_username')" wire:model.live.blur="smtpUsername" placeholder="info@example.com" />
                     <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.smtp_password')" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password"
+                        <x-bs-admin::input id="em-smtp-password" :label="__('admin.smtp_password')" type="password" wire:model.live.blur="smtpPassword" autocomplete="new-password"
                                         :placeholder="$smtpPasswordSet ? __('admin.secret_stored') : ''" />
                         @if ($smtpPasswordSet)
                             <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
@@ -272,14 +291,8 @@
 
             {{-- Sender identity --}}
             <div class="grid gap-4 border-t border-border-soft pt-5 sm:grid-cols-2">
-                <x-bs-admin::input :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
-                <x-bs-admin::input :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
-                @if ($scope !== 'platform')
-                    <div class="sm:col-span-2">
-                        <x-bs-admin::input :label="__('admin.reply_to')" type="email" wire:model.live.blur="replyTo" placeholder="lienhe@congty-cua-ban.com" />
-                        <p class="mt-1 text-xs text-body-muted">{{ __('admin.reply_to_hint') }}</p>
-                    </div>
-                @endif
+                <x-bs-admin::input id="em-from-address" :label="__('admin.from_address')" type="email" wire:model.live.blur="fromAddress" placeholder="no-reply@example.com" />
+                <x-bs-admin::input id="em-from-name-platform" :label="__('admin.from_name')" wire:model.live.blur="fromName" :placeholder="config('admin.brand.name')" />
             </div>
 
             {{-- Actions --}}
@@ -293,9 +306,183 @@
             </div>
         </div>
     </form>
+    @else
+        {{-- «Tên và địa chỉ người gửi» beside «Nhận thông báo liên hệ» (one column on a narrow page), the
+             test send under both. Enter in a field is the save bar's "Lưu"; the form itself never submits. --}}
+        @php
+            // An address may wrap only after its "@" and its dots (each piece kept whole).
+            $mailParts = function (string $text): \Illuminate\Support\HtmlString {
+                $pieces = preg_split('/(?<=[@.])/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                return new \Illuminate\Support\HtmlString(implode('<wbr>', array_map(fn (string $p): string => '<span class="whitespace-nowrap">'.e($p).'</span>', $pieces)));
+            };
+            $lab = 'text-[calc(0.8125rem+var(--user-text-boost))] font-medium text-text-strong';
+            $notifyErr = $errors->first('notifyTo');
+            $replyWho = '<b class="font-semibold text-text-strong">'.e(__('admin.em_notify_reply_who')).'</b>';
+        @endphp
+        <form x-data x-on:submit.prevent class="rounded-md border border-border-strong bg-surface p-4 shadow-card">
+            <div class="grid grid-cols-1 items-start gap-y-[18px] @min-[56.25rem]:grid-cols-2">
+                <div class="min-w-0 [overflow-wrap:anywhere] @min-[56.25rem]:pe-6">
+                    <h2 class="mb-2.5 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_sender_title') }}</h2>
+                    {{-- The sender line as a customer's mailbox shows it --}}
+                    <div class="mb-3.5 flex min-w-0 items-center gap-2 rounded border border-dashed border-border bg-surface-muted px-[11px] py-[9px] text-[calc(0.8125rem+var(--user-text-boost))] leading-normal" data-sender-preview>
+                        <x-bs-admin::icon name="ri-mail" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
+                        @if ($sender['address'] !== '')
+                            <span class="min-w-0 flex-auto text-text [overflow-wrap:normal]">{{ $sender['name'] }} {{ $mailParts('<'.$sender['address'].'>') }}</span>
+                        @else
+                            <span class="min-w-0 flex-auto text-text-muted">{{ $sender['empty'] }}</span>
+                        @endif
+                    </div>
+                    <div class="flex flex-col gap-3.5">
+                        <div class="flex flex-col gap-1.5">
+                            <label for="em-from-name" class="{{ $lab }}">{{ __('admin.em_from_name') }}</label>
+                            <x-bs-admin::input id="em-from-name" name="em_sender_name" autocomplete="organization" wire:model.live.blur="fromName" />
+                        </div>
+                        @if ($sender['edit'])
+                            {{-- «Nhà cung cấp khác»: the part before @ is typed, the domain is the one it sends from --}}
+                            <div class="flex flex-col gap-1.5">
+                                <span class="flex items-center gap-1"><label for="em-from-local" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</label><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ __('admin.em_from_help_edit') }}</x-bs-admin::help-pop></span>
+                                <span class="flex items-stretch">
+                                    <input id="em-from-local" type="text" name="em_from_local" autocomplete="off" spellcheck="false" wire:model.live.blur="fromLocal"
+                                           x-on:input="$el.value = $el.value.replace(/[^a-zA-Z0-9._-]/g, '')" placeholder="{{ $sender['defaultLocal'] }}"
+                                           aria-label="{{ __('admin.em_from_local') }}" @error('fromLocal') aria-invalid="true" aria-describedby="em-from-local-err" @else @if ($sender['keptNote'] !== '') aria-describedby="em-from-kept" @endif @enderror
+                                           class="field block min-w-0 flex-1 rounded-s border border-e-0 border-border-input bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                                    <span class="inline-flex items-center rounded-e border border-border-input bg-surface-hover px-3 text-[calc(0.84375rem+var(--user-text-boost))] whitespace-nowrap text-text-muted">{{ '@'.($sender['suffix'] !== '' ? $sender['suffix'] : '—') }}</span>
+                                </span>
+                                @error('fromLocal')
+                                    <x-bs-admin::field-error id="em-from-local-err">{{ $message }}</x-bs-admin::field-error>
+                                @else
+                                    @if ($sender['keptNote'] !== '')
+                                        {{-- A stored address on another domain than the one it sends from now stays as it is until edited --}}
+                                        <span id="em-from-kept" class="text-caption leading-normal text-text-muted" data-from-kept>{{ $sender['keptNote'] }}</span>
+                                    @endif
+                                @enderror
+                            </div>
+                        @elseif ($sender['locked'] !== '')
+                            {{-- A signed-in Google / Microsoft / Yahoo mailbox, or «Email khác» on a public mailbox, sends as itself: shown, never typed --}}
+                            <div class="flex flex-col gap-1.5">
+                                <span class="flex items-center gap-1"><span id="em-from-ro-l" class="{{ $lab }}">{{ __('admin.em_from_addr') }}</span><x-bs-admin::help-pop :label="__('admin.em_from_help')">{{ $sender['lockedHelp'] }}</x-bs-admin::help-pop></span>
+                                <span role="textbox" aria-readonly="true" aria-labelledby="em-from-ro-l" data-from-locked
+                                      class="flex min-w-0 items-center gap-2 rounded border border-border-strong bg-surface-hover px-[11px] py-[9px] text-[calc(0.875rem+var(--user-text-boost))] text-text-muted">
+                                    <x-bs-admin::icon name="ri-lock" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" />
+                                    <span class="min-w-0 [overflow-wrap:anywhere]">{{ $sender['locked'] }}</span>
+                                </span>
+                            </div>
+                        @endif
+                        <div class="flex flex-col gap-1.5">
+                            <span class="flex items-center gap-1"><label for="em-reply-to" class="{{ $lab }}">{{ __('admin.em_reply_label') }}</label><x-bs-admin::help-pop :label="__('admin.em_reply_help')">{{ __('admin.em_reply_help_text') }}</x-bs-admin::help-pop></span>
+                            <x-bs-admin::input id="em-reply-to" type="email" name="em_reply_to" autocomplete="off" inputmode="email" wire:model.live.blur="replyTo" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="min-w-0 [overflow-wrap:anywhere] @min-[56.25rem]:border-s @min-[56.25rem]:border-border @min-[56.25rem]:ps-6">
+                    <h2 class="mb-3.5 text-caption font-bold tracking-[.04em] text-text-muted uppercase">{{ __('admin.em_notify_title') }}</h2>
+                    {{-- «Gửi thông báo tới»: Enter, a comma or Tab adds what is typed (leaving the box too);
+                         Backspace in the empty box takes the last address off. The server checks each one. --}}
+                    <div class="flex flex-col gap-1.5"
+                         x-data="{ draft: '', add() { const v = this.draft.trim().replace(/,$/, ''); if (v === '') return; this.draft = ''; $wire.addNotify(v) } }">
+                        <span class="flex items-center gap-1"><span id="em-notify-l" class="{{ $lab }}">{{ __('admin.em_notify_label') }}</span><x-bs-admin::help-pop :label="__('admin.em_notify_help')">{{ __('admin.em_notify_help_text') }}</x-bs-admin::help-pop></span>
+                        <div @class([
+                                'flex min-h-11 w-full flex-wrap items-center gap-1.5 any-pointer-coarse:gap-y-4 rounded border bg-surface px-2 py-1.5 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-primary-text',
+                                'border-danger-text' => $notifyErr !== '',
+                                'border-border-input has-[input:focus]:border-primary-text' => $notifyErr === '',
+                            ]) role="group" aria-labelledby="em-notify-l">
+                            @foreach ($notifyTo as $i => $email)
+                                @php $ok = \App\Modules\Forms\Support\FormDraft::isEmail($email); @endphp
+                                <span wire:key="em-nt-{{ $i }}-{{ md5($email) }}" data-notify-chip @unless ($ok) data-bad @endunless
+                                      @class(['inline-flex max-w-full items-center gap-[5px] rounded-full py-[3px] ps-2.5 pe-1 text-[calc(0.8125rem+var(--user-text-boost))]',
+                                              'bg-surface-muted text-primary-text' => $ok, 'bg-danger-base/12 text-danger-text' => ! $ok])>
+                                    <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts($email) }}</span>
+                                    <button type="button" wire:click="removeNotify({{ \Illuminate\Support\Js::from($email) }})" aria-label="{{ __('admin.em_notify_remove', ['email' => $email]) }}" title="{{ __('admin.em_notify_remove', ['email' => $email]) }}"
+                                            class="hit-area-row inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full [--hit-gap:1.25rem] hover:bg-surface-hover">
+                                        <x-bs-admin::icon name="ri-close" class="size-3.5" />
+                                    </button>
+                                </span>
+                            @endforeach
+                            <input id="em-notify-in" type="text" inputmode="email" autocomplete="off" spellcheck="false" x-model="draft"
+                                   x-on:keydown="if ($event.isComposing) return; if (['Enter', ',', 'Tab'].includes($event.key) && draft.trim() !== '') { $event.preventDefault(); add() } else if ($event.key === 'Backspace' && draft === '' && $wire.notifyTo.length > 0) { $wire.removeNotify($wire.notifyTo[$wire.notifyTo.length - 1]) }"
+                                   x-on:blur="add()"
+                                   aria-label="{{ __('admin.em_notify_input') }}" placeholder="{{ $notifyTo === [] ? __('admin.em_notify_ph', ['domain' => $sender['placeholderDomain']]) : '' }}"
+                                   @if ($notifyErr !== '') aria-invalid="true" aria-describedby="em-notify-err" @endif
+                                   {{-- focus-ring-ok: the chips box draws the ring (has-[input:focus-visible]) --}} class="min-h-control min-w-[7.5rem] flex-[1_1_7.5rem] border-0 bg-transparent px-0.5 text-[calc(0.875rem+var(--user-text-boost))] text-text placeholder:text-placeholder focus-visible:outline-none any-pointer-coarse:min-h-hit">
+                        </div>
+                        @if ($sender['suggestions'] !== [])
+                            <div class="mt-[3px] flex flex-wrap gap-2">
+                                @foreach ($sender['suggestions'] as $sg)
+                                    <button type="button" wire:click="addNotify({{ \Illuminate\Support\Js::from($sg) }})" wire:key="em-sg-{{ md5($sg) }}"
+                                            class="inline-flex min-h-control max-w-full cursor-pointer items-center rounded-full border border-dashed border-border-input bg-surface px-3 py-1 text-start text-caption text-primary-text transition-colors hover:bg-primary-soft any-pointer-coarse:min-h-hit">
+                                        <span class="min-w-0 [overflow-wrap:normal]">{{ $mailParts('+'.$sg) }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                        @if ($notifyErr !== '')
+                            <x-bs-admin::field-error id="em-notify-err">{{ $notifyErr }}</x-bs-admin::field-error>
+                        @endif
+                    </div>
+                    {{-- The board says the notices follow the member's profile language; a new-lead notice is sent
+                         in the website's main language, so the line says that instead. --}}
+                    @php($siteLang = app(\App\Modules\Tenancy\Context\SiteLocale::class)->default())
+                    {{-- a language with no admin texts sends the notice in the fallback one --}}
+                    @php($siteLang = is_file(lang_path($siteLang.'.json')) ? $siteLang : (string) config('app.fallback_locale'))
+                    <div class="mt-2.5 flex items-start gap-[9px] text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text-muted">
+                        <x-bs-admin::icon name="ri-translate-2" class="mt-0.5 size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0 text-text-muted" />
+                        <p class="min-w-0">{!! str_replace('%lang%', '<b class="font-semibold text-text">'.e(config('locales.labels.'.$siteLang) ?? strtoupper($siteLang)).'</b>', e(__('admin.em_notify_lang', ['lang' => '%lang%']))) !!}</p>
+                    </div>
+                    <div class="mt-3 flex items-start gap-[9px] rounded border border-info-base/28 bg-info-base/7 px-3 py-[11px]">
+                        <x-bs-admin::icon name="ri-reply" class="mt-px size-[min(1.5rem,calc(0.9375rem+var(--user-text-boost)))] shrink-0 text-info-text" />
+                        <p class="min-w-0 text-[calc(0.78125rem+var(--user-text-boost))] leading-relaxed text-text">{!! str_replace('%who%', $replyWho, e(__('admin.em_notify_reply', ['who' => '%who%']))) !!}</p>
+                    </div>
+                </div>
+
+                {{-- «Gửi thư kiểm tra tới»: one address (empty = the member's own). Typing again hides the
+                     last result until the next send, as on the board; the server checks the address. The
+                     address is no setting: it rides with the next request (no wire:model, so the save bar
+                     never counts it as an unsaved change). --}}
+                {{-- inline @php only below: a block here would swallow the inline ones above it --}}
+                @php($testErr = $errors->first('testTo') ?: ($testResult === 'error' ? __('admin.test_email_failed') : ''))
+                @php($testOk = $testErr === '' && $testResult === 'ok')
+                <div class="col-span-full mt-1.5 border-t border-border pt-4" x-data="{ typed: false, to: @js($testTo) }" data-test-send>
+                    <div class="flex flex-col gap-1.5">
+                        <label for="em-test-to" class="{{ $lab }}">{{ __('admin.em_test_to') }}</label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input id="em-test-to" type="email" name="em_test_to" autocomplete="off" inputmode="email" spellcheck="false" maxlength="254"
+                                   x-model="to" x-on:input="typed = true; $wire.$set('testTo', $el.value, false)" placeholder="{{ __('admin.em_test_ph') }}"
+                                   {{-- Enter sends the test (not the save bar's «Lưu»: this address is no setting) --}}
+                                   x-on:keydown.enter="if ($event.isComposing || $event.keyCode === 229) return; $event.preventDefault(); typed = false; $wire.sendTest()"
+                                   @if ($testErr !== '') aria-invalid="true" x-bind:aria-invalid="typed ? 'false' : 'true'" @endif
+                                   aria-describedby="{{ $testErr !== '' || $testOk ? 'em-test-msg' : 'em-test-idle' }}" @if ($testErr !== '' || $testOk) x-bind:aria-describedby="typed ? 'em-test-idle' : 'em-test-msg'" @endif
+                                   class="field block min-w-[180px] max-w-[340px] flex-1 rounded border border-border-input bg-surface px-3 text-text placeholder:text-placeholder transition-colors focus:border-primary-text aria-invalid:border-danger-text">
+                            <x-bs-admin::button type="button" variant="outline" class="@max-[22.4375rem]:@max-[19.95em]:w-full" wire:click="sendTest" x-on:click="typed = false" wire:loading.attr="disabled" wire:target="sendTest">
+                                <span wire:loading.remove wire:target="sendTest" class="inline-flex items-center gap-2"><x-bs-admin::icon :name="$testOk ? 'ri-refresh' : 'ri-send-plane'" class="size-4 shrink-0" />{{ $testOk ? __('admin.em_test_again') : __('admin.em_test_send') }}</span>
+                                <span wire:loading.inline-flex wire:target="sendTest" class="items-center gap-2"><x-bs-admin::icon name="ri-loader-4" class="size-4 shrink-0 animate-spin motion-reduce:animate-none" />{{ __('admin.em_test_sending') }}</span>
+                            </x-bs-admin::button>
+                        </div>
+                    </div>
+                    @if ($testOk)
+                        <p id="em-test-msg" class="mt-[9px] flex items-center gap-[7px] text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-success-text" x-show="! typed" data-test-ok>
+                            <x-bs-admin::icon name="ri-checkbox-circle" class="size-[min(1.5rem,calc(0.875rem+var(--user-text-boost)))] shrink-0" /><span class="min-w-0 [overflow-wrap:anywhere]">{{ $testSentNote }}</span>
+                        </p>
+                    @elseif ($testErr !== '')
+                        <x-bs-admin::field-error id="em-test-msg" class="mt-[9px]" x-show="! typed" data-test-err>{{ $testErr }}</x-bs-admin::field-error>
+                    @endif
+                    {{-- read out when a test mail has left (the error line above reads itself out) --}}
+                    <x-bs-admin::sr-live>{{ $testOk ? $testSentNote : '' }}</x-bs-admin::sr-live>
+                    <p class="mt-[9px] text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted" id="em-test-idle" @if ($testOk || $testErr !== '') x-show="typed" x-cloak @endif data-test-idle>{{ __('admin.em_test_idle') }}</p>
+                </div>
+            </div>
+        </form>
+    @endif
 
     @if ($scope !== 'platform')
+                <livewire:admin.email-recent-mail wire:key="em-recent-mail" />
             </div>{{-- #em-panel-send --}}
+
+            <div id="em-panel-tpl" role="tabpanel" aria-labelledby="em-tab-tpl" class="flex flex-col gap-[18px]"
+                 @if ($tab !== 'tpl') hidden @endif x-bind:hidden="tab !== 'tpl'">
+                <livewire:admin.email-templates wire:key="em-templates" :from-name="$sender['name'] ?? ''" :from-address="$sender['address'] ?? ''" />
+            </div>
 
             <div id="em-panel-sign" role="tabpanel" aria-labelledby="em-tab-sign" class="flex flex-col gap-[18px]"
                  @if ($tab !== 'sign') hidden @endif x-bind:hidden="tab !== 'sign'">

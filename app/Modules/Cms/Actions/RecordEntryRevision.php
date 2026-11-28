@@ -82,7 +82,7 @@ final readonly class RecordEntryRevision
     /**
      * The content of one locale as it stands now.
      *
-     * @return array{v: int, title: string, slug: string, body: array<array-key, mixed>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name: string|null, cover_alt: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
+     * @return array{v: int, title: string, slug: string, body: array<array-key, mixed>, excerpt: string|null, seo_title: string|null, seo_description: string|null, og_image_id: int|null, author_name: string|null, cover_alt: string|null, focus_keyword: string|null, template_override: string|null, cover_media_id: int|null, meta: array<array-key, mixed>}
      */
     public static function snapshot(Entry $entry, EntryTranslation $translation): array
     {
@@ -100,6 +100,7 @@ final readonly class RecordEntryRevision
             'og_image_id' => self::intOrNull($translation->getAttribute('og_image_id')),
             'author_name' => self::stringOrNull($translation->getAttribute('author_name')),
             'cover_alt' => self::stringOrNull($translation->getAttribute('cover_alt')),
+            'focus_keyword' => self::stringOrNull($translation->getAttribute('focus_keyword')),
             'template_override' => self::stringOrNull($entry->getAttribute('template_override')),
             'cover_media_id' => self::intOrNull($entry->getAttribute('cover_media_id')),
             'meta' => is_array($meta) ? $meta : [],

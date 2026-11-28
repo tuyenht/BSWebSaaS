@@ -303,6 +303,21 @@ jobs:
       # tests alone, ModuleBoundariesTest about 450M of it, ArchTest about 250M), and it always
       # landed in the last shard, which then ran out of 1G however many shards there were. On its
       # own it gets 2G; the shards keep 1G.
+      # qpdf counts the pages of uploaded PDFs (App\Modules\Media\Services\PdfPages); its real-binary
+      # test skips without it. Every Pest shard installs it: which shard a test class lands in follows
+      # tests/.pest/shards.json and moves whenever that file is rebuilt. The runner's extra package
+      # sources (packages.microsoft.com answered 403 once) must not fail the step: the update may
+      # fail in part, and only the install, retried, decides.
+      - name: Install qpdf (PDF page counts)
+        if: matrix.shard != 'arch'
+        run: |
+          for try in 1 2 3; do
+            sudo apt-get update -qq || echo "apt-get update did not reach every source (try $try)"
+            if sudo apt-get install -y --no-install-recommends qpdf; then exit 0; fi
+            sleep 10
+          done
+          echo "qpdf could not be installed after 3 tries"; exit 1
+
       - name: Pest (unit · feature · arch · query-budget) shard ${{ matrix.shard }}
         env:
           SHARD: ${{ matrix.shard }}

@@ -123,3 +123,32 @@ it('shows a picked choice by its value when its label is empty in that language'
 
     openLead($lead)->assertSeeInOrder(['Nhu cầu', 'cnc']);
 });
+
+it('shows a day the Vietnamese way and several picks by their labels, in the inbox and the owner\'s email', function (): void {
+    [$form, $lead] = quoteLead(['name' => 'Khách A', 'day' => '2026-12-24', 'slot' => 'chieu', 'need' => ['cnc', 'khuon'], 'qty' => '12.5']);
+    app(Tenancy::class)->enter(1, fn () => $form->fields()->createMany([
+        ['key' => 'qty', 'type' => 'number', 'label' => ['vi' => 'Số lượng'], 'sort_order' => 7],
+        ['key' => 'day', 'type' => 'date', 'label' => ['vi' => 'Ngày hẹn'], 'sort_order' => 8],
+        ['key' => 'slot', 'type' => 'radio', 'label' => ['vi' => 'Khung giờ'], 'sort_order' => 9,
+            'options' => ['choices' => [['value' => 'sang', 'label' => ['vi' => 'Buổi sáng']], ['value' => 'chieu', 'label' => ['vi' => 'Buổi chiều']]]]],
+        ['key' => 'need', 'type' => 'checkboxes', 'label' => ['vi' => 'Dịch vụ'], 'sort_order' => 10,
+            'options' => ['choices' => [['value' => 'cnc', 'label' => ['vi' => 'Gia công CNC']], ['value' => 'khuon', 'label' => ['vi' => 'Khuôn mẫu']]]]],
+    ]));
+    $form = app(Tenancy::class)->enter(1, fn () => $form->fresh('fields'));
+
+    openLead($lead)
+        ->assertSeeInOrder(['Số lượng', '12.5', 'Ngày hẹn', '24/12/2026', 'Khung giờ', 'Buổi chiều', 'Dịch vụ', 'Gia công CNC, Khuôn mẫu'])
+        ->assertDontSee('2026-12-24');
+
+    $lines = implode("\n", app(Tenancy::class)->enter(1, fn () => (new NewLeadNotification($lead, $form))->toMail(new AnonymousNotifiable)->introLines));
+    expect($lines)->toContain('**Ngày hẹn:** 24/12/2026')
+        ->toContain('**Khung giờ:** Buổi chiều')
+        ->toContain('**Dịch vụ:** Gia công CNC, Khuôn mẫu');
+});
+
+it('shows a day as it was sent when it is not a calendar day', function (): void {
+    [$form, $lead] = quoteLead(['name' => 'Khách A', 'day' => 'thứ Hai']);
+    app(Tenancy::class)->enter(1, fn () => $form->fields()->create(['key' => 'day', 'type' => 'date', 'label' => ['vi' => 'Ngày hẹn'], 'sort_order' => 7]));
+
+    openLead($lead)->assertSeeInOrder(['Ngày hẹn', 'thứ Hai']);
+});

@@ -7,11 +7,13 @@ use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -216,7 +218,7 @@ trait WithMediaDetailDrawer
         if ($media === null) {
             return;
         }
-        $media->restore();
+        app(TrashMedia::class)->restore(new EloquentCollection([$media]));
         $this->closeDetail();
         $this->say(__('media.lib.restored', ['n' => 1]));
     }

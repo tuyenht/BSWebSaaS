@@ -1,0 +1,2 @@
+@props(['html', 'text' => ''])
+{{ $text }}

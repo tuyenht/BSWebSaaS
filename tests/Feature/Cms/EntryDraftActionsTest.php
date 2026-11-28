@@ -908,6 +908,46 @@ it('leaves the byline as it is when applying a change saved before bylines exist
     });
 });
 
+it('carries a live post\'s focus keyword through a pending change, per language, and applies the one the change names', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory(), ['vi', 'en']);
+        $entry->translationFor('vi')->update(['focus_keyword' => 'bản tin kỹ thuật']);
+        $entry->translationFor('en')->update(['focus_keyword' => 'engineering news']);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+        expect($change->content['locales']['vi']['focus_keyword'])->toBe('bản tin kỹ thuật');
+
+        $change = app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['focus_keyword' => 'tin gia công CNC']);
+        expect($entry->fresh()->translationFor('vi')->focus_keyword)->toBe('bản tin kỹ thuật');   // the live words stay until applied
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->version());
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin mới')->focus_keyword->toBe('tin gia công CNC')
+            ->and($entry->fresh()->translationFor('en')->focus_keyword)->toBe('engineering news');
+
+        // words the column cannot take are refused, nothing held
+        expect(changeRejection(fn () => app(SaveEntryDraft::class)->handle($entry->fresh(), $author, 'vi', ['focus_keyword' => str_repeat('a', 121)])))
+            ->toBe('content_invalid')
+            ->and(changeOf($entry->fresh()))->toBeNull();
+    });
+});
+
+it('leaves the focus keyword as it is when applying a change saved before it existed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin cũ']);
+        $content = $change->content;
+        unset($content['locales']['vi']['focus_keyword']);
+        $change->forceFill(['content' => $content])->save();
+        $entry->translationFor('vi')->update(['focus_keyword' => 'bản tin kỹ thuật']);
+
+        app(ApplyEntryDraft::class)->handle($entry->fresh(), $publisher, $change->fresh()->version());
+
+        expect($entry->fresh()->translationFor('vi'))->title->toBe('Bản tin cũ')->focus_keyword->toBe('bản tin kỹ thuật');
+    });
+});
+
 it('names the picture of a change by its row, and the applied post too, with no old key beside it', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         [$author, $publisher] = changeCast();

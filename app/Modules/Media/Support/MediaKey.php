@@ -7,6 +7,8 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Shared\Support\Slugger;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use League\Flysystem\FilesystemException;
 use LogicException;
 use RuntimeException;
@@ -121,6 +123,24 @@ final class MediaKey
         }
 
         return true;
+    }
+
+    /**
+     * Deletes the object at $key if the transaction now open rolls back (a savepoint included), and
+     * only then: for an object just stored for a row this transaction created, so a row that never
+     * commits leaves no object behind and one that commits keeps it. Outside a transaction nothing is
+     * registered (the row is already written). The delete runs after the rollback, so it makes no
+     * query; a re-upload of the same bytes puts the object back (UploadMedia's self-heal).
+     */
+    public static function dropOnRollBack(string $key): void
+    {
+        if (DB::transactionLevel() === 0) {
+            return;
+        }
+        $disk = self::disk();
+        DB::afterRollBack(static function () use ($disk, $key): void {
+            Storage::disk($disk)->delete($key);
+        });
     }
 
     /**
