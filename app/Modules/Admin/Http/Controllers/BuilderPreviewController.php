@@ -36,7 +36,7 @@ use Symfony\Component\HttpFoundation\Response;
  * 413 before anything is decoded; a nonce that is not 32 lower-case hex digits → 422 (a string the
  * client sent is never printed unchecked); blocks a save would refuse → 422. A language the site has
  * on that the entry has no translation in yet is drawn from the posted title and blocks (the editor
- * opens it as an empty form), never 404; a title there a save would refuse → 422. Every refusal
+ * opens it as an empty form), never 404; a title there over the save's length → 422. Every refusal
  * is BuilderFrameError's small page, so the frame's script can tell the editor; what the middleware
  * raise (403, 404, 413, 419, 429, 503) and a fault of ours (500) get it from AdminErrorPages.
  *
@@ -135,7 +135,7 @@ final readonly class BuilderPreviewController
     /**
      * The translation drawn: the saved one with the posted blocks, or — in a language the entry has
      * none in yet — one made from the posted title and blocks, or null when a save would refuse that
-     * title (the editor's rule: one line of plain text, required, at most 200 characters). Neither is
+     * title (the editor's rule: one line of plain text, at most 200 characters; empty is drawn). Neither is
      * ever saved.
      *
      * @param  list<array{type: string, props: array<string, mixed>}>  $blocks
@@ -144,12 +144,16 @@ final readonly class BuilderPreviewController
     {
         $translation = $entry->translationFor($locale);
         if ($translation === null) {
+            // an empty field reaches here as null (ConvertEmptyStringsToNull)
+            $title ??= '';
             if (! is_string($title)) {
                 return null;
             }
-            // normalized first, then the rule a save checks, as the editor does (Editor::rules)
+            // normalized first, then the rule a save checks, as the editor does (Editor::rules), less
+            // `required`: the editor opens a new language with an empty title, and the frame still draws it
             $title = PlainText::line($title);
-            if (Validator::make(['title' => $title], ['title' => app(EntryContentRules::class)->rules()['title']])->fails()) {
+            $rule = array_values(array_filter(app(EntryContentRules::class)->rules()['title'], fn (mixed $r): bool => $r !== 'required'));
+            if (Validator::make(['title' => $title], ['title' => $rule])->fails()) {
                 return null;
             }
             $translation = new EntryTranslation([

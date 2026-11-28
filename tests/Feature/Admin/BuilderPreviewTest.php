@@ -516,6 +516,17 @@ it('answers maintenance and a fault of ours inside the frame with the frame’s 
     'a fault' => [500],
 ]);
 
+it('leaves a fault to Laravel’s own debug page while debugging, not the frame’s page', function (): void {
+    config(['app.debug' => true]);
+    $ulid = bpDraft();
+    $editor = bpMember();
+    app()->bind(EntryPreviewPage::class, static fn () => throw new RuntimeException('boom'));
+
+    $response = bpPost($editor, $ulid, [bpText('x')])->assertStatus(500);
+
+    expect((string) $response->getContent())->not->toContain('<meta name="bs-pb-error"');
+});
+
 it('falls back to Laravel’s own handling when the frame’s page itself cannot be drawn', function (): void {
     $this->swap(Vite::class, new class extends Vite
     {
@@ -531,7 +542,7 @@ it('falls back to Laravel’s own handling when the frame’s page itself cannot
         ->assertRedirect();
 });
 
-it('checks the posted title of a language the entry has no translation in yet as a save would', function (mixed $title, ?string $shown): void {
+it('checks the posted title of a language the entry has no translation in yet as a save would, an empty one drawn', function (mixed $title, ?string $shown): void {
     DB::connection('pgsql_admin')->table('site_locales')->insert(['site_id' => 1, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
     $ulid = bpDraft();
     $editor = bpMember();
@@ -546,8 +557,8 @@ it('checks the posted title of a language the entry has no translation in yet as
 })->with([
     '200 characters' => [str_repeat('a', 200), str_repeat('a', 200)],
     '201 characters' => [str_repeat('a', 201), null],
-    'empty' => ['', null],
-    'only a line break' => ["\n", null],
+    'empty, as a new language opens' => ['', 'Words not saved yet.'],
+    'only a line break' => ["\n", 'Words not saved yet.'],
     'not text' => [['About'], null],
     'a line break inside, made one line' => ["About\nour workshop", 'About our workshop'],
 ]);
