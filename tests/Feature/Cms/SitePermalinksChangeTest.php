@@ -8,6 +8,8 @@ use App\Modules\Cms\Jobs\ReflowPermalinks;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\RedirectRules;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\PermalinkConfig;
@@ -392,6 +394,60 @@ it('checks every prefix: filled, plain letters, not a platform address, not anot
     });
     expect($reason)->toBe('invalid');
     Queue::assertNotPushed(ReflowPermalinks::class);
+});
+
+/** The problem a pages prefix of $base meets, null when it is taken. */
+function plBaseProblem(string $base): ?string
+{
+    return plIn(fn (): array => app(ChangeSitePermalinks::class)->problems(['pages' => ['pattern' => 'base', 'base' => $base]]))['pages']['code'] ?? null;
+}
+
+it('takes a prefix that is only shaped like a language code, and the storefront serves the pages under it', function (string $base): void {
+    Queue::fake();
+    $id = plIn(fn (): int => plEntry('page', 'gioi-thieu')->id);
+
+    expect(plBaseProblem($base))->toBeNull()
+        ->and(plRefusal(['pages' => ['pattern' => 'base', 'base' => $base]]))->toBeNull()
+        ->and(plRun())->toBeTrue()
+        ->and(plRoutes(1))->toBe(['/'.$base.'/gioi-thieu' => 'e'.$id]);
+
+    // not a language of the website, so the storefront reads it as an address in the default language
+    $this->get('http://a.test/'.$base.'/gioi-thieu')->assertOk();
+    $this->get('http://a.test/gioi-thieu')->assertStatus(301)->assertRedirect('http://a.test/'.$base.'/gioi-thieu');
+})->with(['du-an', 'tu-van']);
+
+it('refuses every language the platform offers and every language the website has, and no other code-shaped word', function (): void {
+    // a language the website has outside the platform list, switched off (it can be switched back on)
+    DB::connection('pgsql_admin')->table('site_locales')->insert(
+        ['site_id' => 1, 'locale' => 'pt-br', 'is_default' => false, 'enabled' => false, 'is_public' => false, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $languages = array_values(array_unique([...config('locales.content'), ...array_keys(config('locales.labels')), 'pt-br']));
+    expect($languages)->toContain('vi', 'en', 'zh', 'ja', 'ko', 'fr', 'de', 'th');
+
+    foreach ($languages as $code) {
+        expect(plBaseProblem($code))->toBe('base_reserved', $code);
+    }
+    foreach (['du-an', 'tu-van'] as $word) {
+        expect(plBaseProblem($word))->toBeNull($word);
+    }
+    // another website's languages are not this one's
+    expect(plIn(fn (): ?string => app(ChangeSitePermalinks::class)->problems(['pages' => ['pattern' => 'base', 'base' => 'pt-br']])['pages']['code'] ?? null, 2))->toBeNull();
+});
+
+it('refuses the first segments the platform answers on, and takes a word beside them', function (): void {
+    $platform = ['sys', 'admin', 'login', 'livewire'];
+    foreach (PathBuilder::RESERVED_PATHS as $path) {
+        $platform[] = explode('/', trim($path, '/'), 2)[0];
+    }
+    $platform = array_values(array_unique([...$platform, ...app(RedirectRules::class)->reservedSegments()]));
+    expect($platform)->toContain('tim-kiem', 'the');
+
+    foreach ($platform as $segment) {
+        if (preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $segment) === 1) {
+            expect(plBaseProblem($segment))->toBe('base_reserved', $segment);
+        }
+    }
+    expect(plBaseProblem('tu-van'))->toBeNull();
 });
 
 /** Free the site's place in the queue, as it frees itself after uniqueFor (a queued run that was lost). */
