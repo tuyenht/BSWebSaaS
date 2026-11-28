@@ -19,6 +19,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Media\Support\MediaStorage;
+use App\Modules\Shared\Support\Bytes;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Carbon\CarbonImmutable;
@@ -1034,7 +1035,7 @@ final class Library extends Component
             $this->picked = [];
         }
         $this->cancelPurge();
-        $this->say(__('media.lib.purged', ['n' => $done['files'], 'size' => self::bytes($done['bytes'])]));
+        $this->say(__('media.lib.purged', ['n' => $done['files'], 'size' => Bytes::size($done['bytes'])]));
     }
 
     /*
@@ -1341,37 +1342,18 @@ final class Library extends Component
         $share = MediaStorage::share($used, $limit);
         $over = $share['over'];
         $level = $over && $enforcing ? 'full' : ($share['warn'] ? 'warn' : 'ok');
-        $limitText = self::megabytes($limit, 0);
-        $left = self::megabytes(max(0, $limit - $used));
+        $limitText = Bytes::megabytes($limit, 0);
+        $left = Bytes::megabytes(max(0, $limit - $used));
 
         return [
             'level' => $level,
             'pct' => $share['pct'],
-            'used' => self::megabytes($used),
+            'used' => Bytes::megabytes($used),
             'limit' => $limitText,
             'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])
                 : __($level === 'warn' ? 'media.lib.st_warn' : 'media.lib.st_left', ['left' => $left]),
-            'trash' => self::megabytes(max(0, $usage['trash'])),
+            'trash' => Bytes::megabytes(max(0, $usage['trash'])),
         ];
-    }
-
-    /** Bytes as megabytes, to $decimals places at most, the Vietnamese way («312,4 MB», «500 MB»). */
-    private static function megabytes(int $bytes, int $decimals = 1): string
-    {
-        $mb = round($bytes / 1048576, $decimals);
-        $places = $mb === floor($mb) ? 0 : $decimals;
-
-        return number_format($mb, $places, ',', '.').' MB';
-    }
-
-    /** "12,3 MB" — the size of files as people read it, Vietnamese decimal comma. */
-    public static function bytes(int $bytes): string
-    {
-        if ($bytes < 1024 * 1024) {
-            return number_format(max(1, (int) round($bytes / 1024)), 0, ',', '.').' KB';
-        }
-
-        return number_format($bytes / 1048576, 1, ',', '.').' MB';
     }
 
     /** A folder of this site by its slug (the scope and RLS keep another site's out), or null. */

@@ -212,7 +212,7 @@
 
         <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-body">
             <dt class="text-text-muted">{{ __('media.drw.dims') }}</dt><dd class="m-0 text-end text-text-strong [overflow-wrap:anywhere]">{{ $dims }}</dd>
-            <dt class="text-text-muted">{{ __('media.drw.size') }}</dt><dd class="m-0 text-end text-text-strong">{{ \App\Modules\Admin\Livewire\Media\Library::bytes((int) $m->size) }}</dd>
+            <dt class="text-text-muted">{{ __('media.drw.size') }}</dt><dd class="m-0 text-end text-text-strong">{{ \App\Modules\Shared\Support\Bytes::size((int) $m->size) }}</dd>
             <dt class="text-text-muted">{{ __('media.drw.format') }}</dt><dd class="m-0 text-end text-text-strong">{{ strtoupper($m->extLabel()) }}</dd>
             <dt class="text-text-muted">{{ __('media.drw.folder') }}</dt><dd class="m-0 text-end text-text-strong [overflow-wrap:anywhere]">{{ $m->folder !== null ? $m->folder->name : __('media.lib.unfiled') }}</dd>
             <dt class="text-text-muted">{{ __('media.drw.by') }}</dt><dd class="m-0 text-end text-text-strong [overflow-wrap:anywhere]">{{ $d['uploader'] !== '' ? $d['uploader'] : '—' }}</dd>

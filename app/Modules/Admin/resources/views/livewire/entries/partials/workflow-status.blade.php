@@ -42,7 +42,7 @@
                 <x-bs-admin::icon name="ri-flow-chart" class="size-4 text-accent" />
                 <span class="text-sm font-semibold text-heading">{{ __('admin.wfb.title') }}</span>
                 @if ($workflow['is_live'])
-                    <span class="inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-success/10 px-2.5 text-[10.5px] font-bold text-[#0a6d60]">
+                    <span class="inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-success/10 px-2.5 text-[10.5px] font-bold text-admin-success-text">
                         <x-bs-admin::icon name="ri-global" class="size-3" />{{ __('admin.wfb.live_chip') }}
                     </span>
                 @endif
@@ -81,8 +81,8 @@
                                 'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-2 text-[13px]',
                                 'border-admin-primary bg-admin-primary text-white' => $done,
                                 'border-accent bg-surface text-accent shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]' => $cur && ! $pub,
-                                'border-admin-success-text bg-surface text-[#0a6d60] shadow-[0_0_0_4px_rgba(10,179,156,.16)]' => $cur && $pub,
-                                'border-admin-success/45 bg-surface text-[#0a6d60]' => ! $done && ! $cur && $pub,
+                                'border-admin-success-text bg-surface text-admin-success-text shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-admin-success)_16%,transparent)]' => $cur && $pub,
+                                'border-admin-success/45 bg-surface text-admin-success-text' => ! $done && ! $cur && $pub,
                                 'border-border bg-surface text-body-muted' => ! $done && ! $cur && ! $pub,
                             ])>
                                 <x-bs-admin::icon :name="$done ? 'ri-check' : $stepIcon($step)" class="size-3.5" />
@@ -92,7 +92,7 @@
                         <span @class([
                             'px-1 text-center text-[11.5px] leading-snug text-pretty',
                             'font-bold text-accent' => $cur && ! $pub,
-                            'font-bold text-[#0a6d60]' => $cur && $pub,
+                            'font-bold text-admin-success-text' => $cur && $pub,
                             'text-body-text' => $done,
                             'text-body-muted' => ! $done && ! $cur,
                         ])>{{ $step['label'] }}</span>
@@ -117,7 +117,7 @@
             @endif
 
             @if ($workflow['missing'] !== [] && $workflow['actions'] !== [] && ! $workflow['current']['is_published'])
-                <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#8a5f18]">
+                <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-admin-warning-text">
                     <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ __('admin.wfb.missing_line', ['fields' => implode(', ', $workflow['missing'])]) }}</span>
                 </p>
@@ -154,7 +154,7 @@
                     </p>
                 </div>
             @else
-                <p class="flex items-start gap-2 rounded bg-admin-info/10 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#22688f]">
+                <p class="flex items-start gap-2 rounded bg-admin-info/10 px-3 py-2.5 text-[12.5px] leading-relaxed text-admin-info-text">
                     <x-bs-admin::icon name="ri-time" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ $workflow['current']['is_published'] ? __('admin.wfb.wait_line_live') : __('admin.wfb.wait_line') }}</span>
                 </p>
@@ -212,29 +212,29 @@
             <div class="absolute inset-0 bg-gray-900/50" x-on:click="close()"></div>
             <div class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-md bg-surface shadow-[0_5px_20px_rgba(56,65,74,.28)]">
                 <div class="flex items-center gap-2 border-b border-border-soft px-4 py-3.5">
-                    <x-bs-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-[#c0432c]" />
+                    <x-bs-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-admin-danger-text" />
                     <span class="text-sm font-semibold text-heading">{{ $action['label'] }}</span>
                     <button type="button" class="hit-area ml-auto flex size-control shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
                         <x-bs-admin::icon name="ri-close" class="size-5" />
                     </button>
                 </div>
                 <div class="flex flex-col gap-3 overflow-auto p-4">
-                    <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#8a5f18]">
+                    <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-admin-warning-text">
                         <x-bs-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
                         <span>{{ $workflow['is_live'] && ! $action['to_published'] ? __('admin.wfb.modal_retract') : __('admin.wfb.modal_return', ['label' => $action['to_label']]) }}</span>
                     </p>
                     <p class="text-[12.5px] leading-relaxed text-body-muted">{{ __('admin.wfb.modal_hint') }}</p>
-                    @error('workflow') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
+                    @error('workflow') <p class="text-xs font-semibold text-admin-danger-text">{{ $message }}</p> @enderror
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text">*</span></label>
                         <textarea id="wf-note-{{ $action['key'] }}" x-model="note" x-on:input="bad = false" rows="4"
                                   class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text"
                                   :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-accent'"
                                   placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
-                        <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-[#c0432c]">
+                        <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-admin-danger-text">
                             <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
                         </p>
-                        @error('transitionNote') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
+                        @error('transitionNote') <p class="text-xs font-semibold text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-who-{{ $action['key'] }}">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
@@ -245,7 +245,7 @@
                             @endforeach
                         </select>
                         <p class="text-[11.5px] leading-relaxed text-body-muted">{{ __('admin.wfb.assign_hint') }}</p>
-                        @error('assignTo') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
+                        @error('assignTo') <p class="text-xs font-semibold text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft bg-surface-muted px-4 py-3">

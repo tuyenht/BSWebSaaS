@@ -312,7 +312,7 @@
                             </span>
                             <span class="min-w-0 flex-1 truncate text-[13px] text-body-text">{{ $m->original_filename }}</span>
                             <span class="w-[100px] text-[12.5px] text-body-muted">{{ $m->width !== null ? $m->width.' × '.$m->height : '—' }}</span>
-                            <span class="w-[70px] text-[12.5px] text-body-muted">{{ number_format($m->size / 1048576, 1) }} MB</span>
+                            <span class="w-[70px] text-[12.5px] text-body-muted">{{ \App\Modules\Shared\Support\Bytes::size((int) $m->size) }}</span>
                             <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-accent">{{ $m->extLabel() }}</span></span>
                             </button>
                             @unless ($pickerTrash)

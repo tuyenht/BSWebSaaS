@@ -46,7 +46,7 @@
                 <div class="flex items-center justify-between gap-2.5">
                     <span class="truncate text-[13px] font-semibold text-heading">{{ $pickerUrlPreview['filename'] }}</span>
                     <span class="shrink-0 text-[11.5px] text-body-muted">
-                        {{ $pickerUrlPreview['width'] !== null ? $pickerUrlPreview['width'].' × '.$pickerUrlPreview['height'].' · ' : '' }}~{{ number_format($pickerUrlPreview['size'] / 1048576, 1) }} MB
+                        {{ $pickerUrlPreview['width'] !== null ? $pickerUrlPreview['width'].' × '.$pickerUrlPreview['height'].' · ' : '' }}~{{ \App\Modules\Shared\Support\Bytes::size((int) $pickerUrlPreview['size']) }}
                     </span>
                 </div>
                 {{-- $editorLibraryOnly (set by a host whose stored HTML names only library pictures): the copy is kept, never optional. --}}

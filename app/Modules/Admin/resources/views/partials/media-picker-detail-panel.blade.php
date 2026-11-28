@@ -37,7 +37,7 @@
             </div>
             <div class="flex justify-between text-[12.5px]">
                 <span class="text-body-muted">{{ __('media.picker_detail_size') }}</span>
-                <span class="text-body-text">{{ number_format($d->size / 1048576, 1) }} MB</span>
+                <span class="text-body-text">{{ \App\Modules\Shared\Support\Bytes::size((int) $d->size) }}</span>
             </div>
             <div class="flex justify-between text-[12.5px]">
                 <span class="text-body-muted">{{ __('media.picker_detail_format') }}</span>

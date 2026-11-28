@@ -568,6 +568,29 @@ it('opens the detail panel for a library image and loads its alt in the site loc
     });
 });
 
+it('writes sizes in the list and the detail panel in the page language\'s format: «1,5 MB», «860 KB»', function (): void {
+    $user = pickerManager();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        app()->setLocale('vi');
+        $big = seedPickerMedia('lon', ['size' => 1_572_864]);
+        seedPickerMedia('nho', ['size' => 880_640]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('setPickerView', 'list');
+        $list = $component->html();
+
+        expect($list)->toContain('1,5 MB')->toContain('860 KB')
+            ->not->toContain('1.5 MB')
+            ->not->toContain('0.8 MB');
+
+        $detail = $component->call('openPickerDetail', $big->ulid)->html();
+        expect($detail)->toContain(e(__('media.picker_detail_size')))
+            ->and(substr_count($detail, '1,5 MB'))->toBeGreaterThanOrEqual(2); // the list row and the panel
+    });
+});
+
 it('saves alt for the site locale without touching other locales (media.upload)', function (): void {
     $user = pickerManager(['media.upload']);
 

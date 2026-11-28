@@ -127,3 +127,16 @@ it('paints secondary text a reader needs with the muted role, never the decorati
     'breadcrumb + subtitle' => '<x-bs-admin::page-header title="Người dùng" subtitle="Quản lý thành viên."><x-slot:breadcrumbs>Bảng điều khiển / Người dùng</x-slot:breadcrumbs></x-bs-admin::page-header>',
     'unselected tab' => '<x-bs-admin::tabs :tabs="[\'a\' => \'Một\', \'b\' => \'Hai\']" />',
 ]);
+
+it('paints the editor\'s «Trạng thái duyệt» panel with the status text roles, never a raw colour', function (): void {
+    $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/partials/workflow-status.blade.php'));
+
+    // a raw hex colour as ink is fixed in the light look and unreadable in the dark one
+    expect($source)->not->toMatch('/#[0-9a-fA-F]{3,8}\b/')
+        ->and($source)->toContain('text-admin-success-text')
+        ->toContain('text-admin-warning-text')
+        ->toContain('text-admin-info-text')
+        ->toContain('text-admin-danger-text')
+        // the ring of the published step follows the success role too
+        ->toContain('color-mix(in_oklab,var(--color-admin-success)_16%,transparent)');
+});

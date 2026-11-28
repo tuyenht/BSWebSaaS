@@ -635,6 +635,19 @@ it('draws the screen: the header, the theme\'s templates and each row carrying i
         ->not->toMatch('/&quot;(id|parent_id|taxonomy_id|cover_media_id)&quot;:\d/');
 });
 
+it('draws a tree row\'s «Sửa» and «Mục con» as the light row buttons of every list, without a border', function (): void {
+    cxIn(1, fn (): Taxonomy => cxCreate('Tin công ty', $this->root));
+
+    $html = (string) $this->actingAs($this->editor->fresh())->get('http://a.test/admin/taxonomies?section=tin-tuc')->assertOk()->getContent();
+
+    foreach ([e(__('categories.ui_edit_of', ['name' => 'Tin công ty'])), e(__('categories.ui_add_child_of', ['name' => 'Tin công ty']))] as $name) {
+        expect(preg_match('/<button\b[^>]*aria-label="'.preg_quote($name, '/').'"[^>]*>/', $html, $tag))->toBe(1);
+        expect($tag[0])->toContain('bg-admin-primary/10 text-accent')
+            ->not->toContain('border-border-input')
+            ->not->toContain('admin-secondary-text');
+    }
+});
+
 it('draws the drawer\'s languages as the board does: pills, «+N» with the panel of every version, and the languages settings only for who may change them', function (): void {
     $url = 'http://a.test/admin/taxonomies?section=tin-tuc';
     $html = $this->actingAs($this->editor->fresh())->get($url)->assertOk()->getContent();

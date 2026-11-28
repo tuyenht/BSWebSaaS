@@ -6,6 +6,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Support\Bytes;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -227,7 +228,7 @@ it('empties the whole Trash a page at a time and counts every file it deleted', 
             }
         });
         $page->call('confirmPurge')
-            ->assertSet('toast', __('media.lib.purged', ['n' => 3, 'size' => Library::bytes(3 * 2048)]));
+            ->assertSet('toast', __('media.lib.purged', ['n' => 3, 'size' => Bytes::size(3 * 2048)]));
 
         expect(Media::withTrashed()->count())->toBe(0);
     });

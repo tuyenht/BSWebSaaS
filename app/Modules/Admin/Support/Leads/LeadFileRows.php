@@ -9,9 +9,9 @@ use App\Modules\Forms\Models\FormSubmissionFile;
 use App\Modules\Forms\Support\FormFieldTypes;
 use App\Modules\Forms\Support\LeadFileKinds;
 use App\Modules\Forms\Support\LeadFileStorage;
+use App\Modules\Shared\Support\Bytes;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Number;
 
 /**
  * A lead's «Tệp đính kèm» as the inbox lists them (board «Khách liên hệ»): each file's name, what
@@ -63,11 +63,7 @@ final class LeadFileRows
     /** «2,4 MB», «860 KB»: the size as people read it, in the page's number format. */
     public static function size(int $bytes, string $locale): string
     {
-        if ($bytes < 1024 * 1024) {
-            return Cast::string(Number::format(max(1, (int) round($bytes / 1024)), locale: $locale)).' KB';
-        }
-
-        return Cast::string(Number::format($bytes / 1048576, precision: 1, locale: $locale)).' MB';
+        return Bytes::size($bytes, $locale);
     }
 
     private static function type(?string $extension): string
