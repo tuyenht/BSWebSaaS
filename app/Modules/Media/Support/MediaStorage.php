@@ -39,6 +39,9 @@ final readonly class MediaStorage
     /** The plan limit that caps the library, in megabytes. */
     public const string FEATURE = 'media.storage_mb';
 
+    /** The share of the plan from which the meters warn, in percent. */
+    public const int WARN_AT = 80;
+
     private const int MB = 1048576;
 
     public function __construct(
@@ -115,6 +118,28 @@ final readonly class MediaStorage
             'used' => $read['values'][self::BYTES],
             'trash' => $read['values'][self::TRASH],
             'limit' => max(0, Cast::int($limit)) * self::MB,
+        ];
+    }
+
+    /**
+     * The share of the plan $usedBytes takes, the one way every meter reads it (the library's
+     * «Dung lượng đã dùng», the «Dung lượng thư viện» card of "Tổng quan"): both figures to a tenth
+     * of a megabyte, as the meters print them, so a meter never reads 80 while it does not warn, nor
+     * 100 before the room is used up. `over` once the used figure reaches the plan's (a plan with no
+     * room is always over); `pct` rounded down, at most 100; `warn` from WARN_AT percent, or over.
+     *
+     * @return array{pct: int, over: bool, warn: bool}
+     */
+    public static function share(int $usedBytes, int $limitBytes): array
+    {
+        $usedTenths = (int) round(max(0, $usedBytes) * 10 / self::MB);
+        $limitTenths = (int) round(max(0, $limitBytes) * 10 / self::MB);
+        $over = $usedTenths >= $limitTenths;
+
+        return [
+            'pct' => $over ? 100 : intdiv($usedTenths * 100, $limitTenths),
+            'over' => $over,
+            'warn' => $over || $usedTenths * 100 >= $limitTenths * self::WARN_AT,
         ];
     }
 

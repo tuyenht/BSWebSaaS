@@ -8,6 +8,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Services\SiteCounters;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -25,6 +26,8 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
     Storage::fake('r2');
     config(['media.storage_enforce' => false]);
+    // the platform's upgrade switch is a global row no truncate clears (another file may leave it on)
+    DB::connection('pgsql_admin')->table('platform_settings')->where('group_name', 'plans')->delete();
 });
 
 /** Site 1: a ceiling of $limitMb (its own override) and $usedMb stored, one file listed. */
