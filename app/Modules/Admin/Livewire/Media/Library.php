@@ -7,14 +7,18 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Admin\Support\MediaDeleteRights;
 use App\Modules\Admin\Support\MediaLibraryDirectory;
 use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Media\Actions\PurgeMedia;
 use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Jobs\DeleteLargeMediaFolder;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Carbon\CarbonImmutable;
@@ -409,6 +413,15 @@ final class Library extends Component
             $this->dispatch('media-folder-open', slug: Cast::string(MediaFolder::query()->whereKey($folder->parent_id)->value('slug')));
         }
         $this->openUpload();
+    }
+
+    /** «Mở Thùng rác» / «Dọn Thùng rác» on the storage card: the Trash opens (the upload panel closes). */
+    public function openTrash(): void
+    {
+        abort_unless(MediaDeleteRights::some(), 403);
+
+        $this->closeUpload();
+        $this->setFolder('~trash');
     }
 
     public function closeUpload(): void
@@ -913,8 +926,8 @@ final class Library extends Component
         abort_unless(MediaDeleteRights::some(), 403);
 
         // only what this person may send: someone else's file (or one in use, for «own») stays
-        $rows = app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->get();
-        $rows->each->delete(); // one by one, so the observers fire
+        // only the ones still out of the Trash go (and count): one by one, through TrashMedia
+        $rows = app(TrashMedia::class)->trash(app(MediaDeleteRights::class)->trashable(Media::query()->whereIn('ulid', $this->targets()))->get());
         // the open file went to the Trash: its drawer goes with it, and the chosen files stay chosen
         if ($this->single) {
             $this->closeDetail();
@@ -969,7 +982,7 @@ final class Library extends Component
     {
         abort_unless(MediaDeleteRights::some(), 403);
 
-        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get()->each->restore()->count();
+        $n = app(TrashMedia::class)->restore(MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->undoTrash))->get())->count();
         $this->undoTrash = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
@@ -979,7 +992,7 @@ final class Library extends Component
         abort_unless(MediaDeleteRights::some(), 403);
 
         // with media.delete.own only what this person put in the Trash comes back out
-        $n = MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get()->each->restore()->count();
+        $n = app(TrashMedia::class)->restore(MediaDeleteRights::restorable(Media::onlyTrashed()->whereIn('ulid', $this->picked))->get())->count();
         $this->picked = [];
         $this->say(__('media.lib.restored', ['n' => $n]));
     }
@@ -1011,16 +1024,16 @@ final class Library extends Component
         app(SupportSession::class)->forbid();
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets());
-        $rows = $query->get();
-        $bytes = Cast::int($rows->sum('size'));
-        $rows->each->forceDelete(); // one by one, so the observer drops attachments and the stored file
+        // one by one, so the observer drops attachments and the stored file; the message counts what
+        // was really deleted (a file taken back out of the Trash meanwhile is kept)
+        $done = app(PurgeMedia::class)->purge($query->get());
         if ($this->single) {
             $this->closeDetail(); // the open file is gone for good
         } else {
             $this->picked = [];
         }
         $this->cancelPurge();
-        $this->say(__('media.lib.purged', ['n' => $rows->count(), 'size' => self::bytes($bytes)]));
+        $this->say(__('media.lib.purged', ['n' => $done['files'], 'size' => self::bytes($done['bytes'])]));
     }
 
     /*
@@ -1173,9 +1186,12 @@ final class Library extends Component
         $whenCounts = [];
         $groupCounts = [];
         $useCounts = [];
+        $usage = null;
         try {
             // a savepoint inside the request's tenancy transaction: a failed read leaves it usable
-            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$groupCounts, &$useCounts): void {
+            DB::transaction(function () use ($directory, $canDelete, $canDeleteAny, $trash, &$folders, &$counts, &$page, &$totals, &$current, &$mineN, &$chosenN, &$people, &$byCounts, &$whenCounts, &$groupCounts, &$useCounts, &$usage): void {
+                // «Dung lượng đã dùng»: the stored and Trash totals and the plan's ceiling, one statement
+                $usage = app(MediaStorage::class)->usage();
                 $folders = MediaFolder::inTreeOrder(MediaFolder::query()->orderBy('position')->orderBy('name')->orderBy('id')
                     ->get(['id', 'name', 'slug', 'parent_id', 'position']));
                 $current = $this->currentFolder($folders);
@@ -1245,6 +1261,10 @@ final class Library extends Component
         }
 
         $drawer = $failed ? null : $this->detailView();
+        $canUpload = Gate::allows('media.upload');
+        $storage = $usage === null ? null : self::storageMeter($usage, MediaStorage::enforcing());
+        // the full state's second button: the plans when the platform invites upgrades, else support
+        $upsell = $storage !== null && $storage['level'] === 'full' && $canUpload && app(UpgradeInvitation::class)->isOn();
 
         // a folder's count holds its sub-folders' files, as its list does
         $treeN = [];
@@ -1271,8 +1291,11 @@ final class Library extends Component
             'newerUlid' => $page['newer'],
             'totals' => $totals,
             'trash' => $trash,
-            'canUpload' => Gate::allows('media.upload'),
+            'canUpload' => $canUpload,
             'canDelete' => $canDelete,
+            'storage' => $storage,
+            'upsell' => $upsell,
+            'supportMail' => Cast::string(config('support.mailbox')) ?: Cast::string(config('mail.from.address')),
             'canDeleteAny' => $canDeleteAny,
             // «own», with files chosen: how many of them the Trash button / Khôi phục acts on
             'mineN' => $mineN,
@@ -1296,6 +1319,50 @@ final class Library extends Component
         $view->title(__('media.lib.title'));
 
         return $view;
+    }
+
+    /**
+     * The «Dung lượng đã dùng» card from the library's totals (board 12): the level — `full` once the
+     * ceiling is reached, `warn` from 80 %, else `ok` — the bar's percent (at most 100) and the texts in
+     * megabytes to a tenth. As on the board, the level comes from the used figure the card shows (to a
+     * tenth of a megabyte), and the percent is rounded down from it, so the bar never reads 80 while
+     * the card is still `ok`, nor 100 before it says the room is used up. `full` (nothing more can be
+     * uploaded) only while the storage switch refuses uploads: with it off a website above its plan is
+     * told so on the `warn` card, never «chưa tải thêm được», which would not be true.
+     *
+     * @param  array{used: int, trash: int, limit: int}  $usage  bytes
+     * @return array{level: 'ok'|'warn'|'full', pct: int, used: string, limit: string, status: string, trash: string}
+     */
+    public static function storageMeter(array $usage, bool $enforcing): array
+    {
+        $used = max(0, $usage['used']);
+        $limit = max(0, $usage['limit']);
+        // tenths of a megabyte, the figures the card prints
+        $usedTenths = (int) round($used * 10 / 1048576);
+        $limitTenths = (int) round($limit * 10 / 1048576);
+        $over = $usedTenths >= $limitTenths;
+        $level = $over && $enforcing ? 'full' : ($over || $usedTenths * 5 >= $limitTenths * 4 ? 'warn' : 'ok');
+        $limitText = self::megabytes($limit, 0);
+        $left = self::megabytes(max(0, $limit - $used));
+
+        return [
+            'level' => $level,
+            'pct' => $over ? 100 : intdiv($usedTenths * 100, $limitTenths),
+            'used' => self::megabytes($used),
+            'limit' => $limitText,
+            'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])
+                : __($level === 'warn' ? 'media.lib.st_warn' : 'media.lib.st_left', ['left' => $left]),
+            'trash' => self::megabytes(max(0, $usage['trash'])),
+        ];
+    }
+
+    /** Bytes as megabytes, to $decimals places at most, the Vietnamese way («312,4 MB», «500 MB»). */
+    private static function megabytes(int $bytes, int $decimals = 1): string
+    {
+        $mb = round($bytes / 1048576, $decimals);
+        $places = $mb === floor($mb) ? 0 : $decimals;
+
+        return number_format($mb, $places, ',', '.').' MB';
     }
 
     /** "12,3 MB" — the size of files as people read it, Vietnamese decimal comma. */

@@ -6,7 +6,10 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteFeature;
+use App\Modules\Tenancy\Services\SiteCounters;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -95,6 +98,18 @@ it('uploads each file once through the media library and reuses it on the next r
         ->and(packMedia($this->siteId))->toBe($keys)
         ->and(ContentPacks::in($this->siteId, fn () => Media::query()->count()))->toBe(2)
         ->and(Storage::disk('r2')->get($keys['header.png']))->toBe('marker');
+});
+
+it('loads the pack\'s images on a website with no room left, counting them, even with the storage switch on', function (): void {
+    config(['media.storage_enforce' => true]);
+    ContentPacks::in($this->siteId, fn () => SiteFeature::query()->create(['feature_key' => MediaStorage::FEATURE, 'value' => 0]));
+
+    [$exit, $output] = mediaLoad();
+
+    expect($exit)->toBe(0, $output)->and(packMedia($this->siteId))->toHaveCount(2);
+    $sizes = ContentPacks::in($this->siteId, fn () => (int) Media::query()->sum('size'));
+    expect(ContentPacks::in($this->siteId, fn () => app(SiteCounters::class)->read([MediaStorage::BYTES])['values'][MediaStorage::BYTES]))
+        ->toBe($sizes)->toBeGreaterThan(0);
 });
 
 it('reports a matching file in the Trash without restoring it, and restores it only when forced', function (): void {

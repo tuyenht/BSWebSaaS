@@ -82,6 +82,7 @@ use App\Modules\Identity\Support\UserPreferences;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Actions\InviteMember;
@@ -101,6 +102,7 @@ use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Services\SiteCounters;
 use App\Modules\Theme\Components\BlockReference;
 use App\Modules\Theme\Theming\AiCrawlerCheck;
 use Illuminate\Database\QueryException;
@@ -458,8 +460,8 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     app(PlatformAccess::class)->onPlatform(fn () => $top->assignRole('super_admin'));
     app(PlatformAccess::class)->forgetMemo();
     $this->flushSession();
-    $html = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
-    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    $auditHtml = $this->actingAs($top)->get($platform.'/audit')->assertOk()->getContent();
+    file_put_contents($dir.'/audit-cleanup.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $auditHtml));
 
     // «Đăng nhập nhanh»: the platform's face with Google connected and Facebook not yet (its policy
     // addresses configured), then a website's face on the same shared apps.
@@ -481,17 +483,23 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($html)->toContain(e(__('admin.sl.providers_site')));
     file_put_contents($dir.'/social.html', $html);
     // «Email» → «Nhà cung cấp khác»: «Chọn dịch vụ» on SendGrid not set up yet, then Amazon SES with
-    // its key saved and checked
+    // its key saved and checked (with two notice addresses); then a signed-in Google mailbox, whose
+    // sending address is locked
     foreach ([
         'email-other' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'sendgrid'],
         'email-other-saved' => ['provider' => 'other', 'method' => 'smtp_password', 'relay' => 'ses', 'relay_region' => 'eu-west-1',
-            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(),
+            'send_domain' => 'congtydemo.vn', 'checked_at' => now()->toIso8601String(), 'from_address' => 'lienhe@congtydemo.vn',
             'smtp' => ['host' => 'email-smtp.eu-west-1.amazonaws.com', 'port' => 587, 'encryption' => 'tls', 'username' => 'AKIAPREVIEWONLY00000', 'password' => SecretCipher::encrypt('preview-only')]],
+        'email-google' => ['provider' => 'google', 'method' => 'oauth2', 'from_name' => 'Công ty Demo',
+            'oauth' => ['provider' => 'google', 'client_id' => 'preview-client', 'client_secret' => SecretCipher::encrypt('preview-only'), 'refresh_token' => SecretCipher::encrypt('preview-only'), 'email' => 'hop@congtydemo.vn']],
     ] as $shot => $cfg) {
-        app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'config', $cfg));
+        app(Tenancy::class)->enter(1, function () use ($cfg, $shot): void {
+            app(SettingsRepository::class)->put('email', 'config', $cfg);
+            app(SettingsRepository::class)->put('email', 'notify_to', ['emails' => $shot === 'email-other' ? [] : ['kinhdoanh@congtydemo.vn', 'giamdoc@congtydemo.vn']]);
+        });
         $this->flushSession();
         $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email')->assertOk()->getContent();
-        expect($html)->toContain(e(__('admin.em_prov_title')))->not->toContain('preview-only');
+        expect($html)->toContain($shot === 'email-google' ? 'data-from-locked' : e(__('admin.em_prov_title')))->not->toContain('preview-only');
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
     DB::connection('pgsql_admin')->table('site_settings')->where('group_name', 'email')->delete();
@@ -507,7 +515,7 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     expect($dialog->get('exact'))->not->toBeNull();
     $steps = ['audit-cleanup-pick' => $pick, 'audit-cleanup-confirm' => $dialog->html()];
     foreach ($steps as $name => $open) {
-        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $html));
+        file_put_contents($dir.'/'.$name.'.html', str_replace([$platform, '</body>'], ['http://'.ADMIN_PREVIEW_HOST, $open.'</body>'], $auditHtml));
     }
 
     // "Gói & tính năng": three plans (one with a customer on it) as the platform super-admin, who
@@ -1608,6 +1616,24 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
     $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
     expect($html)->toContain('Ảnh xưởng', 'Hồ sơ công ty');
     file_put_contents($dir.'/media-folders.html', $html);
+    // «Dung lượng đã dùng»: «Sắp đầy» at 450 of 500 MB with «Mở Thùng rác», then, with the storage switch on,
+    // «Đã hết dung lượng» (the card's alert, the greyed upload button) and the upload panel's box
+    $addBytes = fn (int $mb) => app(Tenancy::class)->enter(1, fn () => app(SiteCounters::class)
+        ->addMany([MediaStorage::BYTES => $mb * 1048576, MediaStorage::TRASH => intdiv($mb, 10) * 1048576]));
+    $addBytes(450);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="warn"', e(__('media.lib.st_open_trash')));
+    file_put_contents($dir.'/media-storage-warn.html', $html);
+    config(['media.storage_enforce' => true]);
+    $addBytes(50);
+    $html = $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/media')->assertOk()->getContent();
+    expect($html)->toContain('data-lv="full"', 'id="tv-full"');
+    file_put_contents($dir.'/media-storage-full.html', $html);
+    $fullBox = app(Tenancy::class)->enter(1, fn (): string => $withSnapshot(Livewire::actingAs($owner)->test(Library::class)->call('openUpload')));
+    expect($fullBox)->toContain(e(__('media.lib.st_full_title')));
+    file_put_contents($dir.'/media-storage-full-upload.html', $swap($html, $fullBox, 'app\\.modules\\.admin\\.livewire\\.media\\.library'));
+    config(['media.storage_enforce' => false]);
+    $addBytes(-500);
     $library = fn () => Livewire::actingAs($owner)->test(Library::class)->call('setFolder', 'anh-xuong');
     $media = 'app\\.modules\\.admin\\.livewire\\.media\\.library';
     // the same page as a list, with its «Nơi dùng» column

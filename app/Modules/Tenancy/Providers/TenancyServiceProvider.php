@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Providers;
 
 use App\Modules\Shared\Contracts\DomainProvisioner;
+use App\Modules\Tenancy\Console\ReconcileCounters;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -60,6 +61,10 @@ final class TenancyServiceProvider extends ServiceProvider
         // A settings row can own rows of the library's "in use" index (mediables, D3): a stable alias
         // in storage instead of the class name, like the content owners ('entry', 'taxonomy').
         Relation::morphMap(['site_setting' => SiteSetting::class]);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([ReconcileCounters::class]);
+        }
 
         if (config('tenancy.assert', 'strict') === 'off') {
             return;

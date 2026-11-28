@@ -56,6 +56,8 @@ final class EdgeCachePurges
         'media_folders',
         // the admin product search's word table (the storefront search reads its own columns)
         'product_search_words',
+        // the website's running totals (stored bytes of its library): the admin's storage meter
+        'site_counters',
         // notices to the website's managers
         'site_notifications',
         // the isolation self-check's rows

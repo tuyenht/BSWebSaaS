@@ -2,20 +2,31 @@
 
 namespace App\Modules\Media\Console;
 
+use App\Modules\Media\Actions\PurgeMedia;
 use App\Modules\Media\Models\Media;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Permanently deletes media that has sat in the Trash (soft-deleted) longer than the configured
  * retention (config('media.trash_retention_days'), default 30). Scheduled daily; the manual
  * "empty trash" / "delete permanently" picker actions purge immediately regardless of age.
  *
- * Runs per-site inside Tenancy::enter so RLS + the model's global scope resolve each tenant's own
- * trash (a CLI has no site context otherwise). Purge is per-instance so MediaObserver fires and
- * drops each master's attachments + its single R2 object — a mass forceDelete would skip those
- * events and strand the R2 objects.
+ * Runs per site inside Tenancy::enter so RLS + the model's global scope resolve each tenant's own
+ * trash (a CLI has no site context otherwise), one transaction per page of CHUNK files: each page
+ * takes its files off the library's storage totals as its last write and commits, so the totals'
+ * rows are held only for that moment and never while a later page deletes its files (an upload of
+ * the same website meanwhile counts itself without waiting). Purge goes through PurgeMedia:
+ * per-instance so MediaObserver fires and drops each master's attachments + its single R2 object (a
+ * mass forceDelete would skip those events and strand the R2 objects); the stored files of a page
+ * are deleted only once that page has committed.
+ *
+ * A website that fails (its totals' row held past SiteCounters::LOCK_WAIT, say) keeps that page's
+ * files in its Trash, files intact, and is logged (Log::error) and skipped; the later websites are
+ * still purged, and the command then exits non-zero so the scheduler's failure hooks see it.
  */
 class PurgeTrashedMedia extends Command
 {
@@ -28,23 +39,40 @@ class PurgeTrashedMedia extends Command
     /** Files loaded at a time per site. */
     public const int CHUNK = 200;
 
-    public function handle(Tenancy $tenancy): int
+    public function handle(Tenancy $tenancy, PurgeMedia $purge): int
     {
         $configured = config('media.trash_retention_days', 30);
         $days = max(1, is_numeric($configured) ? (int) $configured : 30);
         $cutoff = now()->subDays($days);
         $purged = 0;
+        $failed = 0;
 
-        $tenancy->eachSite(function () use ($cutoff, &$purged): void {
-            // in pages by id, so a site with a large stale Trash never loads it whole
-            Media::onlyTrashed()->where('deleted_at', '<', $cutoff)
-                ->chunkById(self::CHUNK, function (Collection $stale) use (&$purged): void {
-                    $stale->each->forceDelete(); // per-instance → MediaObserver drops attachments + R2 object
-                    $purged += $stale->count();
-                });
-        });
+        foreach ($tenancy->siteIds() as $siteId) {
+            try {
+                // in pages by id, so a site with a large stale Trash never loads it whole
+                $after = 0;
+                do {
+                    [$gone, $after, $full] = $tenancy->enter($siteId, function () use ($cutoff, $purge, $after): array {
+                        $stale = Media::onlyTrashed()->where('deleted_at', '<', $cutoff)->where('id', '>', $after)
+                            ->orderBy('id')->limit(self::CHUNK)->get();
+
+                        return [$purge->handle($stale), Cast::int($stale->last()?->id, $after), $stale->count() === self::CHUNK];
+                    });
+                    $purged += $gone;
+                } while ($full);
+            } catch (Throwable $e) {
+                $failed++;
+                Log::error('Trash purge failed for a site', ['site_id' => $siteId, 'exception' => $e]);
+                $this->error("Site {$siteId}: {$e->getMessage()}");
+            }
+        }
 
         $this->info("Purged {$purged} trashed media older than {$days} day(s).");
+        if ($failed > 0) {
+            $this->error("Failed on {$failed} site(s); see the log.");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
