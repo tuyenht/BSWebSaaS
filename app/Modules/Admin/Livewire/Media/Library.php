@@ -1024,9 +1024,10 @@ final class Library extends Component
         app(SupportSession::class)->forbid();
 
         $query = $this->purgeAll ? Media::onlyTrashed() : Media::onlyTrashed()->whereIn('ulid', $this->targets());
-        // one by one, so the observer drops attachments and the stored file; the message counts what
-        // was really deleted (a file taken back out of the Trash meanwhile is kept)
-        $done = app(PurgeMedia::class)->purge($query->get());
+        // one by one, so the observer drops attachments and the stored file, a page of files at a time
+        // (a whole Trash is never loaded at once); the message counts what was really deleted (a file
+        // taken back out of the Trash meanwhile is kept)
+        $done = app(PurgeMedia::class)->purgeAll($query);
         if ($this->single) {
             $this->closeDetail(); // the open file is gone for good
         } else {
@@ -1337,17 +1338,15 @@ final class Library extends Component
     {
         $used = max(0, $usage['used']);
         $limit = max(0, $usage['limit']);
-        // tenths of a megabyte, the figures the card prints
-        $usedTenths = (int) round($used * 10 / 1048576);
-        $limitTenths = (int) round($limit * 10 / 1048576);
-        $over = $usedTenths >= $limitTenths;
-        $level = $over && $enforcing ? 'full' : ($over || $usedTenths * 5 >= $limitTenths * 4 ? 'warn' : 'ok');
+        $share = MediaStorage::share($used, $limit);
+        $over = $share['over'];
+        $level = $over && $enforcing ? 'full' : ($share['warn'] ? 'warn' : 'ok');
         $limitText = self::megabytes($limit, 0);
         $left = self::megabytes(max(0, $limit - $used));
 
         return [
             'level' => $level,
-            'pct' => $over ? 100 : intdiv($usedTenths * 100, $limitTenths),
+            'pct' => $share['pct'],
             'used' => self::megabytes($used),
             'limit' => $limitText,
             'status' => $over ? __('media.lib.st_used_all', ['limit' => $limitText])

@@ -7,6 +7,7 @@ use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -204,6 +205,35 @@ it('sends to the Trash with undo, restores and purges for good', function (): vo
             ->call('confirmPurge');
         expect(Media::withTrashed()->count())->toBe(1);
     });
+});
+
+/*
+ * «Xóa hết» deletes the whole Trash a page of files at a time: the Trash is never loaded whole, and
+ * the message still counts every file and its size.
+ */
+it('empties the whole Trash a page at a time and counts every file it deleted', function (): void {
+    $user = libUser(['media.view', 'media.delete.any', 'media.purge']);
+    $files = collect(['a.png', 'b.png', 'c.png'])->map(fn (string $name): Media => libFile(1, $name));
+    app(Tenancy::class)->enter(1, fn () => $files->each(fn (Media $m) => $m->delete()));
+
+    $listed = [];
+    app(Tenancy::class)->enter(1, function () use ($user, &$listed): void {
+        $page = Livewire::actingAs($user)->test(Library::class)
+            ->call('setFolder', '~trash')
+            ->call('askPurge', true);
+        DB::listen(function ($query) use (&$listed): void {
+            if (preg_match('/^select \* from "media" .*"deleted_at" is not null/', $query->sql) === 1) {
+                $listed[] = $query->sql;
+            }
+        });
+        $page->call('confirmPurge')
+            ->assertSet('toast', __('media.lib.purged', ['n' => 3, 'size' => Library::bytes(3 * 2048)]));
+
+        expect(Media::withTrashed()->count())->toBe(0);
+    });
+
+    expect($listed)->not->toBeEmpty()
+        ->and(collect($listed)->every(fn (string $sql): bool => str_contains($sql, ' limit ')))->toBeTrue();
 });
 
 it('filters by kind, format and alt text, and says how many match', function (): void {
