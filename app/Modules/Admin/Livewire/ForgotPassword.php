@@ -88,7 +88,7 @@ final class ForgotPassword extends Component
         // names) nor the right absolute host. Queuing also keeps the SMTP send out of the reply
         // time (with the hash above, the reply time stays close for every address; not exactly
         // constant: a member's path still writes the token and pushes the job).
-        Password::sendResetLink(['email' => $this->email], function (User $user, string $token): void {
+        $status = Password::sendResetLink(['email' => $this->email], function (User $user, string $token): void {
             $notification = (new ResetPasswordLinkNotification(AdminPlane::route('password.reset', [
                 'token' => $token,
                 'email' => $user->getEmailForPasswordReset(),
@@ -97,6 +97,12 @@ final class ForgotPassword extends Component
 
             $user->notify($notification);
         });
+
+        // A second ask within the broker's throttle makes no link, so no hash: do it here, or a quick
+        // reply to a repeated ask would tell that the address belongs to a member.
+        if ($status === Password::RESET_THROTTLED) {
+            Hash::make(Str::random(64));
+        }
 
         $this->sentResponse();
     }

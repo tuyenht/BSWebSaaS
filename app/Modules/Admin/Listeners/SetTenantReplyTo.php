@@ -27,7 +27,6 @@ final readonly class SetTenantReplyTo
         private CurrentSite $current,
         private SettingsRepository $settings,
         private PlatformSettings $platform,
-        private MailSendContext $context,
     ) {}
 
     public function handle(MessageSending $event): void
@@ -36,7 +35,9 @@ final readonly class SetTenantReplyTo
             return;
         }
 
-        $cfg = $this->context->accountMail ? $this->platform->get('email') : $this->settings->get('email');
+        // Read the context at send time, from the container the mail was set up in (as the other
+        // mail listeners do): under Octane the listener may be built from another one.
+        $cfg = app(MailSendContext::class)->accountMail ? $this->platform->get('email') : $this->settings->get('email');
         $replyTo = is_array($cfg) ? ($cfg['reply_to'] ?? null) : null;
         if (! is_string($replyTo) || $replyTo === '') {
             return;

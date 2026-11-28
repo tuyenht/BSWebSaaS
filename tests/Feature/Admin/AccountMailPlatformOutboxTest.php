@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -284,4 +285,39 @@ it('lets a member reset on this website\'s reset page', function (): void {
     });
 
     expect(Hash::check('a-fresh-secure-pass', $member->fresh()?->password ?? ''))->toBeTrue();
+});
+
+it('spends the token\'s hash on a reset page refusal, whoever the address belongs to', function (string $who): void {
+    fakePwnedVerifier();
+    $email = match ($who) {
+        'unknown address' => 'nobody-'.Str::random(8).'@example.test',
+        'not a member' => User::factory()->create()->email,
+        'member with no link waiting' => amMember()->email,
+    };
+    Hash::spy();
+
+    app(Tenancy::class)->enter(1, function () use ($email): void {
+        Livewire::test(ResetPassword::class)
+            ->set('token', Str::random(64))->set('email', $email)
+            ->set('password', 'a-fresh-secure-pass')->set('password_confirmation', 'a-fresh-secure-pass')
+            ->call('resetPassword')
+            ->assertHasErrors('email')
+            ->assertSee(__('auth.reset_failed'));
+    });
+
+    Hash::shouldHaveReceived('make')->once();
+})->with(['unknown address', 'not a member', 'member with no link waiting']);
+
+it('spends the token\'s hash on a repeated ask within the broker\'s throttle, so it answers no faster', function (): void {
+    Notification::fake();
+    $member = amMember();
+    $ask = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::test(ForgotPassword::class)
+        ->set('email', $member->email)->call('submit')->assertSet('sent', true));
+
+    $ask();
+    Hash::spy();
+    $ask();
+
+    Hash::shouldHaveReceived('make')->once();
+    Notification::assertSentToTimes($member, ResetPasswordLinkNotification::class, 1);
 });

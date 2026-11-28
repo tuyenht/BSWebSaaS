@@ -11,6 +11,7 @@ use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -57,10 +58,11 @@ final class ResetPassword extends Component
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ], ['email' => Str::lower(__('auth.email_label'))]);
 
-        if (! $this->mayResetHere()) {
-            // A member's link is checked with one hash (the password hasher, Argon2id): the refusal
-            // does the same work on a random value, so the reply time does not tell a member from
-            // anyone else.
+        if (! $this->mayTryHere()) {
+            // A link is checked with one hash of its token (the password hasher, Argon2id), and only
+            // when the account has one waiting. Every other way out does the same work on a random
+            // value, so the reply time tells neither a member from anyone else, nor an account from
+            // an unknown address.
             Hash::make(Str::random(64));
             $this->addError('email', __('auth.reset_failed'));
 
@@ -98,15 +100,27 @@ final class ResetPassword extends Component
         return null;
     }
 
-    private function mayResetHere(): bool
+    /**
+     * A known account with a link waiting, which may enter this website (the platform console serves
+     * every account; a website only its members). Anything else is refused before the broker, which
+     * would answer an unknown address or a missing link without the hash.
+     */
+    private function mayTryHere(): bool
     {
-        if (! app(CurrentSite::class)->hasId()) {
-            return true;
+        $user = Password::broker()->getUser(['email' => $this->email]);
+        if (! $user instanceof User) {
+            return false;
         }
 
-        $user = Password::broker()->getUser(['email' => $this->email]);
+        if (app(CurrentSite::class)->hasId() && ! app(EnsureTenantMember::class)->admits($user)) {
+            return false;
+        }
 
-        return ! $user instanceof User || app(EnsureTenantMember::class)->admits($user);
+        $broker = Cast::string(config('auth.defaults.passwords'));
+
+        return DB::table(Cast::string(config("auth.passwords.{$broker}.table")))
+            ->where('email', $user->getEmailForPasswordReset())
+            ->exists();
     }
 
     public function render(): View
