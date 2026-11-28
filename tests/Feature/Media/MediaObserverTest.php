@@ -1,8 +1,13 @@
 <?php
 
+use App\Modules\Media\Actions\PurgeMedia;
+use App\Modules\Media\Actions\TrashMedia;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -92,4 +97,30 @@ it('never deletes an object under a seed folder, whichever field names it', func
 
     Storage::disk('r2')->assertExists($seed);
     Storage::disk('r2')->assertMissing($own);
+});
+
+/*
+ * A purge deletes the stored file only after it commits; by then the key is free again. A re-upload of
+ * the same bytes under the same name gets that same key and stores its object there before the delete
+ * runs, so the delete must look once more and leave a key a row names by then.
+ */
+it('leaves the stored file of a re-upload that took the purged file’s key before its delete ran', function (): void {
+    $bytes = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true);
+    $old = app(Tenancy::class)->enter(1, function () use ($bytes): Media {
+        $media = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('may-tien.png', $bytes));
+        app(TrashMedia::class)->trash(new Collection([$media]));
+
+        return $media;
+    });
+
+    $new = app(Tenancy::class)->enter(1, function () use ($bytes): Media {
+        app(PurgeMedia::class)->purge(Media::onlyTrashed()->get());
+
+        return app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('may-tien.png', $bytes));
+    });
+
+    expect($new->id)->not->toBe($old->id)
+        ->and($new->storage_key)->toBe($old->storage_key) // the same name and bytes: the same key
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->pluck('id')->all()))->toBe([$new->id]);
+    Storage::disk('r2')->assertExists($new->storage_key);
 });
