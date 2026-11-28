@@ -102,7 +102,8 @@ final readonly class TenantMailer implements TenantMailConfigurator
      * password-reset link, an email-verification link, a sign-in code, a code that changes the sign-in
      * email): it leaves only through the platform's shared outbox, never the website's own, so a
      * website's mail server never sees it. The website's sender name stays; the address and the
-     * server are the platform's. No platform outbox → the log mailer, never the website's own.
+     * server are the platform's. No platform outbox → the log mailer, never the website's own. Nor
+     * does it carry the website's Reply-To (MailSendContext::$accountMail, read by SetTenantReplyTo).
      */
     public function applyPlatform(): bool
     {
@@ -119,6 +120,7 @@ final readonly class TenantMailer implements TenantMailConfigurator
         // What is set up below is noted for the mail log and the daily limit (MailSendContext).
         $context = app(MailSendContext::class);
         $context->begin();
+        $context->accountMail = $platformOnly;
 
         [$cfg, $siteOwn] = $this->pick($platformOnly);
         if ($cfg === null) {

@@ -62,6 +62,11 @@ final class ResetPasswordLinkNotification extends Notification implements Should
         return ['mail'];
     }
 
+    protected function platformOutboxOnly(): bool
+    {
+        return true;
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyPlatformMailer();

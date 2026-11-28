@@ -11,6 +11,7 @@ use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Contracts\Auth\CanResetPassword;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -57,6 +58,10 @@ final class ResetPassword extends Component
         ], ['email' => Str::lower(__('auth.email_label'))]);
 
         if (! $this->mayResetHere()) {
+            // A member's link is checked with one hash (the password hasher, Argon2id): the refusal
+            // does the same work on a random value, so the reply time does not tell a member from
+            // anyone else.
+            Hash::make(Str::random(64));
             $this->addError('email', __('auth.reset_failed'));
 
             return null;

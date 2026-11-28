@@ -44,13 +44,16 @@ final readonly class MailLogWriter implements MailFailureRecorder
         $this->write($kind, $via, 'failed', in_array($reason, MailReason::CODES, true) ? $reason : 'other', $recipients, $notificationId, 'failed');
     }
 
-    /** A queued mail of $siteId failed for good (its notification's failed()): logged in a context of its own. */
-    public function queuedFailed(int $siteId, string $notificationClass, ?string $notificationId, Throwable $e): void
+    /**
+     * A queued mail of $siteId failed for good (its notification's failed()): logged in a context of its
+     * own. $via names the outbox when the mail only ever uses one (an account mail: `platform`).
+     */
+    public function queuedFailed(int $siteId, string $notificationClass, ?string $notificationId, Throwable $e, ?string $via = null): void
     {
         try {
-            $record = function () use ($notificationClass, $notificationId, $e): void {
+            $record = function () use ($notificationClass, $notificationId, $e, $via): void {
                 // The attempt's own context is gone with its job: name the outbox its next try would use.
-                $via = DB::transaction(fn (): string => app(TenantMailer::class)->outbox());
+                $via ??= DB::transaction(fn (): string => app(TenantMailer::class)->outbox());
                 $this->failed(MailKinds::of($notificationClass), $via, MailReason::of($e), [], $notificationId);
             };
 

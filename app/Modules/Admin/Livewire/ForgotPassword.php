@@ -10,6 +10,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -70,8 +71,13 @@ final class ForgotPassword extends Component
         RateLimiter::hit($key, 3600);
         RateLimiter::hit($ipKey, 3600);
 
-        // Not a member here → the same reply, no token made (an existing link of theirs stays valid).
-        if (! $this->mayResetHere()) {
+        // An unknown address, or not a member here → the same reply, no token made (an existing link
+        // of theirs stays valid). A link that is made costs one hash of its token (the password
+        // hasher, Argon2id), far more than everything else on this path: the refusal hashes a random
+        // token with the same hasher, so the reply time does not tell a member from anyone else.
+        $user = Password::broker()->getUser(['email' => $this->email]);
+        if (! $user instanceof User || ! $this->mayResetHere($user)) {
+            Hash::make(Str::random(64));
             $this->sentResponse();
 
             return;
@@ -79,9 +85,9 @@ final class ForgotPassword extends Component
 
         // The link is composed HERE, in the request — the queued notification runs in a worker
         // with no request host, which could pick neither the right plane (admin ↔ platform route
-        // names) nor the right absolute host. Queuing also makes the reply constant-time: a
-        // synchronous SMTP send is slower for an existing address than the broker's fast miss
-        // for an unknown one — a timing oracle the uniform reply body alone cannot close.
+        // names) nor the right absolute host. Queuing also keeps the SMTP send out of the reply
+        // time (with the hash above, the reply time stays close for every address; not exactly
+        // constant: a member's path still writes the token and pushes the job).
         Password::sendResetLink(['email' => $this->email], function (User $user, string $token): void {
             $notification = (new ResetPasswordLinkNotification(AdminPlane::route('password.reset', [
                 'token' => $token,
@@ -95,16 +101,10 @@ final class ForgotPassword extends Component
         $this->sentResponse();
     }
 
-    /** No website (the platform console), an unknown address (the broker's own miss), or a member here. */
-    private function mayResetHere(): bool
+    /** No website (the platform console) serves every account; a website only its members. */
+    private function mayResetHere(User $user): bool
     {
-        if (! app(CurrentSite::class)->hasId()) {
-            return true;
-        }
-
-        $user = Password::broker()->getUser(['email' => $this->email]);
-
-        return ! $user instanceof User || app(EnsureTenantMember::class)->admits($user);
+        return ! app(CurrentSite::class)->hasId() || app(EnsureTenantMember::class)->admits($user);
     }
 
     /** Uniform "sent" reply — identical whether the address exists or the request was capped. */

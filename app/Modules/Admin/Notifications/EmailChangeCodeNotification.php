@@ -62,6 +62,11 @@ final class EmailChangeCodeNotification extends Notification implements ShouldQu
         return ['mail'];
     }
 
+    protected function platformOutboxOnly(): bool
+    {
+        return true;
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyPlatformMailer();

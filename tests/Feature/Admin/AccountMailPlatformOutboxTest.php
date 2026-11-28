@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Livewire\ForgotPassword;
+use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Notifications\EmailChangeCodeNotification;
 use App\Modules\Admin\Notifications\EmailOtpNotification;
@@ -16,12 +18,17 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Livewire\Livewire;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 
 /*
  * The sign-in account is shared by every website. A mail carrying something that acts on it — a
@@ -46,24 +53,35 @@ afterEach(function (): void {
     Cache::forget('mail-own-outbox-failing:1');
 });
 
-function amPlatformOutbox(): void
+function amPlatformOutbox(?string $replyTo = null): void
 {
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
         'from_address' => 'no-reply@nen-tang.test',
+        'reply_to' => $replyTo,
         'smtp' => ['host' => 'smtp.nen-tang.test', 'port' => 587, 'encryption' => 'tls', 'username' => 'relay', 'password' => SecretCipher::encrypt('pw')],
     ]);
 }
 
 /** Site 1 runs its own, working mail server. */
-function amOwnOutbox(): void
+function amOwnOutbox(?string $replyTo = null): void
 {
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)->put('email', 'config', [
         'method' => 'smtp_password',
         'from_address' => 'chu@cong-ty.test',
         'from_name' => 'Cong Ty A',
+        'reply_to' => $replyTo,
         'smtp' => ['host' => 'smtp.cong-ty.test', 'port' => 587, 'encryption' => 'tls', 'username' => 'chu', 'password' => SecretCipher::encrypt('pw')],
     ]));
+}
+
+/** @return list<string> The Reply-To a message about to leave now gets. */
+function amReplyTo(): array
+{
+    $event = new MessageSending(new Email);
+    app(SetTenantReplyTo::class)->handle($event);
+
+    return array_map(fn (Address $address): string => $address->getAddress(), $event->message->getReplyTo());
 }
 
 function amMember(): User
@@ -101,6 +119,56 @@ it('sends the account mails through the platform outbox, not the website\'s own'
     'sign-in email change code' => [fn (User $user) => (new EmailChangeCodeNotification('123456', 10, true))->toMail($user)],
     'email verification link' => [fn (User $user) => (new VerifyEmail)->toMail($user)],
 ]);
+
+it('gives an account mail no website Reply-To, so a reply cannot carry its link or code to the website', function (Closure $send, ?string $platformReplyTo): void {
+    amPlatformOutbox($platformReplyTo);
+    amOwnOutbox(replyTo: 'lienhe@cong-ty.test');
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($send, $user, $platformReplyTo): void {
+        // Control: an ordinary website notice still answers to the website.
+        app(TenantMailer::class)->apply();
+        expect(amReplyTo())->toBe(['lienhe@cong-ty.test']);
+
+        $send($user);
+        expect(amReplyTo())->toBe($platformReplyTo === null ? [] : [$platformReplyTo]);
+
+        // The next ordinary mail answers to the website again.
+        app(TenantMailer::class)->apply();
+        expect(amReplyTo())->toBe(['lienhe@cong-ty.test']);
+    });
+})->with([
+    'password reset link' => [fn (User $user) => (new ResetPasswordLinkNotification('https://a.test/admin/reset-password?token=t'))->toMail($user)],
+    'sign-in code' => [fn (User $user) => (new EmailOtpNotification('123456', 10))->toMail($user)],
+    'sign-in email change code' => [fn (User $user) => (new EmailChangeCodeNotification('123456', 10, true))->toMail($user)],
+    'email verification link' => [fn (User $user) => (new VerifyEmail)->toMail($user)],
+])->with(['no platform reply-to' => [null], 'the platform\'s reply-to' => ['hotro@nen-tang.test']]);
+
+it('sends the verification link of a sign-in on a website through the platform outbox, without the website\'s Reply-To', function (): void {
+    config(['services.turnstile.secret_key' => '']);
+    amPlatformOutbox();
+    amOwnOutbox(replyTo: 'lienhe@cong-ty.test');
+    $transport = new ArrayTransport;
+    Mail::extend('smtp', fn (): ArrayTransport => $transport);
+    $member = amMember();
+    $member->forceFill(['email_verified_at' => null])->save();
+
+    app(Tenancy::class)->enter(1, function () use ($member): void {
+        Livewire::test(Login::class)
+            ->set('email', $member->email)
+            ->set('password', 'password')
+            ->call('login')
+            ->assertHasErrors('email');
+    });
+
+    expect($transport->messages())->toHaveCount(1);
+    $sent = $transport->messages()->first()?->getOriginalMessage();
+    expect($sent)->toBeInstanceOf(Email::class);
+    assert($sent instanceof Email);
+    expect($sent->getFrom()[0]->getAddress())->toBe('no-reply@nen-tang.test')
+        ->and($sent->getTo()[0]->getAddress())->toBe($member->email)
+        ->and($sent->getReplyTo())->toBe([]);
+});
 
 it('writes an account mail to the log, never to the website\'s own server, when the platform has no outbox', function (): void {
     amOwnOutbox();
@@ -149,6 +217,23 @@ it('sends the reset link to a member of this website', function (): void {
     });
 
     Notification::assertSentTo($member, ResetPasswordLinkNotification::class);
+});
+
+it('sends the reset link to a platform operator on a website\'s host (the operator may enter every website)', function (): void {
+    Notification::fake();
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(TeamContext::class)->forget();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        Livewire::test(ForgotPassword::class)
+            ->set('email', $operator->email)
+            ->call('submit')
+            ->assertSet('sent', true)
+            ->assertSee(__('auth.reset_link_sent'));
+    });
+
+    Notification::assertSentTo($operator, ResetPasswordLinkNotification::class);
 });
 
 it('keeps serving every account on the platform console', function (bool $operator): void {

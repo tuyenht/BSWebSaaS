@@ -1,7 +1,9 @@
 <?php
 
 use App\Modules\Admin\Models\MailLog;
+use App\Modules\Admin\Notifications\EmailChangeCodeNotification;
 use App\Modules\Admin\Notifications\EmailOtpNotification;
+use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Admin\Support\Mail\MailKinds;
 use App\Modules\Admin\Support\Mail\MailReason;
@@ -197,6 +199,26 @@ it('sends the email verification mail through the platform outbox, even when the
         ->and($rows)->toHaveCount(1)
         ->and($rows[0]->kind)->toBe('email_verification')
         ->and($rows[0]->via)->toBe('platform');
+});
+
+it('logs a queued account mail that failed for good under the platform outbox, an ordinary one under the website\'s own', function (): void {
+    mlogPlatformOutbox();
+    mlogOwnOutbox('93.184.216.34'); // a working own server: the website's ordinary mail would use it
+
+    foreach ([
+        new EmailOtpNotification('123456', 10),
+        new EmailChangeCodeNotification('123456', 10, true),
+        new ResetPasswordLinkNotification('https://a.test/admin/reset-password?token=t'),
+        new TwoFactorDisabledNotification('28/11/2026 10:00'),
+    ] as $note) {
+        $note->tenantSiteId = 1;
+        $note->failed(new TransportException('down'));
+    }
+
+    expect(mlogRows()->pluck('via')->all())->toBe(['platform', 'platform', 'platform', 'own'])
+        ->and(mlogRows()->pluck('status')->unique()->all())->toBe(['failed'])
+        ->and(mlogDay('platform')->failed)->toBe(3)
+        ->and(mlogDay('own')->failed)->toBe(1);
 });
 
 it('does not wait long for a day row another job holds: the mail leaves and its record is kept', function (): void {

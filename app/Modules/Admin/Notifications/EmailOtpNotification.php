@@ -71,6 +71,11 @@ final class EmailOtpNotification extends Notification implements ShouldQueue
         return ['mail'];
     }
 
+    protected function platformOutboxOnly(): bool
+    {
+        return true;
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         $this->applyPlatformMailer();

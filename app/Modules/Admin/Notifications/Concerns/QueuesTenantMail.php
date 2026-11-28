@@ -87,7 +87,16 @@ trait QueuesTenantMail
             return;
         }
 
-        app(MailLogWriter::class)->queuedFailed($this->tenantSiteId, static::class, $this->id, $e);
+        app(MailLogWriter::class)->queuedFailed($this->tenantSiteId, static::class, $this->id, $e, $this->platformOutboxOnly() ? 'platform' : null);
+    }
+
+    /**
+     * Whether this mail leaves only through the platform's shared outbox (it calls applyPlatformMailer()):
+     * its failure is then logged under that outbox, not the one the website's ordinary mail would use.
+     */
+    protected function platformOutboxOnly(): bool
+    {
+        return false;
     }
 
     /**
