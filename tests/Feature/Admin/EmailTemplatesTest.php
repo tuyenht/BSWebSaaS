@@ -37,7 +37,7 @@ beforeEach(function (): void {
 });
 
 /** @param list<string> $permissions */
-function mtAdmin(array $permissions = ['settings.manage'], int $siteId = 1): User
+function mailTplAdmin(array $permissions = ['settings.manage'], int $siteId = 1): User
 {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter($siteId, fn () => grantRole($admin, 'site-admin', $permissions));
@@ -45,31 +45,31 @@ function mtAdmin(array $permissions = ['settings.manage'], int $siteId = 1): Use
     return $admin->fresh();
 }
 
-function mtModules(string ...$keys): void
+function mailTplModules(string ...$keys): void
 {
     foreach ($keys as $key) {
         DB::connection('pgsql_admin')->table('site_modules')->insert(['site_id' => 1, 'module_key' => $key, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
     }
 }
 
-function mtPlatform(string $key, string $locale, string $subject, string $body): void
+function mailTplPlatform(string $key, string $locale, string $subject, string $body): void
 {
     DB::connection('pgsql_admin')->table('platform_mail_templates')->insert([
         'template_key' => $key, 'locale' => $locale, 'subject' => $subject, 'body' => $body,
     ]);
 }
 
-function mtEnglish(int $siteId = 1): void
+function mailTplEnglish(int $siteId = 1): void
 {
     DB::connection('pgsql_admin')->table('site_locales')->insert([
         'site_id' => $siteId, 'locale' => 'en', 'is_default' => false, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
     ]);
 }
 
-const MT_RESET_BODY = '<p>Chào {customer_name},</p><p><a href="{reset_url}">Đặt mật khẩu mới</a></p>';
+const MAIL_TPL_RESET_BODY = '<p>Chào {customer_name},</p><p><a href="{reset_url}">Đặt mật khẩu mới</a></p>';
 
 it('keeps one website\'s templates away from another under RLS', function (): void {
-    app(Tenancy::class)->enter(1, fn () => app(MailTemplateStore::class)->put('reset', 'vi', 'Mẫu của A', MT_RESET_BODY));
+    app(Tenancy::class)->enter(1, fn () => app(MailTemplateStore::class)->put('reset', 'vi', 'Mẫu của A', MAIL_TPL_RESET_BODY));
 
     app(Tenancy::class)->enter(2, function (): void {
         expect(MailTemplate::query()->count())->toBe(0)
@@ -77,7 +77,7 @@ it('keeps one website\'s templates away from another under RLS', function (): vo
             ->and(DB::table('mail_templates')->where('site_id', 1)->update(['subject' => 'B đã sửa']))->toBe(0)
             ->and(app(MailTemplates::class)->stored('reset', 'vi'))->toBeNull();
         app(MailTemplateStore::class)->forgetAll();
-        app(MailTemplateStore::class)->put('reset', 'vi', 'Mẫu của B', MT_RESET_BODY);
+        app(MailTemplateStore::class)->put('reset', 'vi', 'Mẫu của B', MAIL_TPL_RESET_BODY);
     });
     // a row for another website is refused by the policy itself, not only by the model
     expect(fn () => app(Tenancy::class)->enter(2, fn () => DB::table('mail_templates')->insert([
@@ -93,47 +93,47 @@ it('keeps one website\'s templates away from another under RLS', function (): vo
 });
 
 it('takes the website\'s wording, then the platform\'s, then the default language\'s', function (): void {
-    mtEnglish();
-    mtPlatform('reset', 'vi', 'Nền tảng VI', MT_RESET_BODY);
+    mailTplEnglish();
+    mailTplPlatform('reset', 'vi', 'Nền tảng VI', MAIL_TPL_RESET_BODY);
 
     app(Tenancy::class)->enter(1, function (): void {
         $t = app(MailTemplates::class);
         expect($t->stored('reset', 'vi'))->toMatchArray(['subject' => 'Nền tảng VI', 'tier' => 'platform', 'locale' => 'vi'])
             ->and($t->stored('verify', 'vi'))->toBeNull();          // nothing stored: the text in code
 
-        app(MailTemplateStore::class)->put('reset', 'vi', 'Website VI', MT_RESET_BODY);
+        app(MailTemplateStore::class)->put('reset', 'vi', 'Website VI', MAIL_TPL_RESET_BODY);
         expect($t->stored('reset', 'vi'))->toMatchArray(['subject' => 'Website VI', 'tier' => 'site', 'locale' => 'vi'])
             // English asked, none stored in English: the default language's wording
             ->and($t->stored('reset', 'en'))->toMatchArray(['subject' => 'Website VI', 'locale' => 'vi']);
     });
 
-    mtPlatform('reset', 'en', 'Platform EN', MT_RESET_BODY);
+    mailTplPlatform('reset', 'en', 'Platform EN', MAIL_TPL_RESET_BODY);
     app(Tenancy::class)->enter(1, function (): void {
         $t = app(MailTemplates::class);
         expect($t->stored('reset', 'en'))->toMatchArray(['subject' => 'Platform EN', 'tier' => 'platform', 'locale' => 'en']);
-        app(MailTemplateStore::class)->put('reset', 'en', 'Website EN', MT_RESET_BODY);
+        app(MailTemplateStore::class)->put('reset', 'en', 'Website EN', MAIL_TPL_RESET_BODY);
         expect($t->stored('reset', 'en'))->toMatchArray(['subject' => 'Website EN', 'tier' => 'site', 'locale' => 'en']);
     });
 });
 
 it('never takes a website\'s copy of a «Hệ thống» template, and words it in the default language only', function (): void {
-    mtEnglish();
+    mailTplEnglish();
     DB::connection('pgsql_admin')->table('mail_templates')->insert([
         'site_id' => 1, 'template_key' => 'ntf_contact', 'locale' => 'vi', 'subject' => 'Website đã sửa', 'body' => '<p>x</p>',
     ]);
-    mtPlatform('ntf_contact', 'en', 'Platform EN', '<p>x</p>');
+    mailTplPlatform('ntf_contact', 'en', 'Platform EN', '<p>x</p>');
 
     app(Tenancy::class)->enter(1, function (): void {
         expect(app(MailTemplates::class)->stored('ntf_contact', 'vi'))->toBeNull()
             ->and(app(MailTemplates::class)->stored('ntf_contact', 'en'))->toBeNull();
     });
-    mtPlatform('ntf_contact', 'vi', 'Platform VI', '<p>x</p>');
+    mailTplPlatform('ntf_contact', 'vi', 'Platform VI', '<p>x</p>');
     app(Tenancy::class)->enter(1, fn () => expect(app(MailTemplates::class)->stored('ntf_contact', 'en'))
         ->toMatchArray(['subject' => 'Platform VI', 'tier' => 'platform', 'locale' => 'vi']));
 });
 
 it('saves an edited template with a plain subject, and refuses one without the variable it needs', function (): void {
-    $admin = mtAdmin();
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $c = Livewire::actingAs($admin)->test(EmailTemplates::class)
@@ -145,11 +145,11 @@ it('saves an edited template with a plain subject, and refuses one without the v
             ->assertHasErrors(['tplBody']);
         expect(MailTemplate::query()->count())->toBe(0);
 
-        $c->call('save', str_repeat('a', 201), MT_RESET_BODY)->assertHasErrors(['tplSubject']);
-        $c->call('save', '   ', MT_RESET_BODY)->assertHasErrors(['tplSubject']);
+        $c->call('save', str_repeat('a', 201), MAIL_TPL_RESET_BODY)->assertHasErrors(['tplSubject']);
+        $c->call('save', '   ', MAIL_TPL_RESET_BODY)->assertHasErrors(['tplSubject']);
         expect(MailTemplate::query()->count())->toBe(0);
 
-        $c->call('save', "<b>Đặt lại</b>\nmật khẩu {site_name}", MT_RESET_BODY.'<script>alert(1)</script><p onclick="x()">Hết</p>')
+        $c->call('save', "<b>Đặt lại</b>\nmật khẩu {site_name}", MAIL_TPL_RESET_BODY.'<script>alert(1)</script><p onclick="x()">Hết</p>')
             ->assertHasNoErrors();
         $row = MailTemplate::query()->sole();
         expect($row->template_key)->toBe('reset')
@@ -160,8 +160,8 @@ it('saves an edited template with a plain subject, and refuses one without the v
 });
 
 it('refuses to save a «Hệ thống» template, and never turns a «Bắt buộc» one off', function (): void {
-    mtModules('contacts');
-    $admin = mtAdmin();
+    mailTplModules('contacts');
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailTemplates::class)
@@ -180,7 +180,7 @@ it('refuses to save a «Hệ thống» template, and never turns a «Bắt buộ
 });
 
 it('opens only the templates of the website\'s modules, and only in its languages', function (): void {
-    $admin = mtAdmin();
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailTemplates::class)
@@ -220,7 +220,7 @@ it('fills the variables after cleaning: a link only with a web address, every ot
 });
 
 it('answers 403 to a member without the Email page\'s permission', function (): void {
-    $viewer = mtAdmin(['media.view']);
+    $viewer = mailTplAdmin(['media.view']);
 
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
         Livewire::actingAs($viewer)->test(EmailTemplates::class)->assertForbidden();
@@ -231,7 +231,7 @@ it('sends the password reset mail in the website\'s wording', function (): void 
     $user = User::factory()->create(['name' => 'An <b>Nguyễn</b>']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
-        app(MailTemplateStore::class)->put('reset', 'vi', 'Lấy lại mật khẩu {site_name}', MT_RESET_BODY);
+        app(MailTemplateStore::class)->put('reset', 'vi', 'Lấy lại mật khẩu {site_name}', MAIL_TPL_RESET_BODY);
         $mail = (new ResetPasswordLinkNotification('https://a.test/admin/reset/abc?email=an%40x.test'))->toMail($user);
         $html = (string) $mail->render();
 
@@ -280,8 +280,8 @@ it('sends the member invitation in the website\'s wording, its personal message 
 });
 
 it('sends no member invitation from a website that turned it off', function (): void {
-    mtModules('users');
-    $admin = mtAdmin();
+    mailTplModules('users');
+    $admin = mailTplAdmin();
     $note = new MemberInvitationNotification('https://a.test/x', 'A', 'B', [], null, '15/10/2026');
 
     app(Tenancy::class)->enter(1, function () use ($admin, $note): void {
@@ -294,13 +294,13 @@ it('sends no member invitation from a website that turned it off', function (): 
 });
 
 it('puts a template back to the wording below it, one or all', function (): void {
-    mtEnglish();
-    $admin = mtAdmin();
+    mailTplEnglish();
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $store = app(MailTemplateStore::class);
-        $store->put('reset', 'vi', 'A', MT_RESET_BODY);
-        $store->put('reset', 'en', 'B', MT_RESET_BODY);
+        $store->put('reset', 'vi', 'A', MAIL_TPL_RESET_BODY);
+        $store->put('reset', 'en', 'B', MAIL_TPL_RESET_BODY);
         $store->put('welcome', 'vi', 'C', '<p>Chào</p>');
 
         $c = Livewire::actingAs($admin)->test(EmailTemplates::class)
@@ -314,12 +314,12 @@ it('puts a template back to the wording below it, one or all', function (): void
 });
 
 it('previews the typed template with sample values, cleaned', function (): void {
-    $admin = mtAdmin();
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $c = Livewire::actingAs($admin)->test(EmailTemplates::class)->call('open', 'reset');
         $out = [];
-        $c->call('preview', 'Chào {customer_name}', MT_RESET_BODY.'<img src="x" onerror="alert(1)">')
+        $c->call('preview', 'Chào {customer_name}', MAIL_TPL_RESET_BODY.'<img src="x" onerror="alert(1)">')
             ->assertReturned(function (mixed $value) use (&$out): bool {
                 $out = is_array($value) ? $value : [];
 
@@ -340,7 +340,7 @@ it('never lets a variable ride inside another address, nor count as present from
     $typed = $r->html('<p><a href="{customer_name}">Mở</a></p>', ['{customer_name}' => 'https://evil.test/phish'], '#2050a0', '#ffffff');
     expect($typed)->not->toContain('evil.test')->not->toContain('<a')->toContain('Mở');
 
-    $admin = mtAdmin();
+    $admin = mailTplAdmin();
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         Livewire::actingAs($admin)->test(EmailTemplates::class)
             ->call('open', 'reset')
@@ -364,11 +364,11 @@ it('keeps a value\'s "<" in the subject as text', function (): void {
 });
 
 it('turns a template back on, and resets only the templates the website sees', function (): void {
-    mtModules('users');
-    $admin = mtAdmin();
+    mailTplModules('users');
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
-        app(MailTemplateStore::class)->put('reset', 'vi', 'A', MT_RESET_BODY);
+        app(MailTemplateStore::class)->put('reset', 'vi', 'A', MAIL_TPL_RESET_BODY);
         $c = Livewire::actingAs($admin)->test(EmailTemplates::class)->call('toggle', 'team_invite');
         expect(app(MailTemplates::class)->offKeys())->toBe(['team_invite']);
         $c->call('toggle', 'team_invite');
@@ -389,7 +389,7 @@ it('turns a template back on, and resets only the templates the website sees', f
 
 it('holds test mails at the per-minute cap, sending nothing', function (): void {
     Mail::fake();
-    $admin = mtAdmin();
+    $admin = mailTplAdmin();
 
     app(Tenancy::class)->enter(1, function () use ($admin): void {
         $key = 'mail-test-send:1:'.$admin->id;
@@ -399,7 +399,7 @@ it('holds test mails at the per-minute cap, sending nothing', function (): void 
         }
         Livewire::actingAs($admin)->test(EmailTemplates::class)
             ->call('open', 'reset')
-            ->call('sendTest', 'Đặt lại', MT_RESET_BODY)
+            ->call('sendTest', 'Đặt lại', MAIL_TPL_RESET_BODY)
             ->assertSet('toastTone', 'error');
         RateLimiter::clear($key);
     });
