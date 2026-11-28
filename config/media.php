@@ -41,6 +41,12 @@ return [
     // it (row + R2 object). Manual "empty trash" / "delete permanently" purge immediately regardless.
     'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 30),
 
+    // The platform switch that refuses an upload once a website's library would pass its plan's
+    // `media.storage_mb`. OFF until the plans' numbers are settled: every upload is still counted
+    // (site_counters `media.bytes`) and the library shows the figure, but none is refused, and a
+    // website above its plan sees the «Sắp đầy» card, never «hết dung lượng». Nothing is deleted.
+    'storage_enforce' => (bool) env('MEDIA_STORAGE_ENFORCE', false),
+
     // A folder delete keeps what Hoàn tác needs (the files' ids) for a few minutes; a folder with
     // more files than this (Trash included) is deleted without Hoàn tác, and the question says so.
     'folder_undo_max_files' => (int) env('MEDIA_FOLDER_UNDO_MAX_FILES', 100000),

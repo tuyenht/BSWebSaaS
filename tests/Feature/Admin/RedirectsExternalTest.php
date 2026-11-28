@@ -19,9 +19,11 @@ use App\Modules\Tenancy\Models\Plan;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Tests\Fixtures\TransactionProbe;
 
 /*
  * Redirects to another website. Off by default, per website: only a super_admin turns the website's
@@ -394,6 +396,42 @@ it('audits every change to a row to another website: edit, kind, trash, restore 
     });
     expect(collect(rxAudit())->last())->toMatchArray(['action' => RedirectBook::AUDIT_CHANGED])
         ->and(collect(rxAudit())->last()['meta'])->toMatchArray(['was' => 'https://doitac.vn/c', 'value' => '/lien-he']);
+});
+
+it('decides a slug move\'s 301 again against a member\'s row inserted just before it, with no savepoint', function (string $to, bool $written, string $kept): void {
+    $probe = TransactionProbe::start();
+    $raced = false;
+    DB::listen(function (QueryExecuted $query) use ($to, &$raced): void {
+        // another member's row lands after the system looked for one, just before it inserts its own
+        if (! $raced && $query->connectionName !== 'pgsql_admin' && str_contains($query->sql, 'from "redirects"') && str_contains($query->sql, 'for update')) {
+            $raced = true;
+            DB::connection('pgsql_admin')->table('redirects')->insert([
+                'site_id' => 1, 'locale' => 'vi', 'from_path' => '/cu', 'to_path' => $to, 'status_code' => 302,
+                'source' => 'manual', 'ulid' => (string) Str::ulid(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    });
+
+    $result = rxIn(fn (): bool => Redirect::writeSystemRow('vi', '/cu', ['to_path' => '/moi', 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO]));
+
+    expect($raced)->toBeTrue()->and($result)->toBe($written)
+        ->and(DB::connection('pgsql_admin')->table('redirects')->where('site_id', 1)->where('from_path', '/cu')->pluck('to_path')->all())->toBe([$kept])
+        ->and($probe->savepoints)->toBe(0);
+})->with([
+    'to another website: kept' => ['https://doitac.vn/a', false, 'https://doitac.vn/a'],
+    'on this website: taken over' => ['/khac', true, '/moi'],
+]);
+
+it('writes a slug move\'s 301 as the model would, with its site, key and times, and no savepoint', function (): void {
+    $probe = TransactionProbe::start();
+
+    expect(rxIn(fn (): bool => Redirect::writeSystemRow('vi', '/cu', ['to_path' => '/moi', 'status_code' => 301, 'source' => Redirect::SOURCE_AUTO])))->toBeTrue();
+
+    $row = DB::connection('pgsql_admin')->table('redirects')->where('from_path', '/cu')->first();
+    expect($row?->site_id)->toBe(1)->and($row?->to_path)->toBe('/moi')->and($row?->status_code)->toBe(301)
+        ->and(Str::isUlid((string) $row?->ulid))->toBeTrue()->and($row?->created_at)->not->toBeNull()->and($row?->updated_at)->not->toBeNull()
+        ->and($row?->deleted_at)->toBeNull()
+        ->and($probe->savepoints)->toBe(0);
 });
 
 it('never lets the system change or remove a member\'s redirect to another website when content moves', function (): void {

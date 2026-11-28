@@ -3,6 +3,8 @@ paths:
   - "app/Modules/Admin/Theme/AdminChromeResolver.php"
   - "app/Modules/Admin/Http/Controllers/ThemePreferenceController.php"
   - "app/Modules/Admin/Livewire/AppearanceSettings.php"
+  - "app/Modules/Tenancy/Context/Tenancy.php"
+  - "app/Modules/Tenancy/Database/TrackedPostgresConnection.php"
 ---
 
 # Mutation baseline (manual tier-2 gate, CLAUDE.md §6)
@@ -11,7 +13,7 @@ Changing a class on this list → run the command below and paste the output:
 
 ```bash
 docker compose run --rm --no-deps app php -d pcov.enabled=1 vendor/bin/pest --mutate \
-  --class="App\Modules\Admin\Theme\AdminChromeResolver,App\Modules\Admin\Http\Controllers\ThemePreferenceController,App\Modules\Admin\Livewire\AppearanceSettings" \
+  --class="App\Modules\Admin\Theme\AdminChromeResolver,App\Modules\Admin\Http\Controllers\ThemePreferenceController,App\Modules\Admin\Livewire\AppearanceSettings,App\Modules\Tenancy\Context\Tenancy,App\Modules\Tenancy\Database\TrackedPostgresConnection" \
   --covered-only --min=75
 ```
 

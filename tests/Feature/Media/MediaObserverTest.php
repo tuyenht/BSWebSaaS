@@ -1,8 +1,13 @@
 <?php
 
+use App\Modules\Media\Actions\PurgeMedia;
+use App\Modules\Media\Actions\TrashMedia;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -42,15 +47,27 @@ function makeMediaWithAttachment(string $key, string $hash): Media
     return $media;
 }
 
-it('force-deleting a master deletes its R2 object and purges its attachments', function (): void {
+it('force-deleting a master deletes its R2 object once the delete commits, and purges its attachments', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         $media = makeMediaWithAttachment('a/library/anh-aaaaaaaaaaaa.png', str_repeat('a', 64));
 
         $media->forceDelete();
 
         expect(Mediable::query()->count())->toBe(0);
-        Storage::disk('r2')->assertMissing('a/library/anh-aaaaaaaaaaaa.png');
+        Storage::disk('r2')->assertExists('a/library/anh-aaaaaaaaaaaa.png'); // still there until the commit
     });
+
+    Storage::disk('r2')->assertMissing('a/library/anh-aaaaaaaaaaaa.png');
+});
+
+it('keeps the R2 object of a master whose force delete rolls back', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
+        makeMediaWithAttachment('a/library/anh-dddddddddddd.png', str_repeat('d', 64))->forceDelete();
+
+        throw new RuntimeException('the purge fails after the row is gone');
+    }))->toThrow(RuntimeException::class);
+
+    Storage::disk('r2')->assertExists('a/library/anh-dddddddddddd.png');
 });
 
 it('soft-deleting a master keeps its R2 object and attachments (Thùng rác)', function (): void {
@@ -80,4 +97,30 @@ it('never deletes an object under a seed folder, whichever field names it', func
 
     Storage::disk('r2')->assertExists($seed);
     Storage::disk('r2')->assertMissing($own);
+});
+
+/*
+ * A purge deletes the stored file only after it commits; by then the key is free again. A re-upload of
+ * the same bytes under the same name gets that same key and stores its object there before the delete
+ * runs, so the delete must look once more and leave a key a row names by then.
+ */
+it('leaves the stored file of a re-upload that took the purged file’s key before its delete ran', function (): void {
+    $bytes = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true);
+    $old = app(Tenancy::class)->enter(1, function () use ($bytes): Media {
+        $media = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('may-tien.png', $bytes));
+        app(TrashMedia::class)->trash(new Collection([$media]));
+
+        return $media;
+    });
+
+    $new = app(Tenancy::class)->enter(1, function () use ($bytes): Media {
+        app(PurgeMedia::class)->purge(Media::onlyTrashed()->get());
+
+        return app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('may-tien.png', $bytes));
+    });
+
+    expect($new->id)->not->toBe($old->id)
+        ->and($new->storage_key)->toBe($old->storage_key) // the same name and bytes: the same key
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->pluck('id')->all()))->toBe([$new->id]);
+    Storage::disk('r2')->assertExists($new->storage_key);
 });

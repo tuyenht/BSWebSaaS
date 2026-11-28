@@ -43,6 +43,7 @@ use App\Modules\Cms\Policies\RedirectPolicy;
 use App\Modules\Cms\Policies\TaxonomyPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\EntryPageLinks;
+use App\Modules\Cms\Routing\PermalinkKinds;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryItemCounts;
 use App\Modules\Cms\Support\CategoryPublicCounts;
@@ -110,6 +111,8 @@ final class CmsServiceProvider extends ServiceProvider
         // Item kinds other modules file under categories (Catalog → `product`), re-routed when a
         // category changes. Boot-time closures only, no request state — same as MenuTargets.
         $this->app->singleton(CategoryDependents::class);
+        // Item kinds of other modules a permalink run moves (Catalog's products); boot-time closures only.
+        $this->app->singleton(PermalinkKinds::class);
 
         // The current address of a page a block button opens (the Theme renders it through the contract).
         // Built per resolve: PathBuilder holds the request-scoped SectionResolver, so it is never kept across requests.

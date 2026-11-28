@@ -8,6 +8,8 @@
     use App\Modules\Tenancy\Context\SiteTime;
 
     $num = fn (int $n): string => number_format($n, 0, ',', '.');
+    // «Đã hết dung lượng» (only while the storage switch refuses uploads): uploading waits for room
+    $storageFull = $storage !== null && $storage['level'] === 'full';
     // the upload day by the site's own calendar, as «Thời gian» reads it
     $siteTime = app(SiteTime::class);
     $canPick = $trash ? $canDelete : ($canUpload || $canDelete);
@@ -118,7 +120,7 @@
      (the upload panel's) takes its drops first. Where uploading is not possible, a dropped file does nothing.
      The cover cannot stay up: it goes when the drag leaves the window, on drop, dragend, Escape, window blur, a re-render,
      and when no dragover has come for a second (browsers send one at least every 350ms while a drag is over the page). --}}
-<div class="flex min-w-0 flex-col gap-4" data-drop-ok="{{ $canUpload && ! $failed && ! $uploadOpen ? 'true' : 'false' }}"
+<div class="@container/lib flex min-w-0 flex-col gap-4" data-drop-ok="{{ $canUpload && ! $failed && ! $uploadOpen ? 'true' : 'false' }}"
      x-data="{
          over: false, inner: false, timer: 0, off: null,
          init() {
@@ -171,7 +173,11 @@
             </p>
         </div>
         @if ($canUpload && ! $uploadOpen && ! $failed && ($counts['all'] + $counts['trash']) > 0)
-            <x-bs-admin::button color="primary" wire:click="openUpload"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
+            @if ($storageFull)
+                <x-bs-admin::button color="primary" aria-disabled="true" class="opacity-60" :title="__('media.lib.st_up_tip')" aria-describedby="tv-full"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
+            @else
+                <x-bs-admin::button color="primary" wire:click="openUpload"><x-bs-admin::icon name="ri-upload-2" class="size-4" />{{ __('media.lib.upload') }}</x-bs-admin::button>
+            @endif
         @endif
     </div>
 
@@ -182,6 +188,9 @@
                 <h2 id="media-up-h" tabindex="-1" class="m-0 text-[calc(1rem+var(--user-text-boost))] font-semibold text-text-strong">{{ __('media.lib.up_title') }}</h2>
                 <x-bs-admin::button variant="outline" color="secondary" wire:click="closeUpload"><x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('media.lib.up_done') }}</x-bs-admin::button>
             </div>
+            @if ($storageFull)
+                @include('admin::livewire.media.library-storage', ['part' => 'box'])
+            @else
             <p class="mb-3 flex items-center gap-2 text-body text-text"><x-bs-admin::icon name="ri-folder-3" class="size-4 shrink-0 text-text-muted" /><span>{{ __('media.lib.up_to') }} <b>{{ $upFolder !== null ? __('media.lib.up_to_folder', ['name' => $upFolder->name]) : __('media.lib.up_to_all') }}</b></span></p>
             <div class="min-h-[320px] overflow-hidden rounded-md border border-border">
                 @if ($pickerSource === 'url')
@@ -198,7 +207,12 @@
                     @include('admin::partials.media-picker-sources')
                 @endif
             </div>
+            @endif
         </section>
+    @endif
+
+    @if ($storage !== null)
+        @include('admin::livewire.media.library-storage', ['part' => 'card'])
     @endif
 
     @if (! $canUpload && ! $canDelete)
@@ -290,6 +304,9 @@
                     @endif
                 @elseif ($folders->isEmpty())
                     <p class="m-0 px-2.5 py-1 text-small text-text-muted">{{ __('media.lib.no_folders') }}</p>
+                @endif
+                @if ($storage !== null && $storage['level'] === 'ok' && ! $uploadOpen)
+                    @include('admin::livewire.media.library-storage', ['part' => 'side'])
                 @endif
             </nav>
 

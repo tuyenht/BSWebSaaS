@@ -184,30 +184,43 @@
                      place; ← → go from picture to picture. The order is saved with the product. --}}
                 @php
                     $imgN = count($galleryImages);
+                    $vidN = count($galleryVideos);
+                    // what the picture toolbar refuses, drawn from this render's pictures and videos (Livewire
+                    // draws it again after every change): the places «Chuyển lên» / «Chuyển xuống» are off at,
+                    // and whether the last picture must stay because a video follows it
+                    $upOff = $vidN > 0 ? [0, 1] : [0];
+                    $downOff = array_values(array_unique($vidN > 0 ? [$imgN - 1, 0] : [$imgN - 1]));
+                    $keepCover = $imgN === 1 && $vidN > 0;
                     $mayAddImages = $editShared && auth()->user()?->can('media.view');
                     $imgWords = [
                         'pos' => __('catalog.ed.img_pos'), 'posCover' => __('catalog.ed.img_pos_cover'),
                         'upFirst' => __('catalog.ed.img_up_first'), 'up' => __('catalog.ed.img_up_why'),
                         'downLast' => __('catalog.ed.img_down_last'), 'down' => __('catalog.ed.img_down_why'),
                         'coverIs' => __('catalog.ed.img_cover_is'), 'cover' => __('catalog.ed.img_cover_why'),
+                        'fixed' => __('catalog.ed.video_fixed'),
                     ];
                 @endphp
                 <section class="rounded-md border border-border bg-surface shadow-card" aria-labelledby="ped-h-img" data-picker-home
                          x-data="{
-                             sel: null, from: null, over: null, canL: false, canR: false,
-                             get n() { return this.$refs.strip ? this.$refs.strip.querySelectorAll('[data-img-i]').length : 0; },
+                             sel: null, selV: null, from: null, over: null, canL: false, canR: false,
                              w: {{ Js::from($imgWords) }},
                              edge() { const s = this.$refs.strip; if (! s) { this.canL = this.canR = false; return; } const x = Math.abs(s.scrollLeft); this.canL = x > 2; this.canR = x + s.clientWidth < s.scrollWidth - 2; },
                              page(d) { const s = this.$refs.strip; s && s.scrollBy({ left: d * Math.max(120, s.clientWidth * 0.8), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); },
-                             pick(i) { this.sel = this.sel === i ? null : i; },
-                             act(method, to) { const i = this.sel; if (i === null) return; $wire[method](...(to === undefined ? [i] : [i, to])).then(() => { this.sel = method === 'removeImage' ? null : (method === 'setCover' ? 0 : to); this.$nextTick(() => this.focusTile(this.sel)); }); },
+                             pick(i) { this.selV = null; this.sel = this.sel === i ? null : i; },
+                             pickV(j) { this.sel = null; this.selV = this.selV === j ? null : j; },
+                             dropV() { const j = this.selV; if (j === null) return; $wire.removeVideo(j).then(() => { this.selV = null; }); },
+                             vTarget(i) { const q = (s) => this.$root.querySelector(s); return (i >= 0 && q('[data-vid-i=&quot;' + i + '&quot;]')) || q('[data-img-i=&quot;0&quot;]') || q('.ped-imempty button, .ped-imadd') || q('#ped-h-img'); },
+                             focusV(i) { setTimeout(() => { const b = this.vTarget(i); if (b) { b.focus(); b.scrollIntoView && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
+                             act(method, to) { const i = this.sel; if (i === null) return; $wire[method](...(to === undefined ? [i] : [i, to])).then(() => { if (method === 'removeImage') { this.sel = null; this.focusAfterRemove(i); return; } this.sel = method === 'setCover' ? 0 : to; this.$nextTick(() => this.focusTile(this.sel)); }); },
+                             focusAfterRemove(i) { setTimeout(() => { const all = [...this.$root.querySelectorAll('[data-img-i]')], b = all.find((t) => t.getAttribute('data-img-i') === String(i)) || all[all.length - 1] || this.vTarget(-1); if (b) { b.focus(); b.scrollIntoView && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }, 40); },
                              drop(i) { const f = this.from; this.from = this.over = null; if (f === null || f === i) return; $wire.moveImage(f, i).then(() => { this.sel = i; }); },
-                             key(e, i) { const d = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0); if (! d) return; e.preventDefault(); this.focusTile(Math.max(0, Math.min(this.n - 1, i + d))); },
+                             key(e) { const d = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0); if (! d) return; e.preventDefault(); const all = [...this.$root.querySelectorAll('.ped-imb')], to = all[Math.max(0, Math.min(all.length - 1, all.indexOf(e.currentTarget) + d))]; if (to) { to.focus(); to.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } },
                              focusTile(i) { if (i === null) return; const b = this.$root.querySelector('[data-img-i=&quot;' + i + '&quot;]'); b && b.focus(); b && b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); },
                          }"
-                         x-on:resize.window.debounce.100ms="edge()">
+                         x-effect="if (sel !== null && sel >= {{ $imgN }}) sel = null; if (selV !== null && selV >= {{ $vidN }}) selV = null"
+                         x-on:resize.window.debounce.100ms="edge()" x-on:ped-vfocus.window="focusV($event.detail.i)">
                     <div class="{{ $cardHead }}">
-                        <h2 id="ped-h-img" class="{{ $cardTitle }}">{{ __('catalog.card_gallery') }}</h2>
+                        <h2 id="ped-h-img" class="{{ $cardTitle }}" tabindex="-1">{{ __('catalog.card_gallery') }}</h2>
                         @if ($sharedLock)
                             <x-bs-admin::shared-chip :why="$sharedWhy" />
                         @endif
@@ -219,7 +232,7 @@
                         @endif
                     </div>
                     <div class="flex flex-col gap-3 p-4">
-                        @if ($galleryImages === [])
+                        @if ($galleryImages === [] && $galleryVideos === [])
                             <div class="ped-imempty">
                                 <x-bs-admin::icon name="ri-image-add" class="size-7" />
                                 <span>{{ $sharedLock ? $sharedWhy : __('catalog.ed.img_empty') }}</span>
@@ -236,6 +249,12 @@
                                 </button>
                                 <div class="ped-imgs" x-ref="strip" role="list" aria-label="{{ __('catalog.ed.img_strip') }}" x-on:scroll.debounce.50ms="edge()"
                                      x-init="$nextTick(() => edge()); new MutationObserver(() => edge()).observe($el, { childList: true })">
+                                    @if ($imgN === 0)
+                                        {{-- every picture is gone (deleted from the Library): the videos stay visible and removable --}}
+                                        @foreach ($galleryVideos as $j => $video)
+                                            @include('admin::livewire.catalog.video-tile', ['video' => $video, 'j' => $j, 'editShared' => $editShared])
+                                        @endforeach
+                                    @endif
                                     @foreach ($galleryImages as $i => $image)
                                         @php
                                             $file = $image['name'] ?? __('catalog.gallery_missing');
@@ -261,10 +280,16 @@
                                             @endif
                                             <span class="ped-imn" title="{{ $file }}">{{ $file }}</span>
                                         </div>
+                                        @if ($i === 0)
+                                            {{-- the videos come right after the main picture, in the order they were added; a video is not dragged --}}
+                                            @foreach ($galleryVideos as $j => $video)
+                                                @include('admin::livewire.catalog.video-tile', ['video' => $video, 'j' => $j, 'editShared' => $editShared])
+                                            @endforeach
+                                        @endif
                                     @endforeach
                                     @if ($mayAddImages)
                                         <div class="ped-imaddw" role="listitem">
-                                            <button type="button" class="ped-imadd" wire:click="openImagePicker" aria-label="{{ __('catalog.ed.img_add') }}" title="{{ __('catalog.ed.img_add') }}">
+                                            <button type="button" class="ped-imadd" wire:click="openImagePicker" aria-label="{{ __('catalog.ed.img_add_media') }}" title="{{ __('catalog.ed.img_add_media_why') }}">
                                                 <x-bs-admin::icon name="ri-add" class="size-6" /><span>{{ __('catalog.ed.img_add_short') }}</span>
                                             </button>
                                         </div>
@@ -276,26 +301,82 @@
                             </div>
                             @if ($editShared)
                                 <div class="ped-tb" role="toolbar" aria-label="{{ __('catalog.ed.img_toolbar') }}" x-show="sel !== null" x-cloak>
-                                    <span>{{ __('catalog.ed.img_selected') }} <strong x-text="w.pos.replace(':i', sel + 1).replace(':n', n)"></strong></span>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.upFirst : w.up"
-                                                        x-on:click="sel > 0 && act('moveImage', sel - 1)" class="aria-disabled:opacity-60">
+                                    <span>{{ __('catalog.ed.img_selected') }} <strong x-text="w.pos.replace(':i', sel + 1).replace(':n', {{ $imgN }})"></strong></span>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-up x-bind:aria-disabled="{{ json_encode($upOff) }}.includes(sel).toString()" x-bind:title="sel === 0 ? w.upFirst : ({{ json_encode($upOff) }}.includes(sel) ? w.fixed : w.up)"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('moveImage', sel - 1)" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /> {{ __('catalog.gallery_move_up') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === n - 1).toString()" x-bind:title="sel === n - 1 ? w.downLast : w.down"
-                                                        x-on:click="sel < n - 1 && act('moveImage', sel + 1)" class="aria-disabled:opacity-60">
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-down x-bind:aria-disabled="{{ json_encode($downOff) }}.includes(sel).toString()" x-bind:title="sel === {{ $imgN - 1 }} ? w.downLast : ({{ json_encode($downOff) }}.includes(sel) ? w.fixed : w.down)"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('moveImage', sel + 1)" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-arrow-right" :class="$glyph" /> {{ __('catalog.gallery_move_down') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.coverIs : w.cover"
-                                                        x-on:click="sel > 0 && act('setCover')" class="aria-disabled:opacity-60">
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" data-ped-cover x-bind:aria-disabled="(sel === 0).toString()" x-bind:title="sel === 0 ? w.coverIs : w.cover"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('setCover')" class="aria-disabled:opacity-60">
                                         <x-bs-admin::icon name="ri-star" :class="$glyph" /> {{ __('catalog.ed.img_set_cover') }}
                                     </x-bs-admin::button>
-                                    <x-bs-admin::button variant="outline" color="danger" size="sm" title="{{ __('catalog.ed.img_remove_why') }}" x-on:click="act('removeImage')">
+                                    <x-bs-admin::button variant="outline" color="danger" size="sm" data-ped-rm aria-disabled="{{ $keepCover ? 'true' : 'false' }}" title="{{ $keepCover ? __('catalog.ed.video_keep_image') : __('catalog.ed.img_remove_why') }}"
+                                                        x-on:click="$el.getAttribute('aria-disabled') !== 'true' && act('removeImage')" class="aria-disabled:opacity-60">
+                                        <x-bs-admin::icon name="ri-close-circle" :class="$glyph" /> {{ __('catalog.ed.img_remove') }}
+                                    </x-bs-admin::button>
+                                </div>
+                            @endif
+                            @if ($editShared && $galleryVideos !== [])
+                                <div class="ped-tb" role="toolbar" aria-label="{{ __('catalog.ed.img_toolbar') }}" x-show="selV !== null" x-cloak>
+                                    <span>{{ __('catalog.ed.img_selected') }} <strong x-text="@js(__('catalog.ed.video_pos')).replace(':i', selV + 1).replace(':n', {{ count($galleryVideos) }})"></strong></span>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" aria-disabled="true" title="{{ __('catalog.ed.video_fixed') }}" class="aria-disabled:opacity-60">
+                                        <x-bs-admin::icon name="ri-arrow-left" :class="$glyph" /> {{ __('catalog.gallery_move_up') }}
+                                    </x-bs-admin::button>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" aria-disabled="true" title="{{ __('catalog.ed.video_fixed') }}" class="aria-disabled:opacity-60">
+                                        <x-bs-admin::icon name="ri-arrow-right" :class="$glyph" /> {{ __('catalog.gallery_move_down') }}
+                                    </x-bs-admin::button>
+                                    <x-bs-admin::button variant="outline" color="secondary" size="sm" aria-disabled="true" title="{{ __('catalog.ed.video_no_cover') }}" class="aria-disabled:opacity-60">
+                                        <x-bs-admin::icon name="ri-star" :class="$glyph" /> {{ __('catalog.ed.img_set_cover') }}
+                                    </x-bs-admin::button>
+                                    <x-bs-admin::button variant="outline" color="danger" size="sm" title="{{ __('catalog.ed.img_remove_why') }}" x-on:click="dropV()">
                                         <x-bs-admin::icon name="ri-close-circle" :class="$glyph" /> {{ __('catalog.ed.img_remove') }}
                                     </x-bs-admin::button>
                                 </div>
                             @endif
                             <p class="{{ $hint }} mt-0">{{ $sharedLock ? $sharedWhy : ($canEdit ? __('catalog.ed.img_hint') : __('catalog.ed.img_hint_ro')) }}</p>
                         @endif
+                        @if ($editShared)
+                            {{-- «Thêm video YouTube» (board 09): the link and an optional title; off until there is a picture --}}
+                            <div class="ped-yt" role="group" aria-labelledby="ped-yt-h" x-data="{ url: '', title: '', go() { $wire.addVideo(this.url, this.title).then((ok) => { if (ok) { this.url = ''; this.title = ''; } else { this.$refs.u.focus(); } }); } }">
+                                <p class="ped-yt-h" id="ped-yt-h"><x-bs-admin::icon name="ri-youtube" class="size-5" />{{ __('catalog.ed.yt_h') }}</p>
+                                <div class="ped-yt-row">
+                                    <div class="ped-yt-f">
+                                        <label class="{{ $label }} mb-1.5" for="ped-yt-u">{{ __('catalog.ed.yt_url') }}</label>
+                                        <div class="{{ $moneyBox }}"><input id="ped-yt-u" x-ref="u" x-model="url" x-on:keydown.enter.prevent="go()" x-on:blur="$wire.checkVideoLink(url)" type="url" inputmode="url" autocomplete="off" class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-text placeholder:text-placeholder"
+                                               placeholder="{{ __('catalog.ed.yt_url_ph') }}" @disabled($imgN === 0)
+                                               @if ($videoError !== '') aria-invalid="true" aria-describedby="ped-yt-err" @elseif ($imgN === 0) aria-describedby="ped-yt-off" @endif></div>
+                                        @if ($videoError !== '')
+                                            <x-bs-admin::field-error id="ped-yt-err" class="mt-1.5">{{ $videoError }}</x-bs-admin::field-error>
+                                        @endif
+                                    </div>
+                                    <div class="ped-yt-f">
+                                        <div class="mb-1.5 flex flex-wrap items-baseline gap-x-2">
+                                            <label class="{{ $label }}" for="ped-yt-t">{{ __('catalog.ed.yt_title') }}</label>
+                                            <span class="text-caption text-text-muted" id="ped-yt-o">{{ __('catalog.ed.yt_optional') }}</span>
+                                        </div>
+                                        <div class="{{ $moneyBox }}"><input id="ped-yt-t" x-model="title" x-on:keydown.enter.prevent="go()" type="text" autocomplete="off" maxlength="{{ \App\Modules\Media\Models\Media::TITLE_MAX_LENGTH }}" class="field min-w-0 flex-1 border-0 bg-transparent px-3 text-text placeholder:text-placeholder"
+                                               placeholder="{{ __('catalog.ed.yt_title_ph') }}" aria-describedby="ped-yt-o" @disabled($imgN === 0)></div>
+                                    </div>
+                                    <x-bs-admin::button variant="outline" color="secondary" aria-disabled="{{ $imgN === 0 ? 'true' : 'false' }}" title="{{ $imgN === 0 ? __('catalog.ed.yt_off_why') : __('catalog.ed.yt_add_why') }}" x-on:click="go()" class="aria-disabled:opacity-60">
+                                        <x-bs-admin::icon name="ri-video-add" :class="$glyph" /> {{ __('catalog.ed.yt_add') }}
+                                    </x-bs-admin::button>
+                                </div>
+                                @if ($imgN === 0)
+                                    <p class="{{ $hint }}" id="ped-yt-off">{{ __('catalog.ed.yt_off_why') }}</p>
+                                @endif
+                            </div>
+                        @endif
+                        @if ($editShared && $galleryImages === [] && $galleryVideos !== [] && ! $errors->has('imageMediaIds'))
+                            {{-- stored this way (the last picture deleted from the Library): other changes still save --}}
+                            <p id="ped-img-note" class="flex items-start gap-1.5 text-small text-warning-text">
+                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 {{ $glyph }}" /><span>{{ __('catalog.ed.video_stored_no_image') }}</span>
+                            </p>
+                        @endif
+                        @error('imageMediaIds') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                         @error('imageMediaIds.*') <p class="mt-1 text-sm text-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </section>

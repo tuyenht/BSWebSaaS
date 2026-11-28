@@ -719,8 +719,8 @@ it('permanently deletes a trashed image + its R2 object (purge fires the observe
             ->call('purgePickerSelection');
 
         expect(Media::withTrashed()->whereKey($media->id)->exists())->toBeFalse(); // row gone
-        Storage::disk('r2')->assertMissing('s/library/purge-me.jpg');              // object gone
     });
+    Storage::disk('r2')->assertMissing('s/library/purge-me.jpg'); // object gone once the purge committed
 });
 
 it('empties the whole trash but never touches live media', function (): void {

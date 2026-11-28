@@ -162,6 +162,7 @@ final class SettingsMenu
             self::item('langs', 'admin.settings.languages', 'admin.lng.title', 'ri-translate-2'),
         ] : []);
         $groups[] = self::group('content', $manage ? [
+            self::item('permalinks', 'admin.settings.permalinks', 'admin.pl.title', 'ri-links'),
             self::item('catalog', 'admin.settings.catalog', 'admin.catalog_settings', 'ri-box-3'),
         ] : []);
         $groups[] = self::group('marketing', $manage ? [

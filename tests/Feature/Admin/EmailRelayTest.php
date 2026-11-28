@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Fixtures\FakeDns;
 
 /*
  * «Nhà cung cấp khác» → «Chọn dịch vụ»: a website picks one of seven mail services or «Email khác»,
@@ -30,6 +31,7 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
     app()->setLocale('vi');
     app()->instance(MailHostGuard::class, new MailHostGuard(fn (string $host): array => ['93.184.216.34']));
+    FakeDns::install(); // «Kiểm tra & lưu kết nối» also checks the domain's records: no lookup leaves the test
 });
 
 function erlAdmin(): User

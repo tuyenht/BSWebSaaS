@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Actions;
 
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\DB;
  *  - the default language stays enabled and public — changing WHICH language is the default is a
  *    separate operation, because it moves every canonical URL;
  *  - hiding a language from editors also hides it from visitors (public implies enabled);
+ *  - a language cannot be made public while a permalink section uses its code as the base segment;
  *  - switching a language on counts against the plan's `locales.max`, the default included. A site
  *    already above its limit keeps what it has; it just cannot switch on another.
  *
@@ -33,6 +35,7 @@ final readonly class ConfigureSiteLocale
         private CurrentSite $current,
         private Entitlement $entitlement,
         private SiteLocale $locales,
+        private PermalinkConfig $permalinks,
     ) {}
 
     /**
@@ -46,6 +49,11 @@ final readonly class ConfigureSiteLocale
 
         $public = $public && $enabled;
         $siteId = $this->current->id();
+
+        // Visitors would read `/{code}/…` as the language and lose the section living there.
+        if ($public && ($section = $this->permalinks->sectionUsingBase($locale)) !== null) {
+            throw new SiteLocaleChangeRejectedException('prefix_in_use', $section);
+        }
 
         $row = DB::transaction(function () use ($siteId, $locale, $enabled, $public): SiteLocaleModel {
             // Serialize language changes per site: two concurrent switch-ons must not both pass

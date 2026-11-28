@@ -8,8 +8,10 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\SiteLocale as SiteLocaleContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -390,4 +392,20 @@ it('renders on a flat query budget whatever the number of languages', function (
 
     expect($many)->toBeLessThanOrEqual($one + 2)   // the two preview lookups appear once hidden languages exist
         ->and($many)->toBeLessThanOrEqual(30);
+});
+
+it('names the section by its admin label, not its key, when a prefix blocks a language', function (): void {
+    $owner = lngMember('owner');
+    lngPlan(3);
+
+    app(Tenancy::class)->enter(1, function () use ($owner): void {
+        ContentSection::query()->create(['key' => 'projects', 'label' => 'Dự án tiêu biểu', 'entry_type' => 'post']);
+        SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'projects', 'value' => ['pattern' => 'base', 'base' => 'ja']]);
+
+        $screen = Livewire::actingAs($owner)->test(LanguageSettings::class)
+            ->call('togglePublic', 'ja')->call('confirmAsk')
+            ->call('save');
+
+        expect($screen->get('toast'))->toContain('«Dự án»')->not->toContain('projects');
+    });
 });
