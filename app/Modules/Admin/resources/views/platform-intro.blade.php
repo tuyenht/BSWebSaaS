@@ -16,13 +16,13 @@
     <link rel="canonical" href="{{ route('platform.dashboard') }}">
     <link rel="icon" href="/favicon.ico" sizes="any">
     @vite(['resources/css/app.css'])
-    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=12">
+    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=13">
     {{-- auth.css sizes the sign-in pages against a 14px root; this page is read, not filled in, so 16px --}}
     <style>html{font-size:16px}</style>
 </head>
 <body>
 <div class="auth-page">
-    <div class="auth-bg">
+    <div class="auth-bg intro-bg">
         <div class="auth-orb-1"></div>
         <div class="auth-orb-2"></div>
 
