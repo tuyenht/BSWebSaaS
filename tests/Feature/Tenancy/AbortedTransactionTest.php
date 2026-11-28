@@ -261,6 +261,7 @@ it('keeps a failure that escapes the work on Laravel\'s usual path: rolled back,
 it('rethrows a probe failure that is not the aborted-transaction answer instead of returning quietly', function (): void {
     Log::spy();
     $rolledBack = false;
+    $committed = false;
     $armed = false;
 
     // The probe meets a lost connection (SQLSTATE 08006) instead of PostgreSQL's 25P02 answer. The hook
@@ -285,8 +286,11 @@ it('rethrows a probe failure that is not the aborted-transaction answer instead 
 
     $thrown = null;
     try {
-        app(Tenancy::class)->enter(1, function () use (&$rolledBack, &$armed): string {
+        app(Tenancy::class)->enter(1, function () use (&$rolledBack, &$committed, &$armed): string {
             TenantProbe::create(['value' => 'lost']);
+            DB::afterCommit(function () use (&$committed): void {
+                $committed = true;
+            });
             DB::afterRollBack(function () use (&$rolledBack): void {
                 $rolledBack = true;
             });
@@ -303,6 +307,7 @@ it('rethrows a probe failure that is not the aborted-transaction answer instead 
 
     expect($thrown)->toBeInstanceOf(QueryException::class)
         ->and($thrown?->getCode())->toBe('08006')
+        ->and($committed)->toBeFalse()
         ->and($rolledBack)->toBeTrue()
         ->and(abortedTxStoredProbes())->toBe([])
         ->and(DB::transactionLevel())->toBe(0)

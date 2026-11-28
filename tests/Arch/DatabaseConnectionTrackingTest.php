@@ -26,8 +26,9 @@ it('resolves every pgsql connection to the counting connection', function (): vo
 
 /**
  * Where $source reaches PDO past Laravel: a getPdo-family call, or a PDO handle of its own (`new PDO`,
- * `PDO::connect`, under an import alias too), or any driver subclass under `Pdo\` (`Pdo\Pgsql`…),
- * which app/ has no reason to name at all. PDO's constants and PDOException stay allowed.
+ * `PDO::connect`, a class that `extends PDO`, under an import alias too), or any driver subclass under
+ * `Pdo\` (`Pdo\Pgsql`…, also through an alias of that namespace), which app/ has no reason to name at
+ * all. PDO's constants and PDOException stay allowed.
  *
  * @return list<string> "line: code"
  */
@@ -43,11 +44,12 @@ function rawPdoOffenders(string $source): array
     ));
     $text = fn (int $i): string => strtolower(ltrim($tokens[$i]->text ?? '', '\\'));
 
-    // `use PDO as Db;` makes Db another name for PDO.
+    // `use PDO as Db;` (or `use Foo, PDO as Db;`) makes Db another name for PDO, and for its namespace:
+    // `Db\Pgsql` is `Pdo\Pgsql`. Only an import puts a class name right before `as`.
     $pdoNames = ['pdo'];
     foreach ($tokens as $i => $token) {
-        if ($token->is(T_USE) && $text($i + 1) === 'pdo' && ($tokens[$i + 2] ?? null)?->is(T_AS)) {
-            $pdoNames[] = $text($i + 3);
+        if ($token->is($names) && $text($i) === 'pdo' && ($tokens[$i + 1] ?? null)?->is(T_AS)) {
+            $pdoNames[] = $text($i + 2);
         }
     }
 
@@ -58,9 +60,13 @@ function rawPdoOffenders(string $source): array
 
         $getsHandle = $token->is(T_STRING) && in_array($name, $methods, true) && in_array($previous, ['->', '?->', '::'], true);
         $opensPdo = $isName && in_array($name, $pdoNames, true)
-            && ($previous === 'new' || ($text($i + 1) === '::' && $text($i + 2) === 'connect'));
+            && (in_array($previous, ['new', 'extends'], true) || ($text($i + 1) === '::' && $text($i + 2) === 'connect'));
         // `Pdo\Pgsql` is one name token; a group import `use Pdo\{…}` is `Pdo` then a separator.
-        $namesDriverClass = $isName && (str_starts_with($name, 'pdo\\') || ($name === 'pdo' && ($tokens[$i + 1] ?? null)?->is(T_NS_SEPARATOR)));
+        $namespace = strstr($name, '\\', true);
+        $namesDriverClass = $isName && (
+            ($namespace !== false && in_array($namespace, $pdoNames, true))
+            || (in_array($name, $pdoNames, true) && ($tokens[$i + 1] ?? null)?->is(T_NS_SEPARATOR))
+        );
 
         if ($getsHandle || $opensPdo || $namesDriverClass) {
             $offenders[] = $token->line.': '.$token->text;
@@ -103,6 +109,13 @@ it('flags a planted raw PDO call', function (string $planted): void {
     'group-imported Pdo subclass' => ['use Pdo\\{Pgsql}; Pgsql::connect("pgsql:host=db");'],
     'PDO under an alias, new' => ['use PDO as Db; new Db("pgsql:host=db");'],
     'PDO under an alias, connect' => ['use PDO as Db; Db::connect("pgsql:host=db");'],
+    'extends PDO' => ['class Db extends PDO {}'],
+    'extends \\PDO' => ['class Db extends \\PDO {}'],
+    'anonymous class extends PDO' => ['$db = new class("pgsql:host=db") extends PDO {};'],
+    'extends PDO under an alias' => ['use PDO as Db; class Mine extends Db {}'],
+    'Pdo namespace under an alias' => ['use Pdo as P; new P\\Pgsql("pgsql:host=db");'],
+    'PDO alias in a list of imports' => ['use Foo, PDO as Db; new Db("pgsql:host=db");'],
+    'PDO alias in a list of imports, connect' => ['use Foo\\Bar, PDO as Db; Db::connect("pgsql:host=db");'],
 ]);
 
 it('lets PDO constants, PDOException and comments through', function (): void {
@@ -110,6 +123,9 @@ it('lets PDO constants, PDOException and comments through', function (): void {
         <?php
         use PDO;
         use PDOException;
+        use PDOException as Failure, Foo\Bar as Baz;
+        class Repository extends Model {}
+        function handle(PDO $pdo): void {}
         // new PDO("pgsql:") and PDO::connect() in a comment are not code
         $style = PDO::FETCH_ASSOC;
         try {
