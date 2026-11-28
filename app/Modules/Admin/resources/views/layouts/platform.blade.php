@@ -25,6 +25,13 @@
     // apart by shape, not only by colour (same marking as the tenant sidebar). Links also carry
     // aria-current="page".
     $currentRow = 'font-semibold text-sidebar-fg-active bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
+    // The page's trail (⌂ › menu entry), as on a website's admin: none on an error page inside the
+    // frame. Below 600px (and on a short landscape screen) a top-level screen sits 12px under the bar
+    // and its trail steps aside.
+    $consoleNav = app(\App\Modules\Admin\Navigation\PlatformNav::class);
+    $trail = empty($errorFrame) ? $consoleNav->trail($platformNav ?? [], isset($title) ? (string) $title : null) : [];
+    $topLevel = empty($errorFrame) && $consoleNav->onTopLevelScreen();
+    $trailTop = $trail !== [] && $topLevel;
 @endphp
 {{-- Shell (admin-chrome.css "Platform console shell"): below 1024px the sidebar is a drawer the
      menu button opens; 1024–1279px it is an icon rail and the menu button lays the full menu over
@@ -178,8 +185,12 @@
             </div>
         </header>
 
-        <main class="flex-1 p-4 lg:p-6">
+        <main @class(['flex-1 p-4 lg:p-6', 'max-[599.98px]:pt-3 [@media(max-height:500px)]:pt-3' => $topLevel])>
             @include('admin::partials.session-guard')
+            {{-- One trail per page: none where the screen draws its own header or trail. --}}
+            @if ($trail !== [])
+                <x-bs-admin::breadcrumb :items="$trail" :class="$trailTop ? 'mb-2 max-[599.98px]:hidden [@media(max-height:500px)]:hidden' : 'mb-2'" />
+            @endif
             {{ $slot }}
         </main>
 

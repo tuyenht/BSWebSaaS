@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Navigation;
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\ContentBlock;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
@@ -88,6 +89,15 @@ final class AdminNav
     ];
 
     /**
+     * The top-level screens that are one whatever the reader may do: the shell board (shell-screens.js)
+     * marks them `lvl1` (the leads inbox, a lead open in it, the members list) or always heads them
+     * with a short main button (categories, the forms list).
+     */
+    private const TOP_LEVEL_SCREENS = [
+        'admin.forms.index', 'admin.forms.show', 'admin.users.index', 'admin.taxonomies.index', 'admin.form-builder.index',
+    ];
+
+    /**
      * The same menu as items(), cut into the sidebar's headed groups (Content · Tools · System).
      * A group with no visible entry is left out, so a heading never stands alone.
      *
@@ -160,6 +170,28 @@ final class AdminNav
         }
 
         return $title === null || $title === '' ? [] : [['label' => $title, 'url' => null]];
+    }
+
+    /**
+     * Whether this request is a top-level screen, as the shell board counts them (`data-ls`): one it
+     * marks `lvl1`, or one whose head carries a short main button («Thêm», «Tải lên», «Mời») for this
+     * reader — the content and product lists for whoever may add, the library for whoever may upload,
+     * the domains for whoever may add one under the plan. Below 600px (and on a short landscape
+     * screen) such a screen sits 12px under the bar and its trail steps aside: the way back is the menu.
+     */
+    public function onTopLevelScreen(): bool
+    {
+        $request = request();
+
+        return match (true) {
+            $request->routeIs(...self::TOP_LEVEL_SCREENS) => true,
+            $request->routeIs('admin.entries.index') => Gate::allows('entries.create'),
+            $request->routeIs('admin.catalog.index') => Gate::allows('create', Product::class),
+            $request->routeIs('admin.media.index') => Gate::allows('media.upload'),
+            $request->routeIs('admin.settings.domains') => Gate::allows('domains.manage')
+                && (int) app(Entitlement::class)->featureValue('custom_domains.max') > 0,
+            default => false,
+        };
     }
 
     /**

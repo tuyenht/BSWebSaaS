@@ -8,6 +8,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Dom\Element;
 use Dom\HTMLDocument;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Spatie\Permission\PermissionRegistrar;
@@ -409,4 +410,124 @@ it('writes the footer from the brand config and drops the built-by line when it 
         ->assertOk()
         ->assertSee('Bộ Khung Thử', false)
         ->assertDontSee('Phát triển bởi', false);
+});
+
+it('shows the board\'s two initials on the account button and on every avatar, diacritics kept', function (): void {
+    $user = User::factory()->create(['name' => 'Nguyễn Ngọc Ánh']);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    $dom = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+    $chip = platformShellOne($dom, 'header button[x-ref="userButton"] > span');
+    expect(trim((string) $chip->textContent))->toBe('NÁ')
+        ->and(trim(Blade::render('<x-bs-admin::avatar name="trần thị ổi" />')))->toContain('<span aria-hidden="true">TỔ</span>')
+        ->and(Blade::render('<x-bs-admin::avatar name="" />'))->toContain('<span aria-hidden="true">U</span>');
+});
+
+/** The top bar's icon buttons: the ones drawn by the shared x-bs-admin::topbar-button (board 01 .tb-ib). */
+function topbarIconButtons(HTMLDocument $dom): array
+{
+    return array_values(array_filter(
+        iterator_to_array($dom->querySelectorAll('header button')),
+        fn (Element $b): bool => in_array('active:bg-topbar-press', platformShellClasses($b), true),
+    ));
+}
+
+it('draws the top bar\'s icon buttons with one shared button on both planes', function (): void {
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+    $site = platformShellDom((string) $this->actingAs($user->fresh())->get('http://a.test/admin/content')->assertOk()->getContent());
+
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $console = platformShellDom((string) $this->actingAs($operator->fresh())->get("http://{$host}/tenants")->assertOk()->getContent());
+
+    // a website: search (phone) and its ✕, language, fullscreen, light/dark, the bell; the console: the last four
+    expect(topbarIconButtons($site))->toHaveCount(6)
+        ->and(topbarIconButtons($console))->toHaveCount(4);
+    foreach ([$site, $console] as $dom) {
+        foreach (topbarIconButtons($dom) as $button) {
+            expect(platformShellClasses($button))->toContain('rounded-lg', 'text-topbar-fg-strong', 'hover:bg-topbar-button-hover', 'transition-colors');
+        }
+        // the bell is one of them, on the same frame on both planes
+        expect(platformShellClasses(platformShellOne($dom, 'header button[x-ref="bell"]')))->toContain('active:bg-topbar-press', 'size-control');
+    }
+    // the language button is the wide one (.tb-lb)
+    expect(platformShellClasses(platformShellOne($site, 'header button[title="'.__('admin.language').'"]')))->toContain('min-w-control', 'px-2');
+});
+
+it('gives the brand bar\'s icon buttons the board\'s white ink and black 12% hover, the menu tile keeping white 14%', function (): void {
+    $chrome = (string) file_get_contents(resource_path('css/admin-chrome.css'));
+    // the two brand-bar blocks: the chosen dark bar, and the automatic bar below 1024px
+    preg_match_all('~:root\[data-topbar=\'(?:dark|auto)\'\](?::not\([^)]*\))?\s*\{([^}]*)\}~', $chrome, $blocks);
+    expect($blocks[1])->toHaveCount(2);
+    foreach ($blocks[1] as $block) {
+        expect($block)->toMatch('~--color-topbar-fg-strong:\s*#ffffff;~')
+            ->toMatch('~--color-topbar-button-hover:\s*rgb\(0 0 0 / 0\.12\);~')
+            ->toMatch('~--color-topbar-hover:\s*rgb\(255 255 255 / 0\.14\);~')
+            ->toMatch('~--color-topbar-press:\s*rgb\(0 0 0 / 0\.2\);~');
+    }
+    // the light bar's hover is the board's #f3f6f9, the dark scheme's white 8%
+    expect((string) file_get_contents(resource_path('css/app.css')))->toMatch('~--color-topbar-button-hover:\s*#f3f6f9;~')
+        ->and($chrome)->toMatch('~--color-topbar-button-hover:\s*rgb\(255 255 255 / 0\.08\);~');
+});
+
+/** The classes of the page's <main> and its shell trail (null when the shell draws none). */
+function shellMainAndTrail(string $html): array
+{
+    $dom = platformShellDom($html);
+    $trail = $dom->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+
+    return [platformShellClasses(platformShellOne($dom, 'main')), $trail];
+}
+
+it('keeps the library\'s trail on phones for a member who may not upload: no «Tải lên», not top-level', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'media-looker', ['media.view']));
+    [$classes, $trail] = shellMainAndTrail((string) $this->actingAs($viewer->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/media')->assertOk()->getContent());
+
+    expect($classes)->not->toContain('max-[599.98px]:pt-3')
+        ->and($trail)->not->toBeNull()
+        ->and(platformShellClasses($trail))->not->toContain('max-[599.98px]:hidden');
+
+    // one who may upload gets the board's top-level head
+    $uploader = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($uploader, 'media-sender', ['media.view', 'media.upload']));
+    [$classes, $trail] = shellMainAndTrail((string) $this->actingAs($uploader->fresh())->withSession(['locale' => 'vi'])->get('http://a.test/admin/media')->assertOk()->getContent());
+    expect($classes)->toContain('max-[599.98px]:pt-3', '[@media(max-height:500px)]:pt-3')
+        ->and(platformShellClasses($trail))->toContain('max-[599.98px]:hidden');
+});
+
+it('leaves the console screens on the shared screen head to it, and hides the trail on phones on a top-level screen', function (): void {
+    app()->setLocale('vi');
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+    $get = fn (string $path): array => shellMainAndTrail((string) $this->actingAs($operator->fresh())->withSession(['locale' => 'vi'])->get("http://{$host}{$path}")->assertOk()->getContent());
+    $top = ['max-[599.98px]:pt-3', '[@media(max-height:500px)]:pt-3'];
+
+    // customers, websites, plans and the audit log draw their trail in their own head: the shell none
+    foreach (['/tenants', '/sites', '/plans', '/audit'] as $path) {
+        expect($get($path)[1])->toBeNull($path);
+    }
+    // customers and websites are the board's lvl1 screens; plans («Thêm gói», no short form) and the log are not
+    expect($get('/tenants')[0])->toContain(...$top)
+        ->and($get('/sites')[0])->toContain(...$top)
+        ->and($get('/plans')[0])->not->toContain('max-[599.98px]:pt-3')
+        ->and($get('/audit')[0])->not->toContain('max-[599.98px]:pt-3');
+
+    // the support sign-ins (lvl1): ⌂ › Đăng nhập hỗ trợ, stepping aside below 600px and on a short landscape screen
+    [$classes, $support] = $get('/support');
+    expect(trim((string) $support?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.platform_support'))
+        ->and(platformShellClasses($support))->toContain('max-[599.98px]:hidden', '[@media(max-height:500px)]:hidden')
+        ->and($classes)->toContain(...$top);
+
+    // a page outside the menu is named by its title, at every width; a settings screen draws its own trail
+    [$classes, $notifications] = $get('/notifications');
+    expect(trim((string) $notifications?->querySelector('[aria-current="page"]')?->textContent))->toBe(__('admin.notifications'))
+        ->and(platformShellClasses($notifications))->not->toContain('max-[599.98px]:hidden')
+        ->and($classes)->not->toContain('max-[599.98px]:pt-3')
+        ->and($get('/settings/email')[1])->toBeNull();
 });

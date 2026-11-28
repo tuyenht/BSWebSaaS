@@ -163,6 +163,8 @@
     --color-topbar-fg-strong: var(--color-text);  /* user name, search text */
     --color-topbar-fg-hover: var(--color-text-strong); /* platform nav link hover text */
     --color-topbar-hover: #f3f6f9;                /* item hover bg */
+    --color-topbar-button-hover: #f3f6f9;         /* icon button under the pointer (board 01 .tb-ib:hover, --tb-hv) */
+    --color-topbar-press: rgb(0 0 0 / 0.2);       /* icon button while pressed (board 01 .tb-ib:active) */
     --color-topbar-brand: var(--color-text-strong); /* platform console brand name */
     --color-topbar-search: #f3f3f9;               /* clearly contrasts the white topbar (owner 06/07) */
     --color-topbar-search-fg: var(--color-text);

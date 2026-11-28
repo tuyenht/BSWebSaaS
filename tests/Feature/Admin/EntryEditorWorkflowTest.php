@@ -516,6 +516,23 @@ it('pages the trail by keyset — "Xem thêm" appends the older moves', function
     });
 });
 
+it('marks each move in the trail with the last word\'s first letter, a letter typed with its marks kept whole (board 17)', function (): void {
+    // «Nguyễn Ánh» typed decomposed (base letters plus combining marks), as some keyboards send it
+    $author = User::factory()->create(['name' => "Nguy\u{0065}\u{0302}\u{0303}n \u{0041}\u{0301}nh"]);
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        grantRole($author, 'author', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.submit']);
+        $post = wfEditorPost(wfEditorCollection(), $author);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'submit');
+
+        $html = Livewire::actingAs($author->fresh())->test(Editor::class, ['ulid' => $post->ulid])->html();
+
+        expect($html)->toContain('text-accent">Á</span>')
+            ->not->toContain('text-accent">A</span>');
+    });
+});
+
 it('renders the governed editor on a flat query budget regardless of trail length or team size', function (): void {
     $author = User::factory()->create();
     $reviewer = User::factory()->create();

@@ -5,13 +5,15 @@
 //    the bell; a click outside or Tab past its end closes it, leaving the focus where it went;
 //  - the list's arrival is said politely (the panel's status line); a lost request (no connection, a
 //    server error) inserts the shared error alert, and "Thử lại" sends the same request again. A
-//    refusal or an expired page (any 4xx) is left to Livewire;
+//    refusal or an expired page (any 4xx) is left to Livewire (admin-notice-wire.js, shared with the
+//    "Thông báo" page);
 //  - below 600px (the panel's full-screen step) the panel is modal: `narrow` turns on the shared
 //    x-trap (focus kept inside, the page behind made inert and still) and aria-modal;
 //  - the platform console's bell has no list yet (no Livewire component): the same panel opens and
 //    closes, and nothing is asked of a server.
 
 import '../css/admin-bell-panel.css';
+import { catchLost, followNotice, tryAgain } from './admin-notice-wire.js';
 
 const ACTIONS = ['load', 'open', 'readAll'];
 
@@ -41,37 +43,18 @@ export function bsBell() {
             if (!this.live) {
                 return;
             }
-            this.stopIntercept = this.$wire.$intercept(({ action, onError, onFailure, onSuccess }) => {
-                if (!ACTIONS.includes(action.name)) {
-                    return;
-                }
-                const fail = () => {
-                    this.failed = action.name === 'load' ? 'load' : 'save';
-                    this.retry = () => this.$wire[action.name](...(action.params || []));
-                };
-                onFailure(fail);
-                onError(({ response, preventDefault }) => {
-                    // A refusal (403, 404, 419 …) is not a lost connection: Livewire shows its page.
-                    if (response && response.status < 500) {
-                        return;
-                    }
-                    preventDefault();
-                    fail();
-                });
-                onSuccess(() => {
-                    this.failed = '';
-                    if (action.name === 'load') {
-                        // After Livewire has drawn the list, so the words follow what is on screen.
-                        this.$nextTick(() => {
-                            this.said = this.$root.dataset.loaded || '';
-                        });
-                    }
-                    // "Đánh dấu đã đọc tất cả" disappears once nothing is unread: keep the focus in the panel.
+            this.stopIntercept = catchLost(this, (name) => (!ACTIONS.includes(name) ? '' : name === 'load' ? 'load' : 'save'), (action) => {
+                if (action.name === 'load') {
+                    // After Livewire has drawn the list, so the words follow what is on screen.
                     this.$nextTick(() => {
-                        if (this.open && !this.$root.contains(document.activeElement)) {
-                            this.$refs.panel.focus();
-                        }
+                        this.said = this.$root.dataset.loaded || '';
                     });
+                }
+                // "Đánh dấu đã đọc tất cả" disappears once nothing is unread: keep the focus in the panel.
+                this.$nextTick(() => {
+                    if (this.open && !this.$root.contains(document.activeElement)) {
+                        this.$refs.panel.focus();
+                    }
                 });
             });
         },
@@ -97,18 +80,11 @@ export function bsBell() {
         // A notice's link: a plain click marks it read on the server, which then opens it; Ctrl/Cmd/
         // Shift-click keeps the browser's own new tab or window (the notice stays unread).
         follow(e, ulid) {
-            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) {
-                return;
-            }
-            e.preventDefault();
-            this.$wire.open(ulid);
+            followNotice(this, e, ulid);
         },
 
         again() {
-            const run = this.retry || (() => this.$wire.load());
-            this.failed = '';
-            this.retry = null;
-            run();
+            tryAgain(this, () => this.$wire.load());
         },
 
         close(back) {

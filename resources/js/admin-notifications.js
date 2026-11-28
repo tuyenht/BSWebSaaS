@@ -5,8 +5,11 @@
 //    notice's link marks it read on the server, which then opens it; Ctrl/Cmd/Shift-click keeps the
 //    browser's own new tab or window (the notice stays unread);
 //  - a lost request (no connection, a server error) inserts the shared error alert, and "Thử lại"
-//    sends the same request again. A refusal or an expired page (any 4xx) is left to Livewire.
+//    sends the same request again. A refusal or an expired page (any 4xx) is left to Livewire
+//    (admin-notice-wire.js, shared with the top bar's bell).
 //  The platform console's copy has no store: only the tabs ask the server anything there.
+
+import { catchLost, followNotice, tryAgain } from './admin-notice-wire.js';
 
 const LOADS = ['show', 'more', 'clearSearch'];
 const SAVES = ['read', 'readAll', 'undo', 'open'];
@@ -20,28 +23,7 @@ export function bsNotifications() {
             if (!this.$wire) {
                 return;
             }
-            this.stopIntercept = this.$wire.$intercept(({ action, onError, onFailure, onSuccess }) => {
-                const load = LOADS.includes(action.name);
-                if (!load && !SAVES.includes(action.name)) {
-                    return;
-                }
-                const fail = () => {
-                    this.failed = load ? 'load' : 'save';
-                    this.retry = () => this.$wire[action.name](...(action.params || []));
-                };
-                onFailure(fail);
-                onError(({ response, preventDefault }) => {
-                    if (response && response.status < 500) {
-                        return;
-                    }
-                    preventDefault();
-                    fail();
-                });
-                onSuccess(() => {
-                    this.failed = '';
-                    this.retry = null;
-                });
-            });
+            this.stopIntercept = catchLost(this, (name) => (LOADS.includes(name) ? 'load' : SAVES.includes(name) ? 'save' : ''));
         },
 
         destroy() {
@@ -77,18 +59,11 @@ export function bsNotifications() {
         },
 
         follow(e, ulid) {
-            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) {
-                return;
-            }
-            e.preventDefault();
-            this.$wire.open(ulid);
+            followNotice(this, e, ulid);
         },
 
         again() {
-            const run = this.retry;
-            this.failed = '';
-            this.retry = null;
-            run?.();
+            tryAgain(this);
         },
     };
 }

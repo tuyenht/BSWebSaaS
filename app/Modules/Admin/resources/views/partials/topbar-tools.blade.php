@@ -20,15 +20,13 @@
 
 {{-- Language (from 768px; below it the user menu carries the choice) --}}
 <div class="relative hidden md:block" x-data="{ langOpen: false }">
-    <button type="button" @click="langOpen = ! langOpen" :aria-expanded="langOpen"
-            aria-label="{{ __('admin.language') }}"
-            class="grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+    <x-bs-admin::topbar-button wide :label="__('admin.language')" @click="langOpen = ! langOpen" ::aria-expanded="langOpen">
         @if ($flag($current['code']))
             <img src="{{ $flag($current['code']) }}" alt="{{ $current['label'] }}" class="size-5 rounded-full object-cover">
         @else
             <span class="text-xs font-semibold uppercase">{{ $current['code'] }}</span>
         @endif
-    </button>
+    </x-bs-admin::topbar-button>
     <div x-show="langOpen" @click.outside="langOpen = false" x-transition x-cloak role="menu"
          class="absolute end-0 z-30 mt-1 w-44 overflow-hidden rounded-md border border-border bg-surface py-1 shadow-card">
         @foreach ($locales as $l)
@@ -50,38 +48,37 @@
 </div>
 
 {{-- Fullscreen — only where the browser can (not on an iPhone); pressed while on, its name says how to leave. --}}
-<button type="button" x-data="{ full: false, can: !! document.fullscreenEnabled }" x-show="can" x-cloak
+<x-bs-admin::topbar-button display="hidden md:grid" :label="__('admin.fullscreen')"
+        x-data="{ full: false, can: !! document.fullscreenEnabled }" x-show="can" x-cloak
         @fullscreenchange.document="full = !! document.fullscreenElement"
         @click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"
-        aria-label="{{ __('admin.fullscreen') }}" title="{{ __('admin.fullscreen') }}" aria-pressed="false"
-        :aria-label="full ? @js(__('admin.fullscreen_exit')) : @js(__('admin.fullscreen'))"
-        :title="full ? @js(__('admin.fullscreen_exit')) : @js(__('admin.fullscreen'))"
-        :aria-pressed="full ? 'true' : 'false'"
-        class="hidden size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg md:grid">
-    <x-bs-admin::icon name="fullscreen" class="size-5" x-show="! full" />
-    <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
-</button>
+        aria-pressed="false"
+        ::aria-label="full ? {{ \Illuminate\Support\Js::from(__('admin.fullscreen_exit')) }} : {{ \Illuminate\Support\Js::from(__('admin.fullscreen')) }}"
+        ::title="full ? {{ \Illuminate\Support\Js::from(__('admin.fullscreen_exit')) }} : {{ \Illuminate\Support\Js::from(__('admin.fullscreen')) }}"
+        ::aria-pressed="full ? 'true' : 'false'">
+    <x-bs-admin::icon name="fullscreen" x-show="! full" />
+    <x-bs-admin::icon name="minimize" x-show="full" x-cloak />
+</x-bs-admin::topbar-button>
 
 {{-- Light / dark — shares the Customizer's scheme axis + adminTheme store. The static name holds until Alpine sets the live one.
      From 768px; below it the user menu carries the switch. --}}
-<button type="button" x-data
+<x-bs-admin::topbar-button display="hidden md:grid" :label="__('admin.theme_dark')" x-data
         @click="$store.adminTheme.set('scheme', $store.adminTheme.state.scheme === 'dark' ? 'light' : 'dark')"
-        aria-label="{{ __('admin.theme_dark') }}"
-        :aria-label="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_light')) : @js(__('admin.theme_dark'))"
-        class="hidden md:grid size-control place-items-center rounded text-topbar-fg any-pointer-coarse:size-hit transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
-    <x-bs-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />
-    <x-bs-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
-</button>
+        ::aria-label="$store.adminTheme.state.scheme === 'dark' ? {{ \Illuminate\Support\Js::from(__('admin.theme_light')) }} : {{ \Illuminate\Support\Js::from(__('admin.theme_dark')) }}"
+        ::title="$store.adminTheme.state.scheme === 'dark' ? {{ \Illuminate\Support\Js::from(__('admin.theme_light')) }} : {{ \Illuminate\Support\Js::from(__('admin.theme_dark')) }}">
+    <x-bs-admin::icon name="moon" x-show="$store.adminTheme.state.scheme !== 'dark'" />
+    <x-bs-admin::icon name="sun" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
+</x-bs-admin::topbar-button>
 
 {{-- Notifications — a website's admin: the reader's own notices on this site (the bell component),
      except on an error page inside the frame (errorFrame: the bell would record the page's address,
      and that page never repeats the code it could not find). The platform console has no
-     notification store yet: the same panel with the board's "Chờ backend" note and the empty state,
-     no badge, no request. --}}
+     notification store yet: the same bell frame (partials/bell-frame) with the empty state, no badge,
+     no request. --}}
 @if (! \App\Modules\Admin\Support\AdminPlane::isPlatform() && auth()->user() instanceof \App\Modules\Identity\Models\User)
 @if (empty($errorFrame))
 <livewire:admin.notification-bell />
 @endif
 @else
-@include('admin::partials.bell-platform')
+@include('admin::partials.bell-frame', ['platform' => true])
 @endif

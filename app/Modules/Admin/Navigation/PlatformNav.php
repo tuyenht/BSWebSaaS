@@ -18,7 +18,57 @@ use Illuminate\Support\Str;
  */
 final readonly class PlatformNav
 {
+    /**
+     * Screens that draw their own trail in their header: every console settings screen, and the
+     * screens on the shared screen head (customers, websites, plans, the audit log).
+     */
+    private const NO_SHELL_TRAIL = [
+        'platform.dashboard', 'platform.settings.*',
+        'platform.tenants.index', 'platform.sites.index', 'platform.plans.index', 'platform.audit.index',
+    ];
+
+    /**
+     * The console's top-level screens, the ones the shell board (shell-screens.js) marks `lvl1`:
+     * customers, websites and the support sign-ins. Below 600px (and on a short landscape screen)
+     * such a screen sits 12px under the bar and its trail steps aside: the way back is the menu. The
+     * plans screen is not one: its «Thêm gói» has no short form on the board.
+     */
+    private const TOP_LEVEL_SCREENS = ['platform.tenants.index', 'platform.sites.index', 'platform.support.index'];
+
     public function __construct(private PlatformAccess $platform) {}
+
+    /**
+     * The page's trail above its title, as on a website's admin (AdminNav::trail): ⌂ › the menu
+     * entry, on that entry's own page. A screen below an entry (a customer, a website, a plan, a
+     * website's domains) leads with its own «‹ back» row instead, so it gets none; a page outside the
+     * menu is named by its title; a settings screen draws its own.
+     *
+     * @param  iterable<NavSection>  $sections
+     * @return list<array{label: string, url: string|null}>
+     */
+    public function trail(iterable $sections, ?string $title = null): array
+    {
+        $request = request();
+        if ($request->routeIs(...self::NO_SHELL_TRAIL)) {
+            return [];
+        }
+
+        foreach ($sections as $section) {
+            foreach ($section->items as $item) {
+                if ($item->active) {
+                    return $item->url === $request->url() ? [['label' => $item->label, 'url' => null]] : [];
+                }
+            }
+        }
+
+        return $title === null || $title === '' ? [] : [['label' => $title, 'url' => null]];
+    }
+
+    /** Whether this request is one of the top-level screens, whose trail is hidden on phones. */
+    public function onTopLevelScreen(): bool
+    {
+        return request()->routeIs(...self::TOP_LEVEL_SCREENS);
+    }
 
     /**
      * @param  string|null  $currentRoute  the request's route name — the link whose group it is in is the active one

@@ -1,5 +1,5 @@
 {{--
-    Topbar user area — avatar (initials chip) + name + primary-role line; click
+    Topbar user area — avatar (two-letter initials chip, DisplayName::initials) + name + primary-role line; click
     opens an account menu. Menu links are wired to REAL routes per plane so there
     are no dead-ends: the tenant admin gets My Account + (managers) Site settings;
     the platform console carries only sign-out (its top nav owns the rest).
@@ -27,7 +27,7 @@
             aria-label="{{ $name }}{{ ! empty($roleLabel) ? ' · '.$roleLabel : '' }}"
             class="flex h-(--topbar-height) items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg max-lg:size-control max-lg:justify-center max-lg:rounded-lg max-lg:px-1 max-lg:any-pointer-coarse:size-hit">
         <span class="grid size-8 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
-            {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
+            {{ \App\Modules\Admin\Support\DisplayName::initials($name) }}
         </span>
         <span class="hidden text-start leading-tight lg:block">
             <span class="block text-small leading-tight font-semibold text-topbar-fg-strong">{{ $shortName }}</span>

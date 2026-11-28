@@ -403,3 +403,21 @@ it('draws a creator\'s initials only when the post names one, a plain «—» ot
             ->and($html)->toContain('>LA</span>');
     });
 });
+
+it('takes a creator\'s disc from the last two words of the name, one letter for a one-word name (board 05)', function (): void {
+    $user = User::factory()->create(['name' => 'Lê Văn Bình']);
+    $solo = User::factory()->create(['name' => 'Tuyền']);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $solo): void {
+        grantRole($user, 'editor', ['entries.view']);
+        $section = cmSection();
+        cmPost($user, 'Ba chữ', $section);
+        cmPost($solo, 'Một chữ', $section);
+
+        $html = Livewire::actingAs($user->fresh())->test(Index::class, ['section' => 'tin-tuc'])->html();
+
+        expect($html)->toContain('>VB</span>')
+            ->not->toContain('>LB</span>')
+            ->toContain('>T</span>');
+    });
+});

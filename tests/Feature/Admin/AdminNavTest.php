@@ -310,6 +310,47 @@ it('draws no shell trail on the dashboard, and one trail only where the screen d
     }
 });
 
+it('hides the shell trail on phones on a top-level screen and keeps it elsewhere', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $classes = function (string $path) use ($owner): array {
+        $html = (string) $this->actingAs($owner)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test'.$path)->assertOk()->getContent();
+        $trail = HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('main > nav[aria-label="'.__('admin.breadcrumb').'"]');
+        expect($trail)->not->toBeNull($path);
+
+        return explode(' ', (string) $trail?->getAttribute('class'));
+    };
+
+    // the board's top-level screens (lvl1 or a short main button): the way back on a phone is the menu
+    foreach (['/admin/media', '/admin/users', '/admin/taxonomies?section=posts'] as $path) {
+        expect($classes($path))->toContain('max-[599.98px]:hidden', '[@media(max-height:500px)]:hidden');
+    }
+    // the others keep it at every width
+    foreach (['/admin/notifications', '/admin/roles'] as $path) {
+        expect($classes($path))->not->toContain('max-[599.98px]:hidden');
+    }
+});
+
+it('sits the board\'s top-level screens 12px under the bar on phones, and only those', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    // the classes of the page's <main>
+    $page = function (User $user, string $path): array {
+        $html = (string) $this->actingAs($user)->withSession(['locale' => 'vi'])->get('http://anvinh.platform.test'.$path)->assertOk()->getContent();
+
+        return explode(' ', (string) HTMLDocument::createFromString($html, LIBXML_NOERROR)->querySelector('main')?->getAttribute('class'));
+    };
+    $top = ['max-[599.98px]:pt-3', '[@media(max-height:500px)]:pt-3'];
+
+    // lvl1, or a short main button for this reader: leads, members, categories, the forms list, the
+    // library (may upload), the content list (may add)
+    foreach (['/admin/forms', '/admin/users', '/admin/taxonomies?section=posts', '/admin/form-builder', '/admin/media', '/admin/content?section=posts'] as $path) {
+        expect($page($owner, $path))->toContain(...$top);
+    }
+    // the others keep the shell's 16px at every width
+    foreach (['/admin/roles', '/admin/notifications', '/admin'] as $path) {
+        expect($page($owner, $path))->not->toContain('max-[599.98px]:pt-3');
+    }
+});
+
 it('names a page outside the menu by its title, and the account by its own title', function (): void {
     app()->setLocale('vi');
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
