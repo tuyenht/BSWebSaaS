@@ -231,21 +231,9 @@
                         @endif
                     </div>
                 @elseif ($st === null)
-                    <div class="{{ $stat }}">
-                        <span class="{{ $statLab }}">{{ __('dash.st_label') }}</span>
-                        <div wire:loading.class="sr-only" wire:target="retry('storage')" class="flex flex-col items-start gap-1.5">
-                            <p role="alert" class="flex items-start gap-1.5 text-small leading-normal text-danger-text">
-                                <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-[calc(1rem+var(--user-text-boost))] shrink-0" />
-                                <span>{{ __('dash.st_error') }}</span>
-                            </p>
-                            <x-bs-admin::button variant="outline" color="neutral" wire:click="retry('storage')" wire:loading.attr="aria-disabled" wire:target="retry('storage')" class="max-w-full shrink-0">
-                                <x-bs-admin::icon name="ri-refresh" class="size-[calc(1rem+var(--user-text-boost))]" /><span>{{ __('dash.retry') }}</span>
-                            </x-bs-admin::button>
-                        </div>
-                        <div wire:loading.flex wire:target="retry('storage')" aria-hidden="true" class="w-full flex-col gap-1.5">
-                            <span class="h-[1.875rem] w-[45%] animate-pulse rounded bg-surface-hover"></span>
-                            <span class="h-3 w-4/5 animate-pulse rounded bg-surface-hover"></span>
-                        </div>
+                    <div class="flex flex-col">
+                        <span class="{{ $statLab }} px-4 pt-4">{{ __('dash.st_label') }}</span>
+                        @include('admin::livewire.dashboard.card-error', ['card' => 'storage', 'label' => __('dash.st_label'), 'message' => __('dash.st_error'), 'pad' => 'px-4 pb-4 pt-0.5'])
                     </div>
                 @else
                     @php
