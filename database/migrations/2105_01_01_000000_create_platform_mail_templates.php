@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  *  - One row per (template, language): UNIQUE (template_key, locale) is the lookup and the save's
  *    conflict target. The table stays tiny (templates × languages), so no other index.
  *  - template_key/locale/subject/body follow mail_templates (varchar + CHECK, D13; subject plain text
- *    ≤ 200; body HTML cleaned by RichTextSanitizer with the variables left as words).
+ *    ≤ 200 with no line break; body HTML cleaned by RichTextSanitizer with the variables left as words).
  *  - created_at/updated_at timestamptz (D11). No ulid: addressed by (template, language).
  *
  * A new, empty table with no foreign key: nothing else is locked. down() drops it (the mails go back
@@ -36,6 +36,7 @@ return new class extends Migration
                 updated_at   timestamptz NOT NULL DEFAULT now(),
                 CONSTRAINT platform_mail_templates_key_check CHECK (template_key ~ '^[a-z][a-z0-9_]{0,39}$'),
                 CONSTRAINT platform_mail_templates_locale_check CHECK (locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$'),
+                CONSTRAINT platform_mail_templates_subject_line_check CHECK (strpos(subject, chr(10)) = 0 AND strpos(subject, chr(13)) = 0),
                 CONSTRAINT platform_mail_templates_body_length_check CHECK (length(body) <= 60000),
                 CONSTRAINT platform_mail_templates_key_locale_unique UNIQUE (template_key, locale)
             )

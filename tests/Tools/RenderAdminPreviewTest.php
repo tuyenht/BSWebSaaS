@@ -530,15 +530,15 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$shot.'.html', $html);
     }
     // «Email» → «Mẫu thư»: the list with one template edited and one turned off; the editor open on the
-    // password reset the website reworded; a «Hệ thống» template, which the website only reads
+    // password-changed notice the website reworded; a «Hệ thống» template, which the website only reads
     app(Tenancy::class)->enter(1, function (): void {
-        app(MailTemplateStore::class)->put('reset', 'vi', 'Đặt lại mật khẩu tại {site_name}', '<p>Chào {customer_name},</p><p>Bạn vừa yêu cầu đặt lại mật khẩu. Bấm nút dưới đây trong 60 phút.</p><p><a href="{reset_url}">Đặt mật khẩu mới</a></p><p>Nếu không phải bạn, hãy bỏ qua thư này.</p>');
+        app(MailTemplateStore::class)->put('pwchanged', 'vi', 'Mật khẩu tại {site_name} vừa được đổi', '<p>Chào {customer_name},</p><p>Mật khẩu của bạn vừa được đổi lúc {change_time}, từ địa chỉ {change_ip}.</p><p>Nếu không phải bạn, hãy gọi {hotline} hoặc viết tới {contact_email} ngay.</p>');
         app(MailTemplateStore::class)->setOff('welcome', true);
     });
     $tplPage = (string) $this->actingAs($owner)->get('http://'.ADMIN_PREVIEW_HOST.'/admin/settings/email?tab=tpl')->assertOk()->getContent();
-    expect($tplPage)->toContain(e(__('admin.mt_n_reset')))->toContain(e(__('admin.mt_b_edited')));
+    expect($tplPage)->toContain(e(__('admin.mt_n_pwchanged')))->toContain(e(__('admin.mt_b_edited')));
     file_put_contents($dir.'/email-tpl.html', $tplPage);
-    foreach (['email-tpl-edit' => 'reset', 'email-tpl-system' => 'ntf_contact'] as $shot => $key) {
+    foreach (['email-tpl-edit' => 'pwchanged', 'email-tpl-system' => 'ntf_contact'] as $shot => $key) {
         $lw = app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner)->test(EmailTemplates::class, ['fromName' => 'Công ty Demo', 'fromAddress' => 'hop@congtydemo.vn'])
             ->call('open', $key)->assertSet('editing', $key));
         $snapshot = (fn () => $this->lastState->getSnapshot())->call($lw);

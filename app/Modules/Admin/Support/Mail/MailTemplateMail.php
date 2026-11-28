@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Support\Mail;
 
 use App\Modules\Admin\Support\MailBrand;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Throwable;
 
@@ -30,9 +31,11 @@ final class MailTemplateMail
     {
         $locale ??= app()->getLocale();
         try {
-            $template = $this->templates->stored($key, $locale);
-        } catch (Throwable $e) {
             // A template that cannot be read never stops the mail: it goes out in its wording in code.
+            // The reads run in their own savepoint (a nested transaction): a failed query inside the
+            // request's or job's transaction would otherwise leave every later query refused.
+            $template = DB::transaction(fn (): ?array => $this->templates->stored($key, $locale));
+        } catch (Throwable $e) {
             report($e);
 
             return null;
@@ -45,7 +48,9 @@ final class MailTemplateMail
         $look = $this->brand->current();
         $color = $look['color'] ?? MailBrand::FALLBACK_COLOR;
         $ink = $look['text'] ?? '#ffffff';
-        $html = $this->renderer->html($template['body'], $all, $color, $ink);
+        // as on save: the links the mail needs are never sent inside a style that could hide them
+        $links = array_values(array_filter(MailTemplateCatalog::get($key)['required'] ?? [], MailTemplateCatalog::isLinkVar(...)));
+        $html = $this->renderer->html(MailTemplateRenderer::exposeLinks($template['body'], $links), $all, $color, $ink);
 
         return (new MailMessage)
             ->subject($this->renderer->subject($template['subject'], $all))

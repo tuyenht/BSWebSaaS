@@ -151,13 +151,26 @@ final class EmailTemplates extends Component
         $this->resetErrorBag();
         $bad = false;
         $plain = MailTemplateRenderer::plainSubject($subject);
-        $clean = mb_strlen($body) > MailTemplateCatalog::BODY_MAX ? null : app(MailTemplateRenderer::class)->clean($body);
+        $required = MailTemplateCatalog::TEMPLATES[$key]['required'];
+        // the required links in plain sight (no style around them that could hide one)
+        $clean = mb_strlen($body) > MailTemplateCatalog::BODY_MAX ? null : MailTemplateRenderer::exposeLinks(
+            app(MailTemplateRenderer::class)->clean($body),
+            array_filter($required, MailTemplateCatalog::isLinkVar(...)),
+        );
+        $vars = MailTemplateCatalog::TEMPLATES[$key]['vars'];
 
         if ($plain === '') {
             $this->addError('tplSubject', __('admin.mt_err_subject_req'));
             $bad = true;
         } elseif (mb_strlen($plain) > MailTemplateCatalog::SUBJECT_MAX) {
             $this->addError('tplSubject', __('admin.mt_err_subject_long', ['max' => MailTemplateCatalog::SUBJECT_MAX]));
+            $bad = true;
+        } elseif (($unknown = self::unknownVar($plain, $vars)) !== null) {
+            $this->addError('tplSubject', __('admin.mt_err_unknown_var', ['var' => $unknown]));
+            $bad = true;
+        } elseif (($link = self::linkVarIn($plain)) !== null) {
+            // a subject is plain text: an address there is words anyone can copy, never a link
+            $this->addError('tplSubject', __('admin.mt_err_subject_link', ['var' => $link]));
             $bad = true;
         }
         if ($clean === null || mb_strlen($clean) > MailTemplateCatalog::BODY_MAX) {
@@ -166,9 +179,12 @@ final class EmailTemplates extends Component
         } elseif (preg_match('/[\p{L}\p{N}]/u', strip_tags($clean)) !== 1) {
             $this->addError('tplBody', __('admin.mt_err_body_req'));
             $bad = true;
+        } elseif (($unknown = self::unknownVar($clean, $vars)) !== null) {
+            $this->addError('tplBody', __('admin.mt_err_unknown_var', ['var' => $unknown]));
+            $bad = true;
         } else {
             $missing = array_filter(
-                MailTemplateCatalog::TEMPLATES[$key]['required'],
+                $required,
                 // a link variable counts only as the whole address of a link with words (not in an
                 // image's words, not as typed text, not as an empty link)
                 static fn (string $token): bool => MailTemplateCatalog::isLinkVar($token) ? ! MailTemplateRenderer::hasLink($clean, $token) : ! str_contains($clean, $token),
@@ -330,6 +346,8 @@ final class EmailTemplates extends Component
                 'group' => $t['group'],
                 'on' => ! in_array($key, $off, true),
                 'edited' => $t['kind'] !== MailTemplateCatalog::SYSTEM && isset($site[$key]),
+                // what turning it off stops besides its mail
+                'note' => in_array($key, MailTemplateCatalog::NEEDED, true) ? Cast::string(__('admin.mt_needed_'.$key)) : null,
                 'langs' => $t['i18n'] && count($enabled) <= 1 ? [] : $langs,
             ];
         }
@@ -374,7 +392,7 @@ final class EmailTemplates extends Component
      * out with today (the website's copy, the platform's, the default language's when that language
      * has none, or the wording in code), the variables, and the switches.
      *
-     * @param  array{key: string, name: string, when: string, icon: string, kind: string, group: string, on: bool, edited: bool, langs: list<array{code: string, done: bool}>}  $row
+     * @param  array{key: string, name: string, when: string, icon: string, kind: string, group: string, on: bool, edited: bool, note: string|null, langs: list<array{code: string, done: bool}>}  $row
      * @param  array<string, array<string, true>>  $site
      * @param  array<string, array<string, true>>  $platform
      * @return array<string, mixed>
@@ -427,6 +445,37 @@ final class EmailTemplates extends Component
             'required' => $t['required'],
             'preview' => $t['kind'] === MailTemplateCatalog::SYSTEM ? $this->sampleMail($key, $this->lang, $text['subject'], $text['body']) : null,
         ];
+    }
+
+    /**
+     * The first `{name}` in a text that is not one of the template's variables (it would go out as
+     * typed), also inside an address the cleaner encoded.
+     *
+     * @param  list<string>  $vars
+     */
+    private static function unknownVar(string $text, array $vars): ?string
+    {
+        preg_match_all('/\{[a-z0-9_]+\}/i', preg_replace('/%7B([a-z0-9_]+)%7D/i', '{$1}', $text) ?? $text, $found);
+        foreach ($found[0] as $token) {
+            if (! in_array($token, $vars, true)) {
+                return $token;
+            }
+        }
+
+        return null;
+    }
+
+    /** The first link variable in a text. */
+    private static function linkVarIn(string $text): ?string
+    {
+        preg_match_all('/\{[a-z_]+\}/', $text, $found);
+        foreach ($found[0] as $token) {
+            if (MailTemplateCatalog::isLinkVar($token)) {
+                return $token;
+            }
+        }
+
+        return null;
     }
 
     /**

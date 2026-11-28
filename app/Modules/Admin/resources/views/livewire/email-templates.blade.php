@@ -65,6 +65,9 @@
                                     @endif
                                 </span>
                                 <span class="text-[calc(0.75rem+var(--user-text-boost))] leading-[1.45] text-text-muted">{{ $t['when'] }}</span>
+                                @if ($t['note'] !== null)
+                                    <span class="inline-flex min-w-0 items-start gap-1.5 text-[calc(0.75rem+var(--user-text-boost))] leading-[1.45] text-text-muted"><x-bs-admin::icon name="ri-error-warning" class="{{ $xs }} mt-px shrink-0" /><span>{{ $t['note'] }}</span></span>
+                                @endif
                             </div>
                             <div @class(['flex items-center justify-center gap-[5px] @max-[35rem]:order-3 @max-[35rem]:ms-[34px] @max-[35rem]:justify-start', 'grayscale' => ! $t['on']])>
                                 @foreach ($t['langs'] as $l)
@@ -213,7 +216,7 @@
             {{-- Languages, or why there is one --}}
             @if (! $editor['editable'])
                 <p class="m-0 flex min-w-0 items-center gap-2 text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted">
-                    <x-bs-admin::icon name="ri-shield-check" class="{{ $sm }}" /><span>{{ __('admin.mt_sys_note') }}</span>
+                    <x-bs-admin::icon name="ri-shield-check" class="{{ $sm }}" /><span>{{ __($editor['i18n'] ? 'admin.mt_sys_note_i18n' : 'admin.mt_sys_note') }}</span>
                 </p>
             @elseif (! $editor['i18n'])
                 <p class="m-0 flex min-w-0 items-center gap-2 text-[calc(0.78125rem+var(--user-text-boost))] leading-normal text-text-muted">

@@ -15,7 +15,11 @@ namespace App\Modules\Admin\Support\Mail;
  *  - wired: whether a mail that exists today is built from it (MailTemplateMail). The others are
  *    listed as the board lists them and keep their wording for the day their mail is built;
  *  - module: the website module the template belongs to (null = every website);
- *  - vars: the variables offered in the editor, in the board's order; required: those a save keeps.
+ *  - vars: the variables offered in the editor, in the board's order (a save takes no other `{name}`);
+ *    required: those a save keeps.
+ *
+ * NEEDED: switches whose mail an action cannot do without (the invitation's link exists only in its
+ * mail): while one is off, that action is refused rather than done without its mail.
  *
  * The keys are the `template_key` of mail_templates / platform_mail_templates.
  */
@@ -36,13 +40,16 @@ final class MailTemplateCatalog
             'vars' => ['{customer_name}', '{customer_email}', '{account_url}', '{site_name}', '{site_url}', '{contact_email}', '{hotline}'],
             'required' => [],
         ],
+        // verify and reset go to platform accounts, which belong to no one website: a website's
+        // wording could hide the real link and show its own, sent to another website's people or the
+        // platform's from its own sign-in pages. Worded by the platform only (shown as «Hệ thống»).
         'verify' => [
-            'group' => 'account', 'icon' => 'ri-shield-check', 'kind' => self::REQUIRED, 'i18n' => true, 'wired' => true, 'module' => null,
+            'group' => 'account', 'icon' => 'ri-shield-check', 'kind' => self::SYSTEM, 'i18n' => true, 'wired' => true, 'module' => null,
             'vars' => ['{customer_name}', '{customer_email}', '{verify_url}', '{site_name}', '{contact_email}'],
             'required' => ['{verify_url}'],
         ],
         'reset' => [
-            'group' => 'account', 'icon' => 'ri-lock-2', 'kind' => self::REQUIRED, 'i18n' => true, 'wired' => true, 'module' => null,
+            'group' => 'account', 'icon' => 'ri-lock-2', 'kind' => self::SYSTEM, 'i18n' => true, 'wired' => true, 'module' => null,
             'vars' => ['{customer_name}', '{reset_url}', '{site_name}', '{contact_email}', '{hotline}'],
             'required' => ['{reset_url}'],
         ],
@@ -67,6 +74,9 @@ final class MailTemplateCatalog
             'required' => [],
         ],
     ];
+
+    /** Switches an action needs on (see the class note). @var list<string> */
+    public const array NEEDED = ['team_invite'];
 
     /** The board's groups, in its order. @var list<string> */
     public const array GROUPS = ['account', 'team', 'contact', 'internal'];

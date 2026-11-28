@@ -149,6 +149,69 @@ final class MailTemplateRenderer
         return false;
     }
 
+    /**
+     * A cleaned body with the links to these variables in plain sight: every element around such a
+     * link loses its inline style but a plain text-align (a size, a colour, a height or a width could
+     * shrink or paint the link away and leave a look-alike link beside it), and a sub/sup around it
+     * gives way to its contents (nested, they shrink text too). The link itself takes no style (the
+     * cleaner keeps none on `<a>`; the mail sets its colour). Unchanged when no link needs it.
+     *
+     * @param  list<string>  $tokens  link variables, `{name}`
+     */
+    public static function exposeLinks(string $clean, array $tokens): string
+    {
+        if ($tokens === [] || ! str_contains($clean, '<a')) {
+            return $clean;
+        }
+        $dom = new DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?><div id="tpl">'.$clean.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $root = $dom->getElementsByTagName('div')->item(0);
+        if (! $root instanceof DOMElement) {
+            return $clean;
+        }
+        $changed = false;
+        foreach (self::nodes(new DOMXPath($dom), './/a', $root) as $a) {
+            if (! $a instanceof DOMElement || ! in_array(strtolower(preg_replace('/%7B([a-z_]+)%7D/i', '{$1}', trim($a->getAttribute('href'))) ?? ''), $tokens, true)) {
+                continue;
+            }
+            if ($a->hasAttribute('style')) {
+                $a->removeAttribute('style');
+                $changed = true;
+            }
+            $node = $a->parentNode;
+            while ($node instanceof DOMElement && ! $node->isSameNode($root)) {
+                $parent = $node->parentNode;
+                if (in_array(strtolower($node->tagName), ['sub', 'sup'], true)) {
+                    while ($node->firstChild !== null) {
+                        $parent?->insertBefore($node->firstChild, $node);
+                    }
+                    $parent?->removeChild($node);
+                    $changed = true;
+                } elseif ($node->hasAttribute('style')) {
+                    $keep = preg_match('/(?:^|;)\s*text-align\s*:\s*(left|center|right|justify)\s*(?:;|$)/i', $node->getAttribute('style'), $m) === 1
+                        ? 'text-align:'.strtolower($m[1]).';' : '';
+                    if ($keep !== $node->getAttribute('style')) {
+                        $keep === '' ? $node->removeAttribute('style') : $node->setAttribute('style', $keep);
+                        $changed = true;
+                    }
+                }
+                $node = $parent;
+            }
+        }
+        if (! $changed) {
+            return $clean;
+        }
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $dom->saveHTML($child);
+        }
+
+        return trim(preg_replace('/href="%7B([a-z_]+)%7D"/i', 'href="{$1}"', $out) ?? '');
+    }
+
     /** The plain-text part of a mail, from its HTML body. */
     public static function text(string $html): string
     {

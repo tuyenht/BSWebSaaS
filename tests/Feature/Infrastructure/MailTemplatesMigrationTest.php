@@ -42,7 +42,7 @@ it('rolls the «Mẫu thư» tables back and forward on a real database', functi
             ->and($siteShape['rls']?->relforcerowsecurity)->toBeTrue()
             ->and($siteShape['policies'])->toBe(['mail_templates_site_isolation'])
             ->and($siteShape['grants'])->toBe($grants)
-            ->and($siteShape['checks'])->toBe(['mail_templates_body_length_check', 'mail_templates_key_check', 'mail_templates_locale_check', 'mail_templates_site_key_locale_unique']);
+            ->and($siteShape['checks'])->toBe(['mail_templates_body_length_check', 'mail_templates_key_check', 'mail_templates_locale_check', 'mail_templates_site_key_locale_unique', 'mail_templates_subject_line_check']);
         $platformShape = mailTemplatesMigShape('platform_mail_templates');
         expect($platformShape['exists'])->toBeTrue()
             ->and($platformShape['rls']?->relrowsecurity)->toBeFalse()
@@ -67,12 +67,13 @@ it('rolls the «Mẫu thư» tables back and forward on a real database', functi
     }
 });
 
-it('refuses a template key, language or body the screen would never write', function (): void {
+it('refuses a template key, language, subject or body the screen would never write', function (): void {
     $db = DB::connection('pgsql_admin');
     $row = ['template_key' => 'reset', 'locale' => 'vi', 'subject' => 'Chào', 'body' => '<p>x</p>'];
 
-    foreach ([['template_key' => 'Reset;drop'], ['locale' => 'vi_VN!'], ['body' => str_repeat('a', 60001)], ['subject' => str_repeat('a', 201)]] as $bad) {
-        expect(fn () => $db->table('platform_mail_templates')->insert([...$row, ...$bad]))->toThrow(QueryException::class);
+    foreach ([['template_key' => 'Reset;drop'], ['locale' => 'vi_VN!'], ['body' => str_repeat('a', 60001)], ['subject' => str_repeat('a', 201)], ['subject' => "Chào\nBcc: x@evil.test"], ['subject' => "Chào\rx"]] as $bad) {
+        expect(fn () => $db->table('platform_mail_templates')->insert([...$row, ...$bad]))->toThrow(QueryException::class)
+            ->and(fn () => $db->table('mail_templates')->insert(['site_id' => 1, ...$row, ...$bad]))->toThrow(QueryException::class);
     }
     $db->table('platform_mail_templates')->insert($row);
     expect(fn () => $db->table('platform_mail_templates')->insert($row))->toThrow(QueryException::class)

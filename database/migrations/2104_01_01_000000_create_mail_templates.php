@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  *  - template_key is varchar + CHECK (D13), a lower-case code (`reset`, `team_invite`); the codes
  *    themselves live in code (Admin\Support\Mail\MailTemplateCatalog), so a new template needs no
  *    migration. locale is the language code `site_locales.locale` uses (varchar(12)).
- *  - subject is plain text (≤ 200 characters, no line break); body is HTML already cleaned by
+ *  - subject is plain text (≤ 200 characters, no line break: CHECK); body is HTML already cleaned by
  *    RichTextSanitizer, with the variables left as `{reset_url}`-style words, filled at send time
  *    after the HTML is cleaned again. Both are written only by the app (MailTemplateStore).
  *  - site_id CASCADE (D4): a website removed for good takes its templates with it. No ulid: a row is
@@ -44,6 +44,7 @@ return new class extends Migration
                 updated_at   timestamptz NOT NULL DEFAULT now(),
                 CONSTRAINT mail_templates_key_check CHECK (template_key ~ '^[a-z][a-z0-9_]{0,39}$'),
                 CONSTRAINT mail_templates_locale_check CHECK (locale ~ '^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$'),
+                CONSTRAINT mail_templates_subject_line_check CHECK (strpos(subject, chr(10)) = 0 AND strpos(subject, chr(13)) = 0),
                 CONSTRAINT mail_templates_body_length_check CHECK (length(body) <= 60000),
                 CONSTRAINT mail_templates_site_key_locale_unique UNIQUE (site_id, template_key, locale)
             )

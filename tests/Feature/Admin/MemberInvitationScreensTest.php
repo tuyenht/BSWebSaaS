@@ -4,10 +4,12 @@ use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index;
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
+use App\Modules\Admin\Support\Mail\MailTemplateStore;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -266,6 +268,43 @@ it('refuses more addresses than one send takes, saying the limit, and sends none
 
     expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(0);
     Notification::assertNothingSent();
+});
+
+it('makes no invitation while its mail is turned off, saying where to turn it on, and mails again once it is on', function (): void {
+    Notification::fake();
+    $owner = screensMember('owner');
+    screensMember('viewer');
+    $send = fn (string $email) => app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
+        ->test(Index::class)
+        ->set('inviteEmail', $email)
+        ->set('inviteRoles', ['viewer'])
+        ->call('sendInvites'));
+    $send('truoc@example.test')->assertHasNoErrors();
+    $invitation = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->sole());
+    app(Tenancy::class)->enter(1, fn () => app(MailTemplateStore::class)->setOff('team_invite', true));
+    app()->forgetScopedInstances();   // a new request: the switch is read again
+
+    $send('moi@example.test')
+        ->assertHasErrors('inviteEmail')
+        ->assertSee(__('admin.members.inv_mail_off'))
+        ->assertSet('inviteResults', [])
+        ->assertSet('inviteEmail', 'moi@example.test');   // what was typed stays
+    // «Gửi lại» would replace the link in the earlier mail with one nobody gets
+    app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
+        ->test(Index::class)
+        ->set('tab', 'loi-moi')
+        ->call('resendInvitation', $invitation->ulid)
+        ->assertSet('toast', __('admin.members.inv_mail_off')));
+    $after = app(Tenancy::class)->enter(1, fn (): Invitation => Invitation::query()->sole());
+    expect($after->sent_at->equalTo($invitation->sent_at))->toBeTrue()
+        ->and($after->expires_at->equalTo($invitation->expires_at))->toBeTrue();
+    Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 1);
+
+    app(Tenancy::class)->enter(1, fn () => app(MailTemplateStore::class)->setOff('team_invite', false));
+    app()->forgetScopedInstances();
+    $send('moi@example.test')->assertHasNoErrors()->assertSet('inviteResults.0.ok', true);
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(2);
+    Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 2);
 });
 
 it('refuses more addresses than the site may still mail today, saying how many are left, and sends none', function (): void {
