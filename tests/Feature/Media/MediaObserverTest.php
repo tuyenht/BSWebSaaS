@@ -5,10 +5,12 @@ use App\Modules\Media\Actions\TrashMedia;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Media\Support\MediaStorage;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
 
 /*
@@ -123,4 +125,166 @@ it('leaves the stored file of a re-upload that took the purged file’s key befo
         ->and($new->storage_key)->toBe($old->storage_key) // the same name and bytes: the same key
         ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->pluck('id')->all()))->toBe([$new->id]);
     Storage::disk('r2')->assertExists($new->storage_key);
+});
+
+/** Trashed files of site 1, each with its stored object (the caller wraps Tenancy::enter). */
+function trashedFiles(int $n): Collection
+{
+    $rows = new Collection;
+    for ($i = 1; $i <= $n; $i++) {
+        $rows->push(makeMediaWithAttachment("a/library/xoa-{$i}.png", hash('sha256', "xoa-{$i}")));
+    }
+    app(TrashMedia::class)->trash($rows);
+
+    return $rows;
+}
+
+/*
+ * The last look before the stored files go is one tenant transaction for everything one purge deletes,
+ * not one per file: the website's context is entered once more after the commit, whatever the count.
+ */
+it('looks at the website\'s rows once for all the files one purge deletes', function (): void {
+    $rows = app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(3));
+
+    $entered = 0;
+    DB::listen(function ($query) use (&$entered): void {
+        if (str_contains($query->sql, 'set_config') && ($query->bindings[0] ?? null) === 'app.current_site_id') {
+            $entered++;
+        }
+    });
+    app(Tenancy::class)->enter(1, fn () => app(PurgeMedia::class)->purge(Media::onlyTrashed()->get()));
+
+    expect($entered)->toBe(2); // the purge's own transaction, then the one last look
+    foreach ($rows as $media) {
+        Storage::disk('r2')->assertMissing($media->storage_key);
+    }
+});
+
+/*
+ * A moved file keeps its old address (`meta.moved_from`). When some row of the website names that
+ * address again by the time the delete runs (a row back from a purge that did not hold, say), the
+ * last look keeps the object, as it keeps a stored key a row names.
+ */
+it('keeps an old address a row names again by the time the delete runs', function (): void {
+    $old = 'a/library/cu-eeeeeeeeeeee.png';
+    $new = 'a/library/moi-eeeeeeeeeeee.png';
+    Storage::disk('r2')->put($old, 'old');
+
+    app(Tenancy::class)->enter(1, function () use ($old, $new): void {
+        $moved = makeMediaWithAttachment($new, str_repeat('e', 64));
+        $moved->update(['meta' => ['moved_from' => $old]]);
+        app(TrashMedia::class)->trash(new Collection([$moved]));
+    });
+
+    app(Tenancy::class)->enter(1, function () use ($old): void {
+        app(PurgeMedia::class)->purge(Media::onlyTrashed()->get());
+
+        // after the purge's own check, before its delete runs: a row names the old address again
+        $back = makeMediaWithAttachment('a/library/khac-ffffffffffff.png', str_repeat('f', 64));
+        $back->update(['meta' => ['moved_from' => $old]]);
+    });
+
+    Storage::disk('r2')->assertMissing($new);
+    Storage::disk('r2')->assertExists($old);
+});
+
+it('keeps every stored file when the last look before the delete fails, and reports it', function (): void {
+    Exceptions::fake();
+    $rows = app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(2));
+
+    $armed = false;
+    DB::connection()->beforeExecuting(function (string $sql) use (&$armed): void {
+        if ($armed && str_contains($sql, '"storage_key" in')) {
+            throw new RuntimeException('the last look fails');
+        }
+    });
+    app(Tenancy::class)->enter(1, function () use (&$armed): void {
+        app(PurgeMedia::class)->purge(Media::onlyTrashed()->get());
+        $armed = true; // only the look after the commit fails
+    });
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->count()))->toBe(0);
+    foreach ($rows as $media) {
+        Storage::disk('r2')->assertExists($media->storage_key); // a leak, never a row without its file
+    }
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'the last look fails');
+});
+
+it('deletes a whole Trash a page at a time, with one last look for all of it', function (): void {
+    $rows = app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(5));
+
+    $pages = [];
+    $entered = 0;
+    DB::listen(function ($query) use (&$pages, &$entered): void {
+        if (str_contains($query->sql, 'set_config') && ($query->bindings[0] ?? null) === 'app.current_site_id') {
+            $entered++;
+        }
+        if (preg_match('/^select \* from "media" .*"deleted_at" is not null/', $query->sql) === 1) {
+            $pages[] = $query->sql;
+        }
+    });
+    $done = app(Tenancy::class)->enter(1, fn (): array => app(PurgeMedia::class)->purgeAll(Media::onlyTrashed(), 2));
+
+    expect($done)->toBe(['files' => 5, 'bytes' => 30])
+        ->and($pages)->toHaveCount(3)
+        ->and(collect($pages)->every(fn (string $sql): bool => str_contains($sql, 'limit 2')))->toBeTrue()
+        ->and($entered)->toBe(2)
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::withTrashed()->count()))->toBe(0);
+    foreach ($rows as $media) {
+        Storage::disk('r2')->assertMissing($media->storage_key);
+    }
+});
+
+/*
+ * The totals' row is the purge's last write (SiteCounters): a whole Trash takes its size off the
+ * totals once, after its last page, so the row is not held while the later pages delete.
+ */
+it('takes a whole Trash off the totals once, after its last page is deleted', function (): void {
+    app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(5));
+
+    $writes = [];
+    DB::listen(function ($query) use (&$writes): void {
+        $sql = strtolower($query->sql);
+        if (str_starts_with($sql, 'delete from "media" where')) {
+            $writes[] = 'media';
+        } elseif (str_starts_with(ltrim($sql), 'insert into site_counters')) {
+            $writes[] = $query->bindings[1]; // the metric: one upsert per total
+        }
+    });
+    $done = app(Tenancy::class)->enter(1, fn (): array => app(PurgeMedia::class)->purgeAll(Media::onlyTrashed(), 2));
+
+    expect($done)->toBe(['files' => 5, 'bytes' => 30])
+        ->and($writes)->toBe(['media', 'media', 'media', 'media', 'media', MediaStorage::BYTES, MediaStorage::TRASH]);
+});
+
+/*
+ * A web request turns the error into an error page and its site transaction still commits: the pages
+ * purged before the failing one must not go with it (all pages share one savepoint).
+ */
+it('deletes nothing of a whole Trash when one of its pages fails, even when the caller commits', function (): void {
+    $rows = app(Tenancy::class)->enter(1, fn (): Collection => trashedFiles(3));
+
+    $locks = 0;
+    DB::connection()->beforeExecuting(function (string $sql) use (&$locks): void {
+        if (str_contains($sql, 'for update') && str_contains($sql, '"media"') && ++$locks === 2) {
+            throw new RuntimeException('the second page fails');
+        }
+    });
+
+    $failed = app(Tenancy::class)->enter(1, function (): ?string {
+        try {
+            app(PurgeMedia::class)->purgeAll(Media::onlyTrashed(), 2);
+        } catch (RuntimeException $e) {
+            return $e->getMessage(); // the request answers its error page and commits
+        }
+
+        return null;
+    });
+
+    expect($failed)->toBe('the second page fails')
+        ->and($locks)->toBe(2)
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::onlyTrashed()->count()))->toBe(3);
+    foreach ($rows as $media) {
+        Storage::disk('r2')->assertExists($media->storage_key);
+    }
 });
