@@ -28,7 +28,7 @@
         {{-- The list --}}
         <section class="{{ $card }} overflow-hidden" aria-label="{{ __('admin.em_tab_tpl') }}" x-data="{
             q: '',
-            fold(s) { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase().trim(); },
+            fold(s) { return String(s || '').normalize('NFC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim(); },
             hit(el) { const q = this.fold(this.q); return q === '' || this.fold(el.dataset.hay).includes(q); },
             asked() { return this.fold(this.q) !== ''; },
             none() { return this.asked() && ! Array.from($el.querySelectorAll('[data-hay]')).some((r) => this.hit(r)); },
@@ -117,12 +117,12 @@
             @endif
 
             @if ($filter === 'all')
-                <div wire:key="tpl-empty-q" x-show="none()" x-cloak class="px-9 py-9 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="q">
-                    <span x-text="@js(__('admin.mt_empty_q', ['q' => ':q'])).replace(':q', q.trim())">{{ __('admin.mt_empty_q', ['q' => '']) }}</span>
+                <div wire:key="tpl-empty-q" x-show="none()" x-cloak class="px-9 py-9 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="q" role="status">
+                    <span x-text="@js(__('admin.mt_empty_q', ['q' => ':q'])).replace(':q', () => q.trim())">{{ __('admin.mt_empty_q', ['q' => '']) }}</span>
                 </div>
             @else
-                <div wire:key="tpl-empty-both" x-show="none()" x-cloak class="px-9 py-8 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="both">
-                    <span x-text="@js(__('admin.mt_empty_both', ['q' => ':q'])).replace(':q', q.trim())">{{ __('admin.mt_empty_both', ['q' => '']) }}</span><br>
+                <div wire:key="tpl-empty-both" x-show="none()" x-cloak class="px-9 py-8 text-center text-[calc(0.84375rem+var(--user-text-boost))] leading-relaxed text-text-muted" data-empty="both" role="status">
+                    <span x-text="@js(__('admin.mt_empty_both', ['q' => ':q'])).replace(':q', () => q.trim())">{{ __('admin.mt_empty_both', ['q' => '']) }}</span><br>
                     <button type="button" class="{{ $tlink }} mt-[9px] text-[calc(0.8125rem+var(--user-text-boost))] font-semibold" wire:click="setFilter('all')">
                         <x-bs-admin::icon name="ri-close-circle" class="{{ $xs }}" />{{ __('admin.mt_clear_filter_keep_q') }}
                     </button>
