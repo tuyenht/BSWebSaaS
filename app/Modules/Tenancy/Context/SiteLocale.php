@@ -16,10 +16,11 @@ use Illuminate\Support\Facades\Log;
  *                (per-site, MUTABLE — design.md §10/ADR-11).
  *  - enabled():  the locales editors write in (the admin's language column + per-locale editor).
  *  - public():   the enabled locales visitors can open — storefront prefix, hreflang, sitemap.
+ *  - codes():    every locale the site has a row for, switched off ones included.
  *  - formerDefaults(): the public locales that were the default before (most recent first), whose
  *                old clean addresses the storefront sends on under their prefix.
  *
- * One query loads all three (a site has a handful of locale rows), memoized per site for the
+ * One query loads them all (a site has a handful of locale rows), memoized per site for the
  * request. Registered scoped (TenancyServiceProvider) so the memo is flushed between Octane
  * operations and never leaks a stale answer across requests; a writer that changes the locales
  * mid-request calls forget(). A site with no default is a broken invariant: fall back to the first
@@ -34,7 +35,7 @@ final class SiteLocale
 
     public const string FORMER_KEY = 'former_defaults';
 
-    /** @var array<int, array{default: string, enabled: list<string>, public: list<string>}> per site id (request-scoped) */
+    /** @var array<int, array{default: string, enabled: list<string>, public: list<string>, all: list<string>}> per site id (request-scoped) */
     private array $memo = [];
 
     /** @var array<int, list<string>> per site id (request-scoped) */
@@ -133,6 +134,21 @@ final class SiteLocale
     }
 
     /**
+     * Every language the current site has, switched on or off (an off one can be switched back on),
+     * default first then by id. Empty with no site context.
+     *
+     * @return list<string>
+     */
+    public function codes(): array
+    {
+        if (! $this->current->hasId()) {
+            return [];
+        }
+
+        return $this->state()['all'];
+    }
+
+    /**
      * The public languages other than the default that were the site's default before, the most
      * recent first: a clean path the default misses may be one of their old addresses. Read only
      * when the site has a second public language (a one-language site never pays the query), and
@@ -173,7 +189,7 @@ final class SiteLocale
     }
 
     /**
-     * @return array{default: string, enabled: list<string>, public: list<string>}
+     * @return array{default: string, enabled: list<string>, public: list<string>, all: list<string>}
      */
     private function state(): array
     {
@@ -183,13 +199,14 @@ final class SiteLocale
     }
 
     /**
-     * @return array{default: string, enabled: list<string>, public: list<string>}
+     * @return array{default: string, enabled: list<string>, public: list<string>, all: list<string>}
      */
     private function load(int $siteId): array
     {
         $default = null;
         $enabled = [];
         $public = [];
+        $all = [];
 
         $rows = SiteLocaleModel::query()
             ->orderByDesc('is_default')
@@ -198,6 +215,7 @@ final class SiteLocale
 
         foreach ($rows as $row) {
             $locale = (string) $row->locale;
+            $all[] = $locale;
 
             if ($row->is_default && $default === null) {
                 $default = $locale;
@@ -218,6 +236,6 @@ final class SiteLocale
             Log::warning('Site has no default locale; falling back.', ['site_id' => $siteId, 'locale' => $default]);
         }
 
-        return ['default' => $default, 'enabled' => $enabled, 'public' => $public];
+        return ['default' => $default, 'enabled' => $enabled, 'public' => $public, 'all' => $all];
     }
 }

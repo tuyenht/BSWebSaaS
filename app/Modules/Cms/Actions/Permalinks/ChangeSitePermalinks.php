@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\DB;
  * website may not choose (`permalinks.custom` off: only CHANGING is gated, the stored presets keep
  * working). Every choice is checked: the preset is one its section's type allows, and a prefix is
  * lower-case letters, digits and single hyphens, used by no other section, and not a first segment
- * the platform answers on (the admin, sign-in, a language code, the search, tags, system files).
+ * the platform answers on (the admin, sign-in, a language, the search, tags, system files).
  *
  * Runs inside the caller's Tenancy::enter(); the site's permalink lock serializes it with the run.
  */
@@ -54,6 +54,7 @@ final readonly class ChangeSitePermalinks
         private SectionResolver $sections,
         private PermalinkKinds $kinds,
         private RedirectRules $rules,
+        private SiteLocale $locales,
     ) {}
 
     /** The site's permalink lock, held to the end of the current transaction. */
@@ -257,7 +258,7 @@ final readonly class ChangeSitePermalinks
         }
     }
 
-    /** Whether a prefix would take a first segment the platform answers on. */
+    /** Whether a prefix would take a first segment the platform answers on, or one of the languages(). */
     private function reservedBase(string $base): bool
     {
         $platform = [...self::RESERVED_BASES];
@@ -265,6 +266,22 @@ final readonly class ChangeSitePermalinks
             $platform[] = explode('/', trim($path, '/'), 2)[0];
         }
 
-        return SiteLocale::looksLikeCode($base) || in_array($base, $platform, true) || in_array($base, $this->rules->reservedSegments(), true);
+        return in_array($base, $this->languages(), true) || in_array($base, $platform, true) || in_array($base, $this->rules->reservedSegments(), true);
+    }
+
+    /**
+     * The language codes a prefix may not be: each language the platform offers a website or knows
+     * by name (so one added to the offer later finds no prefix in its way), and each language this
+     * website has, switched off ones included (they can be switched back on). The storefront reads a
+     * first segment as a language only when it is the website's default or one of its public
+     * languages, so a word that is merely shaped like a code (`du-an`, `tu-van`) stays an address.
+     *
+     * @return list<string>
+     */
+    private function languages(): array
+    {
+        $platform = array_filter([...(array) config('locales.content', []), ...array_keys((array) config('locales.labels', []))], 'is_string');
+
+        return [...array_values($platform), ...$this->locales->codes()];
     }
 }
