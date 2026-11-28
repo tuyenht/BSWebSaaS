@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Actions;
 
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
@@ -39,6 +40,7 @@ final readonly class ChangeDefaultSiteLocale
         private CurrentSite $current,
         private Entitlement $entitlement,
         private SiteLocale $locales,
+        private PermalinkConfig $permalinks,
     ) {}
 
     /**
@@ -50,6 +52,11 @@ final readonly class ChangeDefaultSiteLocale
         $oldPublic = $oldOn && $oldPublic;
         if (preg_match('/^[a-z]{2}(-[a-z0-9]{2,8})?$/', $locale) !== 1) {
             throw new SiteLocaleChangeRejectedException('locale_invalid');
+        }
+
+        // `/{default}/…` redirects to the clean path, so a section under that segment would break.
+        if (($section = $this->permalinks->sectionUsingBase($locale)) !== null) {
+            throw new SiteLocaleChangeRejectedException('prefix_in_use', $section);
         }
 
         $siteId = $this->current->id();

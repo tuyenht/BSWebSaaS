@@ -13,6 +13,8 @@ paths:
 # Tenancy + Octane
 
 - Loops over tenants/rows inside `Tenancy::enter` catch `Throwable` per row. `enter` wraps the loop in one transaction, so an escaped exception rolls back that tenant and aborts every later one — forever, for a cron.
+  - A catch alone keeps later rows working only when each row also runs in its own savepoint (`DB::transaction` per row). In PostgreSQL the first failed statement aborts the whole transaction: without the savepoint every later row fails (25P02), and `enter` rolls the whole site back at the end, with a warning in the log.
+- `Tenancy::enter` notices a transaction PostgreSQL aborted (a failed statement the code caught and swallowed) only through the failed-statement count of the pgsql connection (`TrackedPostgresConnection`); it then rolls back the Laravel way, so after-commit work is dropped and after-rollback callbacks run. Never send a statement on the raw PDO handle (`getPdo()`) in `app/`: it would go uncounted (`tests/Arch/DatabaseConnectionTrackingTest.php`).
 - Octane keeps singletons between requests.
   - No request state in singletons or static properties.
   - A per-request `config([...])` change to an already-built service (e.g. `session.cookie`) is a no-op. Act on the resolved object and verify with a live request, not a config-value test.

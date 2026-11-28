@@ -8455,6 +8455,7 @@
     "admin.lng.err_limit": "サイトは :max 言語をすべて使っています — 1 つオフにしてから、もう一度保存してください。",
     "admin.lng.err_default": "既定の言語は常にオンで訪問者に表示されます — 先に既定の言語を変更してください。",
     "admin.lng.err_invalid": "使えない言語があります。ページを再読み込みしてもう一度お試しください。",
+    "admin.lng.err_prefix": "ページ区分「:section」がこの言語コードをURLの接頭辞として使っているため、訪問者にこの言語を表示できません。設定のパーマリンクでその区分の接頭辞を変更してから、もう一度保存してください。",
     "admin.audit.act.settings.locales.changed": "サイトの言語を変更",
     "admin.audit.act.settings.locales.default_changed": "サイトの既定の言語を変更",
     "admin.adv.title": "セキュリティと詳細設定",

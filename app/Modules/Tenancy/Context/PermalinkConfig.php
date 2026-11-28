@@ -116,6 +116,23 @@ final class PermalinkConfig
     }
 
     /**
+     * The first section whose base segment (live, or staged by a run under way) equals `$code`, or
+     * null. A language code may not be public while a section lives under the same first segment:
+     * `/da/...` would then be read as the language, not the section.
+     */
+    public function sectionUsingBase(string $code): ?string
+    {
+        foreach ($this->sections() as $section => $row) {
+            $pending = $row['pending']['base'] ?? null;
+            if ($this->base($section) === $code || (is_string($pending) && trim(trim($pending), '/') === $code)) {
+                return (string) $section;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The presets a section of this type may use (the validity matrix) — for the settings UI and for
      * validating a stored value. An unknown type is fail-closed to flat only.
      *

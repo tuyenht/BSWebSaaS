@@ -8455,6 +8455,7 @@
     "admin.lng.err_limit": "The website already uses all :max languages — switch one off, then Save again.",
     "admin.lng.err_default": "The default language is always on and shown to visitors — change the default first.",
     "admin.lng.err_invalid": "One language cannot be used. Reload the page and try again.",
+    "admin.lng.err_prefix": "A page section (:section) already uses this language code as its address prefix, so the language cannot be shown to visitors. Change that section's prefix in Settings, Permalinks, then Save again.",
     "admin.audit.act.settings.locales.changed": "Changed the website's languages",
     "admin.audit.act.settings.locales.default_changed": "Changed the website's default language",
     "admin.adv.title": "Security & Advanced",
