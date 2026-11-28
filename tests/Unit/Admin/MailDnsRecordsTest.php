@@ -68,6 +68,7 @@ it('passes DKIM when one of the service selectors publishes a key', function (st
 })->with([
     'SendGrid s2' => ['sendgrid', 's2._domainkey.congty.vn'],
     'Brevo' => ['brevo', 'brevo1._domainkey.congty.vn'],
+    'Brevo, set up the older way' => ['brevo', 'mail._domainkey.congty.vn'],
     'Resend' => ['resend', 'resend._domainkey.congty.vn'],
     'Mailtrap' => ['mailtrap', 'rwmt1._domainkey.congty.vn'],
     'Google Workspace' => ['google', 'google._domainkey.congty.vn'],
