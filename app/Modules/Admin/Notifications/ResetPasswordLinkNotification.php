@@ -20,7 +20,8 @@ use Throwable;
  * The reset URL is composed AT DISPATCH, inside the request — a queue worker has no request host,
  * so it could pick neither the right plane (admin ↔ platform route names) nor the right absolute
  * host for the link. Worker plumbing mirrors EmailOtpNotification: WithinSite isolation +
- * re-applied tenant mailer + bounded retries + audited final failure.
+ * the platform's outbox re-applied (never the website's own: the link resets the account on every
+ * website) + bounded retries + audited final failure.
  */
 final class ResetPasswordLinkNotification extends Notification implements ShouldQueue
 {
@@ -61,9 +62,14 @@ final class ResetPasswordLinkNotification extends Notification implements Should
         return ['mail'];
     }
 
+    protected function platformOutboxOnly(): bool
+    {
+        return true;
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
-        $this->applyTenantMailer();
+        $this->applyPlatformMailer();
 
         // The website's (or the platform's) wording of «Đặt lại mật khẩu» when it has one.
         $templated = app(MailTemplateMail::class)->message('reset', [

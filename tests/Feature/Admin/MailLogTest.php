@@ -1,7 +1,10 @@
 <?php
 
 use App\Modules\Admin\Models\MailLog;
+use App\Modules\Admin\Notifications\EmailChangeCodeNotification;
 use App\Modules\Admin\Notifications\EmailOtpNotification;
+use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
+use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Admin\Support\Mail\MailKinds;
 use App\Modules\Admin\Support\Mail\MailReason;
 use App\Modules\Admin\Support\MailHostGuard;
@@ -75,6 +78,16 @@ function mlogSendOtp(int $site = 1, string $to = 'khach@example.test'): void
 {
     app(Tenancy::class)->enter($site, function () use ($site, $to): void {
         $note = new EmailOtpNotification('123456', 10);
+        $note->tenantSiteId = $site;
+        Notifications::route('mail', $to)->notifyNow($note);
+    });
+}
+
+/** A security notice: ordinary account mail, sent through the website's own outbox when it has one. */
+function mlogSendNotice(int $site = 1, string $to = 'khach@example.test'): void
+{
+    app(Tenancy::class)->enter($site, function () use ($site, $to): void {
+        $note = new TwoFactorDisabledNotification('28/11/2026 10:00');
         $note->tenantSiteId = $site;
         Notifications::route('mail', $to)->notifyNow($note);
     });
@@ -160,21 +173,21 @@ it('logs a mail that went to the log mailer as failed, with why', function (): v
 it('logs a refused own server as failed with that reason, and as sent when the shared outbox took over', function (): void {
     mlogOwnOutbox('10.0.0.5'); // a private address: never dialled
 
-    mlogSendOtp();
+    mlogSendNotice();
     expect(mlogRows()->last()->status)->toBe('failed')
         ->and(mlogRows()->last()->reason_code)->toBe('refused_host')
         ->and(mlogRows()->last()->via)->toBe('own')
         ->and(mlogDay('own')->failed)->toBe(1);
 
     mlogPlatformOutbox();
-    mlogSendOtp();
+    mlogSendNotice();
     expect(mlogRows()->last()->status)->toBe('sent')
         ->and(mlogRows()->last()->via)->toBe('platform')
         ->and(mlogDay('platform')->sent)->toBe(1)
         ->and($this->mlogTransport->messages())->toHaveCount(1);
 });
 
-it('sends the email verification mail through the website outbox and logs it', function (): void {
+it('sends the email verification mail through the platform outbox, even when the website has its own, and logs it', function (): void {
     mlogPlatformOutbox();
     mlogOwnOutbox('93.184.216.34');
     $user = User::factory()->create();
@@ -185,7 +198,27 @@ it('sends the email verification mail through the website outbox and logs it', f
     expect($this->mlogTransport->messages())->toHaveCount(1)
         ->and($rows)->toHaveCount(1)
         ->and($rows[0]->kind)->toBe('email_verification')
-        ->and($rows[0]->via)->toBe('own');
+        ->and($rows[0]->via)->toBe('platform');
+});
+
+it('logs a queued account mail that failed for good under the platform outbox, an ordinary one under the website\'s own', function (): void {
+    mlogPlatformOutbox();
+    mlogOwnOutbox('93.184.216.34'); // a working own server: the website's ordinary mail would use it
+
+    foreach ([
+        new EmailOtpNotification('123456', 10),
+        new EmailChangeCodeNotification('123456', 10, true),
+        new ResetPasswordLinkNotification('https://a.test/admin/reset-password?token=t'),
+        new TwoFactorDisabledNotification('28/11/2026 10:00'),
+    ] as $note) {
+        $note->tenantSiteId = 1;
+        $note->failed(new TransportException('down'));
+    }
+
+    expect(mlogRows()->pluck('via')->all())->toBe(['platform', 'platform', 'platform', 'own'])
+        ->and(mlogRows()->pluck('status')->unique()->all())->toBe(['failed'])
+        ->and(mlogDay('platform')->failed)->toBe(3)
+        ->and(mlogDay('own')->failed)->toBe(1);
 });
 
 it('does not wait long for a day row another job holds: the mail leaves and its record is kept', function (): void {
@@ -214,7 +247,7 @@ it('logs a mail through the website own outbox under own', function (): void {
     mlogPlatformOutbox();
     mlogOwnOutbox('93.184.216.34');
 
-    mlogSendOtp();
+    mlogSendNotice();
 
     expect(mlogRows()->pluck('via')->all())->toBe(['own'])
         ->and(mlogDay('own')->sent)->toBe(1)

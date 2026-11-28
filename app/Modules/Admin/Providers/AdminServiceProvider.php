@@ -229,9 +229,10 @@ final class AdminServiceProvider extends ServiceProvider
             now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));
-        // Through the website's outbox like every other account mail (and so in its mail log).
+        // Through the platform's shared outbox (the link verifies the account on every website, so a
+        // website's own mail server must never see it), still in the website's mail log.
         VerifyEmail::toMailUsing(function (mixed $notifiable, string $url): MailMessage {
-            app(TenantMailer::class)->apply();
+            app(TenantMailer::class)->applyPlatform();
 
             // The website's (or the platform's) wording of «Xác minh địa chỉ email» when it has one.
             $templated = app(MailTemplateMail::class)->message('verify', [

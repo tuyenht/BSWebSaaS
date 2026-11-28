@@ -32,18 +32,23 @@ final readonly class EnsureTenantMember
         $user = $request->user();
 
         abort_unless($user instanceof User, 403);
-
-        // Platform operators carry no per-site role (they live at team 0) but must
-        // reach every tenant's admin.
-        if (! $this->platform->isSuperAdmin($user)) {
-            // Membership = at least one role on the current site (team = site_id).
-            abort_unless($user->roles()->exists(), 403, 'You are not a member of this site.');
-        }
+        abort_unless($this->admits($user), 403, 'You are not a member of this site.');
 
         // An error later in this request may be drawn inside the admin's menu and top bar: only
         // for someone who passed this check (a non-member never sees this site's menu).
         $request->attributes->set('admin.member', true);
 
         return $next($request);
+    }
+
+    /**
+     * Whether the user may enter the current site's admin: the one membership rule, also asked by the
+     * site's «Quên mật khẩu» and reset pages so they serve exactly the people this check lets in.
+     */
+    public function admits(User $user): bool
+    {
+        // Platform operators carry no per-site role (they live at team 0) but must
+        // reach every tenant's admin. Membership = at least one role on the current site (team = site_id).
+        return $this->platform->isSuperAdmin($user) || $user->roles()->exists();
     }
 }

@@ -17,6 +17,9 @@ namespace App\Modules\Admin\Support\Mail;
  *  - fallbackReason: why the log mailer was forced (`refused_host` or `config`).
  *  - reserved: a place on the website's day was reserved for this mail (counted already).
  *  - guarded: the mail is sent by a queued job under the MailQuota middleware, which can hold it back.
+ *  - accountMail: applyPlatform() set it up, for a mail carrying a link or code that acts on the
+ *    person's account on every website. SetTenantReplyTo then never adds the website's Reply-To, so
+ *    a reply quoting the link or code cannot reach the website's owner.
  */
 final class MailSendContext
 {
@@ -30,6 +33,8 @@ final class MailSendContext
 
     public bool $guarded = false;
 
+    public bool $accountMail = false;
+
     /** A refusal of the website's own mail server noted while apply() runs, read once at its end. */
     public bool $hostRefused = false;
 
@@ -41,6 +46,7 @@ final class MailSendContext
         $this->fallbackReason = null;
         $this->reserved = false;
         $this->hostRefused = false;
+        $this->accountMail = false;
     }
 
     public function applied(string $via, string $mailer, ?string $fallbackReason = null): void

@@ -87,7 +87,16 @@ trait QueuesTenantMail
             return;
         }
 
-        app(MailLogWriter::class)->queuedFailed($this->tenantSiteId, static::class, $this->id, $e);
+        app(MailLogWriter::class)->queuedFailed($this->tenantSiteId, static::class, $this->id, $e, $this->platformOutboxOnly() ? 'platform' : null);
+    }
+
+    /**
+     * Whether this mail leaves only through the platform's shared outbox (it calls applyPlatformMailer()):
+     * its failure is then logged under that outbox, not the one the website's ordinary mail would use.
+     */
+    protected function platformOutboxOnly(): bool
+    {
+        return false;
     }
 
     /**
@@ -98,5 +107,14 @@ trait QueuesTenantMail
     protected function applyTenantMailer(): void
     {
         app(TenantMailer::class)->apply();
+    }
+
+    /**
+     * As applyTenantMailer(), but only ever the platform's shared outbox: for a mail carrying a link
+     * or code that acts on the person's account on every website (TenantMailer::applyPlatform()).
+     */
+    protected function applyPlatformMailer(): void
+    {
+        app(TenantMailer::class)->applyPlatform();
     }
 }

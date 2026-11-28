@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Listeners;
 
+use App\Modules\Admin\Support\Mail\MailSendContext;
+use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Mail\Events\MessageSending;
@@ -14,21 +16,22 @@ use Illuminate\Mail\Events\MessageSending;
  * Read at SEND time from the current site's `email.reply_to` setting (stateless — no Octane reply-to
  * leak, unlike Mail::alwaysReplyTo). No-op off the tenant plane, when unset, or when the message
  * already carries an explicit Reply-To. Registered on Illuminate\Mail\Events\MessageSending.
+ *
+ * An account mail (a reset or verification link, a sign-in code, a code that changes the sign-in
+ * email: TenantMailer::applyPlatform()) never carries the website's Reply-To: a member replying to it
+ * would quote the link or code to the website's owner. It carries the platform's, when one is set.
  */
-final readonly class SetTenantReplyTo
+final class SetTenantReplyTo
 {
-    public function __construct(
-        private CurrentSite $current,
-        private SettingsRepository $settings,
-    ) {}
-
     public function handle(MessageSending $event): void
     {
-        if (! $this->current->hasId()) {
+        // Everything is read at send time, from the container the mail was set up in (as the other
+        // mail listeners do): under Octane the listener may be built from another one.
+        if (! app(CurrentSite::class)->hasId()) {
             return;
         }
 
-        $cfg = $this->settings->get('email');
+        $cfg = app(MailSendContext::class)->accountMail ? app(PlatformSettings::class)->get('email') : app(SettingsRepository::class)->get('email');
         $replyTo = is_array($cfg) ? ($cfg['reply_to'] ?? null) : null;
         if (! is_string($replyTo) || $replyTo === '') {
             return;
